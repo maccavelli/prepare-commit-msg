@@ -175,4 +175,4 @@ intentionally disabled for this repository.
 
 ## License / context
 
-Part of the split Go repository fleet formerly maintained under `saxsmith-global-context`.
+Part of the split Go repository fleet.

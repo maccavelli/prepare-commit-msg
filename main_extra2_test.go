@@ -75,7 +75,22 @@ func TestRunHook_ConfigError(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 	t.Setenv("USERPROFILE", tmp)
-	t.Setenv("XDG_CONFIG_HOME", "/dev/null/forbidden")
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmp, ".config"))
+
+	// Block the app's config dir with a regular file so reading the primary
+	// config path fails with ENOTDIR on every platform — poisoning
+	// XDG_CONFIG_HOME only affects Linux, since macOS resolves UserConfigDir
+	// from HOME alone.
+	base, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatalf("UserConfigDir: %v", err)
+	}
+	if err := os.MkdirAll(base, 0o750); err != nil {
+		t.Fatalf("mkdir config base: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(base, "prepare-commit-msg"), []byte("block"), 0o600); err != nil {
+		t.Fatalf("write blocker: %v", err)
+	}
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "COMMIT_EDITMSG")
