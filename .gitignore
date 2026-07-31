@@ -1,0 +1,8 @@
+dist/
+coverage.out
+coverage.log
+test.log
+*.test
+*.exe
+.lint-result.txt
+vendor/
