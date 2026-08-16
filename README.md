@@ -32,7 +32,7 @@ to stderr and the editor is left unchanged so you can type a message manually.
 ```bash
 cd ~/gitrepos/go/prepare-commit-msg
 make build          # local OS/arch → dist/
-make build-all      # linux/darwin/windows (amd64 + arm64 variants)
+make build-all      # linux-x86_64, macos-arm64, windows-x86_64
 make test
 make lint
 ```
