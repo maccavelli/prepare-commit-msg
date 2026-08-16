@@ -334,7 +334,6 @@ func TestSave_Errors(t *testing.T) {
 	}
 }
 
-
 func TestFallbackModels(t *testing.T) {
 	c := Config{
 		Providers: map[string]ProviderConfig{

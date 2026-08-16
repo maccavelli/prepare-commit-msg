@@ -169,6 +169,7 @@ func resolveAPIKey(reader *bufio.Reader, in io.Reader, provider string, pc confi
 	return input, nil
 }
 
+//nolint:goconst // Model ID catalog literals
 var modelAnnotations = map[string]string{
 	// Gemini fast models
 	"gemini-3.7-flash":      "Gemini 3.7 Flash      [★ Recommended: Frontier coding intelligence]",
