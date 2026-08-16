@@ -8,6 +8,12 @@ on:
 permissions:
   contents: write
 
+# Prefer Node.js 24 LTS (Krypton) for JavaScript-based Actions where supported.
+# Do not use Node 20 — it is past LTS for this project.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  NODE_VERSION: "24"
+
 jobs:
   validate:
     name: Test & Lint
