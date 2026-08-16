@@ -113,3 +113,36 @@ func TestRunHook_ConfigError(t *testing.T) {
 
 	runHook([]string{path})
 }
+
+func TestMain_RunUpdate_Help(t *testing.T) {
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+	os.Args = []string{"prepare-commit-msg", "update", "--help"}
+
+	var exitCode = -1
+	oldExit := osExit
+	defer func() { osExit = oldExit }()
+	osExit = func(code int) {
+		exitCode = code
+		panic("osExit")
+	}
+
+	defer func() {
+		_ = recover()
+	}()
+
+	main()
+
+	// --help returns flag.ErrHelp so exitCode could be 1 or handled cleanly
+	if exitCode == 0 {
+		t.Errorf("unexpected exit code 0 on update --help")
+	}
+}
+
+func TestRunUpdate_Flags(t *testing.T) {
+	// Invalid flag should return an error
+	err := runUpdate([]string{"--invalid-flag-12345"})
+	if err == nil {
+		t.Errorf("expected error on invalid flag")
+	}
+}

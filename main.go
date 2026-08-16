@@ -15,6 +15,7 @@ import (
 	"github.com/maccavelli/prepare-commit-msg/internal/config"
 	"github.com/maccavelli/prepare-commit-msg/internal/fsutil"
 	"github.com/maccavelli/prepare-commit-msg/internal/git"
+	"github.com/maccavelli/prepare-commit-msg/internal/selfupdate"
 	"github.com/maccavelli/prepare-commit-msg/internal/ui"
 
 	"github.com/maccavelli/mcplib/llmprovider"
@@ -40,6 +41,7 @@ const (
 func printUsage() {
 	fmt.Fprintf(os.Stderr, "Usage:\n")
 	fmt.Fprintf(os.Stderr, "  %s configure [flags]              - run setup wizard or non-interactive configure\n", AppTitle)
+	fmt.Fprintf(os.Stderr, "  %s update [flags]                 - check for and apply updates from GitHub\n", AppTitle)
 	fmt.Fprintf(os.Stderr, "  %s version                        - show version\n", AppTitle)
 	fmt.Fprintf(os.Stderr, "  %s help                           - show this help\n", AppTitle)
 	fmt.Fprintf(os.Stderr, "  %s <commit_msg_file> [source] [sha] - run as git prepare-commit-msg hook\n", AppTitle)
@@ -54,6 +56,11 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  --retry-delay-seconds int base retry delay (default %d)\n", config.DefaultRetryDelaySeconds)
 	fmt.Fprintf(os.Stderr, "  --no-env                  do not read API keys from the environment\n")
 	fmt.Fprintf(os.Stderr, "  --yes                     non-interactive configure (no prompts)\n")
+	fmt.Fprintf(os.Stderr, "\nUpdate flags:\n")
+	fmt.Fprintf(os.Stderr, "  --check                   check if update is available without applying\n")
+	fmt.Fprintf(os.Stderr, "  --force                   reinstall or force overwrite current binary\n")
+	fmt.Fprintf(os.Stderr, "  --version string          target specific release tag (e.g. v4.4.0)\n")
+	fmt.Fprintf(os.Stderr, "  --yes, -y                 non-interactive update\n")
 }
 
 var osExit = os.Exit
@@ -87,10 +94,43 @@ func main() {
 			osExit(1)
 		}
 		return
+	case "update":
+		if err := runUpdate(args[1:]); err != nil {
+			fmt.Fprintf(os.Stderr, "Update failed: %v\n", err)
+			osExit(1)
+		}
+		return
 	}
 
 	// Git hook logic
 	runHook(args)
+}
+
+func runUpdate(args []string) error {
+	fs := flag.NewFlagSet("update", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+
+	check := fs.Bool("check", false, "check for updates without applying")
+	force := fs.Bool("force", false, "reinstall current version or force overwrite")
+	targetVersion := fs.String("version", "", "target specific version tag (e.g. v4.4.0)")
+	yes := fs.Bool("yes", false, "non-interactive update")
+	fs.BoolVar(yes, "y", false, "non-interactive update (shorthand)")
+
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	_, err := selfupdate.Run(ctx, selfupdate.Options{
+		CurrentVersion: Version,
+		TargetVersion:  *targetVersion,
+		CheckOnly:      *check,
+		Force:          *force,
+		Output:         os.Stdout,
+	})
+	return err
 }
 
 func runConfigure(args []string) error {
