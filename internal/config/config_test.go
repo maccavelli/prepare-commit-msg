@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -109,48 +108,34 @@ func TestConfig_GetActive(t *testing.T) {
 	}
 }
 
-func TestConfig_MigrationFromEmbedded(t *testing.T) {
-	tmpHome := isolateHome(t)
-
-	oldDir := filepath.Join(tmpHome, ".config", "prepare-commit-msg-embedded")
-	if err := os.MkdirAll(oldDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	oldConfigPath := filepath.Join(oldDir, "config.json")
-
-	oldConf := Config{
-		ActiveProvider: "legacy",
-		Providers: map[string]ProviderConfig{
-			"legacy": {APIKey: "old-key", Model: "old-model"},
-		},
-	}
-	data, _ := json.Marshal(oldConf)
-	if err := os.WriteFile(oldConfigPath, data, 0o644); err != nil {
-		t.Fatal(err)
-	}
+func TestConfig_TemplateDefaults(t *testing.T) {
+	isolateHome(t)
 
 	loaded, err := Load()
 	if err != nil {
-		t.Fatalf("Load failed during migration: %v", err)
+		t.Fatalf("Load failed: %v", err)
 	}
 
-	if loaded.ActiveProvider != "legacy" {
-		t.Errorf("expected migrated provider 'legacy', got %q", loaded.ActiveProvider)
-	}
-	if loaded.TimeoutSeconds != DefaultTimeoutSeconds {
-		t.Errorf("migrated config missing defaults: timeout=%d", loaded.TimeoutSeconds)
+	if loaded.ActiveProvider != "gemini" {
+		t.Errorf("expected default active provider 'gemini', got %q", loaded.ActiveProvider)
 	}
 
-	if _, err := os.Stat(oldConfigPath); !os.IsNotExist(err) {
-		t.Error("expected old embedded config file to be removed after migration")
+	g := loaded.Providers["gemini"]
+	if g.Model != "gemini-3.7-flash" {
+		t.Errorf("expected gemini model 'gemini-3.7-flash', got %q", g.Model)
+	}
+	if len(g.FallbackModels) < 2 || g.FallbackModels[0] != "gemini-3.6-flash" {
+		t.Errorf("expected gemini fallbacks, got %v", g.FallbackModels)
 	}
 
-	newPath, err := GetConfigPath()
-	if err != nil {
-		t.Fatal(err)
+	o := loaded.Providers["openai"]
+	if o.Model != "gpt-4.1-mini" {
+		t.Errorf("expected openai model 'gpt-4.1-mini', got %q", o.Model)
 	}
-	if _, err := os.Stat(newPath); err != nil {
-		t.Errorf("expected new config file to exist at %s: %v", newPath, err)
+
+	c := loaded.Providers["claude"]
+	if c.Model != "claude-haiku-4-5" {
+		t.Errorf("expected claude model 'claude-haiku-4-5', got %q", c.Model)
 	}
 }
 
@@ -349,25 +334,6 @@ func TestSave_Errors(t *testing.T) {
 	}
 }
 
-func TestMigrateConfig_CorruptJSON(t *testing.T) {
-	tmpHome := isolateHome(t)
-
-	legacyDir := filepath.Join(tmpHome, ".config", "prepare-commit-msg-embedded")
-	_ = os.MkdirAll(legacyDir, 0o755)
-	legacyConfPath := filepath.Join(legacyDir, "config.json")
-	_ = os.WriteFile(legacyConfPath, []byte(`{ bad }`), 0o644)
-
-	c, err := Load()
-	if err != nil {
-		t.Errorf("corrupt legacy should yield fresh config: %v", err)
-	}
-	if c.Providers == nil {
-		t.Error("expected initialized providers")
-	}
-	if c.TimeoutSeconds != DefaultTimeoutSeconds {
-		t.Errorf("defaults on corrupt migrate: %d", c.TimeoutSeconds)
-	}
-}
 
 func TestFallbackModels(t *testing.T) {
 	c := Config{

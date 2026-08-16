@@ -70,27 +70,53 @@ func GetConfigPath() (string, error) {
 	return filepath.Join(cfgDir, "prepare-commit-msg", "config.json"), nil
 }
 
-// legacyConfigPaths returns older config locations that may still hold data.
-func legacyConfigPaths() []string {
-	home, err := userHomeDir()
-	if err != nil {
-		return nil
+// DefaultModelForProvider returns the recommended primary model for a given provider.
+func DefaultModelForProvider(provider string) string {
+	models := llmprovider.StaticModels(provider)
+	if len(models) > 0 {
+		return models[0]
 	}
-	return []string{
-		filepath.Join(home, ".config", "prepare-commit-msg", "config.json"),
-		filepath.Join(home, ".config", "prepare-commit-msg-embedded", "config.json"),
-	}
+	return ""
 }
 
-// ApplyDefaults fills zero/negative operational fields and ensures the providers map.
+// DefaultFallbacksForProvider returns the recommended fallback models for a given provider.
+func DefaultFallbacksForProvider(provider string, primary string) []string {
+	models := llmprovider.StaticModels(provider)
+	var out []string
+	for _, m := range models {
+		if m == primary {
+			continue
+		}
+		out = append(out, m)
+		if len(out) >= MaxFallbacks {
+			break
+		}
+	}
+	return out
+}
+
+// ApplyDefaults fills operational defaults and ensures all supported providers
+// have complete template configurations with modern default models and fallbacks.
 func ApplyDefaults(c *Config) {
 	if c.Providers == nil {
 		c.Providers = make(map[string]ProviderConfig)
 	}
+	if c.ActiveProvider == "" {
+		c.ActiveProvider = llmprovider.ProviderGemini
+	}
 	for _, p := range SupportedProviders {
-		if _, ok := c.Providers[p]; !ok {
-			c.Providers[p] = ProviderConfig{}
+		pc, ok := c.Providers[p]
+		if !ok {
+			pc = ProviderConfig{}
 		}
+		if pc.Model == "" {
+			pc.Model = DefaultModelForProvider(p)
+		}
+		if len(pc.FallbackModels) == 0 {
+			pc.FallbackModels = DefaultFallbacksForProvider(p, pc.Model)
+		}
+		pc.FallbackModels = ClampFallbacks(pc.FallbackModels)
+		c.Providers[p] = pc
 	}
 	if c.TimeoutSeconds <= 0 {
 		c.TimeoutSeconds = DefaultTimeoutSeconds
@@ -103,11 +129,6 @@ func ApplyDefaults(c *Config) {
 	}
 	if c.RetryDelaySeconds <= 0 {
 		c.RetryDelaySeconds = DefaultRetryDelaySeconds
-	}
-	// Cap fallbacks for every stored provider.
-	for name, pc := range c.Providers {
-		pc.FallbackModels = ClampFallbacks(pc.FallbackModels)
-		c.Providers[name] = pc
 	}
 }
 
@@ -132,48 +153,24 @@ func ClampFallbacks(models []string) []string {
 	return out
 }
 
-// Load reads configuration from the primary path, falling back to legacy
-// locations and migrating when needed. Defaults are always applied.
+// Load reads configuration from the platform config path. Defaults are always applied.
 func Load() (*Config, error) {
 	primary, err := GetConfigPath()
 	if err != nil {
 		return nil, err
 	}
 
-	if data, err := os.ReadFile(primary); err == nil {
-		return parseAndDefault(data)
-	} else if !os.IsNotExist(err) {
-		return nil, err
-	}
-
-	// Try legacy paths; migrate first hit into primary.
-	for _, oldPath := range legacyConfigPaths() {
-		// Skip if same as primary (Unix XDG == legacy path).
-		if oldPath == primary {
-			continue
-		}
-		oldData, err := os.ReadFile(oldPath)
-		if err != nil {
-			continue
-		}
-		conf, err := parseAndDefault(oldData)
-		if err != nil {
-			// Corrupt legacy → fresh defaults.
-			conf = &Config{}
+	data, err := os.ReadFile(primary)
+	if err != nil {
+		if os.IsNotExist(err) {
+			conf := &Config{}
 			ApplyDefaults(conf)
 			return conf, nil
 		}
-		// Best-effort migrate to primary; ignore save errors (in-memory is valid).
-		_ = conf.Save()
-		if strings.Contains(oldPath, "prepare-commit-msg-embedded") {
-			_ = os.Remove(oldPath)
-		}
-		return conf, nil
+		return nil, err
 	}
 
-	conf := &Config{}
-	ApplyDefaults(conf)
-	return conf, nil
+	return parseAndDefault(data)
 }
 
 func parseAndDefault(data []byte) (*Config, error) {
