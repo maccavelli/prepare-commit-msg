@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests with race detector
+        run: go test -race -v ./...
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run golangci-lint
+        run: |
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+          GOLANGCI_LINT="$(go env GOPATH)/bin/golangci-lint" make lint
+
+  build:
+    name: Build Cross-Platform Binaries
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Compile all platform targets
+        run: make build-all
+
+      - name: Checksum build artifacts
+        working-directory: dist
+        run: |
+          # Drop stale manifests before globbing so a re-run (or a restored
+          # cache) can never hash a previous run's output. The file list is
+          # frozen into the positional parameters BEFORE any redirect exists,
+          # otherwise the shell would create SHA256SUMS.tmp first and the glob
+          # would pick it up. Glob order is already sorted, so the manifest is
+          # deterministic without GNU-only find/sort extensions.
+          rm -f SHA256SUMS SHA256SUMS.tmp
+          set --
+          for f in *; do
+            [ -f "$f" ] || continue
+            set -- "$@" "$f"
+          done
+          [ "$#" -gt 0 ] || { echo "no build artifacts to checksum" >&2; exit 1; }
+          sha256sum "$@" > SHA256SUMS.tmp
+          mv SHA256SUMS.tmp SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
