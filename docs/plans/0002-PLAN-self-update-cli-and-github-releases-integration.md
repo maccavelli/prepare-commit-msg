@@ -1,5 +1,5 @@
 ---
-status: "ready_for_review"
+status: "completed"
 date: 2026-08-16
 associated-madr: "0002-MADR-self-update-cli-and-github-releases-integration.md"
 owner: "Maintainers of prepare-commit-msg"
@@ -232,25 +232,25 @@ Ensure full test coverage, static analysis compliance, and documentation synchro
 
 ## Granular Task Checklist
 
-- [ ] **Phase 1: SemVer & GitHub Client**
-  - [ ] Create [`internal/selfupdate/semver.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/semver.go)
-  - [ ] Create [`internal/selfupdate/semver_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/semver_test.go)
-  - [ ] Create [`internal/selfupdate/client.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/client.go)
-  - [ ] Create [`internal/selfupdate/client_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/client_test.go)
-- [ ] **Phase 2: Cross-Platform Atomic Binary Replacement**
-  - [ ] Create [`internal/selfupdate/apply_unix.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/apply_unix.go)
-  - [ ] Create [`internal/selfupdate/apply_windows.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/apply_windows.go)
-  - [ ] Create [`internal/selfupdate/apply_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/apply_test.go)
-- [ ] **Phase 3: High-Level Updater Orchestrator**
-  - [ ] Create [`internal/selfupdate/updater.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/updater.go)
-  - [ ] Create [`internal/selfupdate/updater_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/updater_test.go)
-- [ ] **Phase 4: CLI Command & Main Integration**
-  - [ ] Update [`main.go`](file:///home/mac/gitrepos/prepare-commit-msg/main.go) with `update` subcommand and flag parsing
-  - [ ] Update [`main_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/main_test.go) with `update` command test cases
-- [ ] **Phase 5: Documentation & Quality Verification**
-  - [ ] Update [`README.md`](file:///home/mac/gitrepos/prepare-commit-msg/README.md) with `prepare-commit-msg update` documentation
-  - [ ] Run `gofmt -s -w .`
-  - [ ] Run `go vet ./...`
-  - [ ] Run `golangci-lint run -c .golangci.yml ./...`
-  - [ ] Run `go test -v -race ./...`
-  - [ ] Build cross-platform binaries with `make build-all`
+- [x] **Phase 1: SemVer & GitHub Client**
+  - [x] Create [`internal/selfupdate/semver.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/semver.go)
+  - [x] Create [`internal/selfupdate/semver_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/semver_test.go)
+  - [x] Create [`internal/selfupdate/client.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/client.go)
+  - [x] Create [`internal/selfupdate/client_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/client_test.go)
+- [x] **Phase 2: Cross-Platform Atomic Binary Replacement**
+  - [x] Create [`internal/selfupdate/apply_unix.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/apply_unix.go)
+  - [x] Create [`internal/selfupdate/apply_windows.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/apply_windows.go)
+  - [x] Create [`internal/selfupdate/apply_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/apply_test.go)
+- [x] **Phase 3: High-Level Updater Orchestrator**
+  - [x] Create [`internal/selfupdate/updater.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/updater.go)
+  - [x] Create [`internal/selfupdate/updater_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/updater_test.go)
+- [x] **Phase 4: CLI Command & Main Integration**
+  - [x] Update [`main.go`](file:///home/mac/gitrepos/prepare-commit-msg/main.go) with `update` subcommand and flag parsing
+  - [x] Update [`main_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/main_test.go) with `update` command test cases
+- [x] **Phase 5: Documentation & Quality Verification**
+  - [x] Update [`README.md`](file:///home/mac/gitrepos/prepare-commit-msg/README.md) with `prepare-commit-msg update` documentation
+  - [x] Run `gofmt -s -w .`
+  - [x] Run `go vet ./...`
+  - [x] Run `golangci-lint run -c .golangci.yml ./...`
+  - [x] Run `go test -v -race ./...`
+  - [x] Build cross-platform binaries with `make build-all`
