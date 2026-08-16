@@ -4,12 +4,16 @@ This directory contains design documents, architectural decision records (MADR),
 
 ## Architectural Decision Records (MADR)
 
-* [ADR-0001: Modernizing Gemini Provider, Model Catalog Integration, and Configure UX](file:///home/mac/gitrepos/prepare-commit-msg/docs/decisions/0001-gemini-provider-and-model-catalog-modernization.md)
+* [0001-MADR: Modernizing Gemini Provider, Model Catalog Integration, and Configure UX](file:///home/mac/gitrepos/prepare-commit-msg/docs/decisions/0001-MADR-gemini-provider-and-model-catalog-modernization.md)
   * **Status:** Proposed / Under Review
   * **Topic:** Gemini model catalog accuracy, fast-model curation for commit messages, official `google.golang.org/genai` Go SDK evaluation, and ergonomic CLI configure wizard design.
 
+* [0002-MADR: Self-Update CLI Subcommand and GitHub Releases Integration](file:///home/mac/gitrepos/prepare-commit-msg/docs/decisions/0002-MADR-self-update-cli-and-github-releases-integration.md)
+  * **Status:** Proposed / Under Review
+  * **Topic:** Native `update` CLI subcommand, GitHub Releases API integration, SHA-256 integrity verification, and cross-platform in-place atomic binary replacement.
+
 ## Implementation Plans
 
-* [Plan: 2026-08-16 - Gemini Provider Modernization Implementation Plan](file:///home/mac/gitrepos/prepare-commit-msg/docs/plans/2026-08-16-gemini-provider-modernization-plan.md)
+* [0001-PLAN: Gemini Provider Modernization Implementation Plan](file:///home/mac/gitrepos/prepare-commit-msg/docs/plans/0001-PLAN-gemini-provider-and-model-catalog-modernization.md)
   * **Status:** Ready for User Review
   * **Topic:** Step-by-step execution plan across `mcplib` and `prepare-commit-msg` with automated and manual verification strategies.
