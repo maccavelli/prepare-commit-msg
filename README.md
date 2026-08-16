@@ -56,9 +56,9 @@ retries).
 ```bash
 prepare-commit-msg configure --yes \
   --provider gemini \
-  --model gemini-2.5-flash \
-  --fallback gemini-2.0-flash \
-  --fallback gemini-2.0-flash-lite \
+  --model gemini-3.7-flash \
+  --fallback gemini-3.6-flash \
+  --fallback gemini-3.5-flash \
   --timeout-seconds 120 \
   --max-diff-bytes 32000 \
   --retry-count 3 \
@@ -86,11 +86,6 @@ Path (via `os.UserConfigDir`):
 | Linux | `~/.config/prepare-commit-msg/config.json` (or `$XDG_CONFIG_HOME/...`) |
 | macOS | `~/Library/Application Support/prepare-commit-msg/config.json` |
 | Windows | `%AppData%\prepare-commit-msg\config.json` |
-
-Legacy locations are still read and migrated:
-
-- `~/.config/prepare-commit-msg/config.json`
-- `~/.config/prepare-commit-msg-embedded/config.json`
 
 File mode is `0600` where the OS honors Unix permissions.
 
