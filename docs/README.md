@@ -17,3 +17,7 @@ This directory contains design documents, architectural decision records (MADR),
 * [0001-PLAN: Gemini Provider Modernization Implementation Plan](file:///home/mac/gitrepos/prepare-commit-msg/docs/plans/0001-PLAN-gemini-provider-and-model-catalog-modernization.md)
   * **Status:** Ready for User Review
   * **Topic:** Step-by-step execution plan across `mcplib` and `prepare-commit-msg` with automated and manual verification strategies.
+
+* [0002-PLAN: Self-Update CLI Subcommand and GitHub Releases Integration](file:///home/mac/gitrepos/prepare-commit-msg/docs/plans/0002-PLAN-self-update-cli-and-github-releases-integration.md)
+  * **Status:** Ready for User Review
+  * **Topic:** Phased execution plan for `internal/selfupdate`, SemVer, GitHub client, cross-platform atomic binary swaps, and CLI integration.
