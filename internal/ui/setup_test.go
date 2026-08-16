@@ -36,11 +36,11 @@ func TestRunSetupInteractive_Success(t *testing.T) {
 
 	// 1: gemini
 	// y: use env key
-	// Static gemini catalog has 5 models → 6 is Other
+	// Static gemini catalog has 6 models → 7 is Other
 	// Enter custom model
 	// fallbacks: enter = recommended
 	// operational: all enter (defaults)
-	input := "1\ny\n6\nmy-custom-model\n\n\n\n\n\n"
+	input := "1\ny\n7\nmy-custom-model\n\n\n\n\n\n"
 	r := strings.NewReader(input)
 
 	if err := runSetupInteractive(context.Background(), conf, SetupOptions{}, r); err != nil {

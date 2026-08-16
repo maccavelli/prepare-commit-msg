@@ -169,6 +169,36 @@ func resolveAPIKey(reader *bufio.Reader, in io.Reader, provider string, pc confi
 	return input, nil
 }
 
+var modelAnnotations = map[string]string{
+	// Gemini fast models
+	"gemini-3.7-flash":      "Gemini 3.7 Flash      [★ Recommended: Frontier coding intelligence]",
+	"gemini-3.6-flash":      "Gemini 3.6 Flash      [High efficiency & reduced token overhead]",
+	"gemini-3.5-flash":      "Gemini 3.5 Flash      [High-speed production workhorse]",
+	"gemini-3.5-flash-lite": "Gemini 3.5 Flash-Lite [Ultra-low latency & high throughput]",
+	"gemini-2.5-flash":      "Gemini 2.5 Flash      [Proven balanced fast baseline]",
+	"gemini-2.5-flash-lite": "Gemini 2.5 Flash-Lite [Lightweight fast baseline]",
+	// OpenAI fast models
+	"gpt-4.1-mini": "GPT-4.1 Mini          [★ Recommended: Fast & cost-effective]",
+	"gpt-4.1-nano": "GPT-4.1 Nano          [Ultra-low latency lightweight]",
+	"gpt-4o-mini":  "GPT-4o Mini           [Stable fast chat model]",
+	"gpt-4.1":      "GPT-4.1               [High-capability fast tier]",
+	"gpt-4o":       "GPT-4o                [Flagship multimodal]",
+	"o4-mini":      "o4-mini               [Fast reasoning]",
+	// Claude fast models
+	"claude-haiku-4-5":        "Claude Haiku 4.5      [★ Recommended: High speed & low latency]",
+	"claude-sonnet-5":         "Claude Sonnet 5       [Balanced speed & high precision]",
+	"claude-sonnet-4-6":       "Claude Sonnet 4.6     [Stable high precision]",
+	"claude-opus-4-8":         "Claude Opus 4.8       [Maximum capability]",
+	"claude-3-5-haiku-latest": "Claude 3.5 Haiku      [Fast lightweight]",
+}
+
+func annotateModel(modelID string) string {
+	if ann, ok := modelAnnotations[modelID]; ok {
+		return ann
+	}
+	return modelID
+}
+
 func defaultModels(provider string) []string {
 	return llmprovider.StaticModels(provider)
 }
@@ -194,10 +224,10 @@ func discoverModels(ctx context.Context, provider, apiKey string) []string {
 }
 
 func promptModel(reader *bufio.Reader, models []string, defaultModel string) (string, error) {
-	fmt.Println("\nRecommended production text models (curated; not the full provider catalog):")
+	fmt.Println("\nRecommended fast models for commit messages (curated top options):")
 	defaultIdx := 1
 	for i, m := range models {
-		fmt.Printf("  %d) %s\n", i+1, m)
+		fmt.Printf("  %d) %s\n", i+1, annotateModel(m))
 		if defaultModel != "" && m == defaultModel {
 			defaultIdx = i + 1
 		}
