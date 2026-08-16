@@ -133,9 +133,8 @@ func TestMain_RunUpdate_Help(t *testing.T) {
 
 	main()
 
-	// --help returns flag.ErrHelp so exitCode could be 1 or handled cleanly
-	if exitCode == 0 {
-		t.Errorf("unexpected exit code 0 on update --help")
+	if exitCode != -1 {
+		t.Errorf("expected update --help to exit cleanly without osExit error, got %d", exitCode)
 	}
 }
 

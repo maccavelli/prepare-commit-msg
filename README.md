@@ -146,10 +146,40 @@ prepare-commit-msg: could not generate a message (...)
 prepare-commit-msg: commit editor left unchanged — type a message manually or run: prepare-commit-msg configure
 ```
 
+## Self-Update
+
+Keep your binary up-to-date with the latest LLM providers and fixes:
+
+```bash
+prepare-commit-msg update
+```
+
+### Update Options
+
+```bash
+# Check if an update is available without applying (dry run)
+prepare-commit-msg update --check
+
+# Force reinstall / overwrite current version
+prepare-commit-msg update --force
+
+# Target a specific version or downgrade
+prepare-commit-msg update --version v4.4.0
+
+# Non-interactive mode
+prepare-commit-msg update --yes
+```
+
+> **Elevated Permissions Note:** If your binary is installed in a system-wide path requiring elevated privileges (such as `/usr/local/bin/prepare-commit-msg`), run with `sudo`:
+> ```bash
+> sudo prepare-commit-msg update
+> ```
+
 ## Usage (CLI)
 
 ```text
 prepare-commit-msg configure [flags]
+prepare-commit-msg update [flags]
 prepare-commit-msg version
 prepare-commit-msg help
 prepare-commit-msg <commit_msg_file> [source] [sha]

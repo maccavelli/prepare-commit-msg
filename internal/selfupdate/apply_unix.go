@@ -20,7 +20,7 @@ func ReplaceExecutable(newBinaryPath, targetPath string) error {
 	}
 
 	// Ensure the new binary has executable permissions (rwxr-xr-x).
-	if err := os.Chmod(newBinaryPath, 0o755); err != nil {
+	if err := os.Chmod(newBinaryPath, 0o755); err != nil { //nolint:gosec // binary must have executable permissions (0755)
 		if errors.Is(err, os.ErrPermission) || os.IsPermission(err) {
 			return fmt.Errorf("%w: cannot set permissions on %s", ErrPermissionDenied, newBinaryPath)
 		}

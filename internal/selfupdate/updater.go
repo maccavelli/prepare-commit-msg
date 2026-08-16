@@ -1,3 +1,4 @@
+//nolint:goconst // platform architecture strings and asset prefixes
 package selfupdate
 
 import (
@@ -5,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -61,6 +63,13 @@ type UpdateResult struct {
 	ReleaseNotes   string
 }
 
+func printMsg(w io.Writer, format string, args ...any) {
+	if w == nil {
+		return
+	}
+	fmt.Fprintf(w, format, args...) //nolint:errcheck // CLI feedback is best effort
+}
+
 // Run executes the self-update check and upgrade workflow.
 func Run(ctx context.Context, opts Options) (*UpdateResult, error) {
 	out := opts.Output
@@ -107,10 +116,10 @@ func Run(ctx context.Context, opts Options) (*UpdateResult, error) {
 		if timeout == 0 {
 			timeout = DefaultHTTPTimeout
 		}
-		client = NewClient(DefaultGitHubAPI, "prepare-commit-msg/"+currVer, "", nil)
+		client = NewClient(DefaultGitHubAPI, "prepare-commit-msg/"+currVer, "", &http.Client{Timeout: timeout})
 	}
 
-	fmt.Fprintf(out, "Checking for updates from https://github.com/%s/%s...\n", owner, repo)
+	printMsg(out, "Checking for updates from https://github.com/%s/%s...\n", owner, repo)
 
 	var rel *Release
 	if opts.TargetVersion != "" {
@@ -135,25 +144,25 @@ func Run(ctx context.Context, opts Options) (*UpdateResult, error) {
 
 	// Check if already up to date
 	if !opts.Force && opts.TargetVersion == "" && !isNewer {
-		fmt.Fprintf(out, "prepare-commit-msg is already up to date (%s).\n", currVer)
+		printMsg(out, "prepare-commit-msg is already up to date (%s).\n", currVer)
 		return result, nil
 	}
 
 	if !opts.Force && opts.TargetVersion != "" && isSame {
-		fmt.Fprintf(out, "prepare-commit-msg is already at requested version (%s).\n", latestVer)
+		printMsg(out, "prepare-commit-msg is already at requested version (%s).\n", latestVer)
 		return result, nil
 	}
 
 	// Dry run mode (--check)
 	if opts.CheckOnly {
 		if isNewer {
-			fmt.Fprintf(out, "An update is available:\n")
-			fmt.Fprintf(out, "  Current version: %s\n", currVer)
-			fmt.Fprintf(out, "  Latest version:  %s\n", latestVer)
-			fmt.Fprintf(out, "  Release page:    %s\n", rel.HTMLURL)
-			fmt.Fprintf(out, "Run 'prepare-commit-msg update' to apply the update.\n")
+			printMsg(out, "An update is available:\n")
+			printMsg(out, "  Current version: %s\n", currVer)
+			printMsg(out, "  Latest version:  %s\n", latestVer)
+			printMsg(out, "  Release page:    %s\n", rel.HTMLURL)
+			printMsg(out, "Run 'prepare-commit-msg update' to apply the update.\n")
 		} else {
-			fmt.Fprintf(out, "prepare-commit-msg is up to date (%s).\n", currVer)
+			printMsg(out, "prepare-commit-msg is up to date (%s).\n", currVer)
 		}
 		return result, nil
 	}
@@ -165,8 +174,8 @@ func Run(ctx context.Context, opts Options) (*UpdateResult, error) {
 	}
 
 	// Fetch checksums manifest
-	fmt.Fprintf(out, "New version available: %s (current: %s)\n", latestVer, currVer)
-	fmt.Fprintf(out, "Downloading %s from release %s...\n", assetName, latestVer)
+	printMsg(out, "New version available: %s (current: %s)\n", latestVer, currVer)
+	printMsg(out, "Downloading %s from release %s...\n", assetName, latestVer)
 
 	checksums, err := client.FetchChecksums(ctx, rel)
 	if err != nil {
@@ -185,22 +194,22 @@ func Run(ctx context.Context, opts Options) (*UpdateResult, error) {
 		return nil, fmt.Errorf("download and verify binary: %w", err)
 	}
 
-	fmt.Fprintf(out, "[✓] Downloaded binary (%s)\n", formatBytes(size))
-	fmt.Fprintf(out, "[✓] Verified SHA-256 checksum (%s)\n", expectedHash)
+	printMsg(out, "[✓] Downloaded binary (%s)\n", formatBytes(size))
+	printMsg(out, "[✓] Verified SHA-256 checksum (%s)\n", expectedHash)
 
 	// In-place atomic replacement
 	if err := ReplaceExecutable(tempFile, execPath); err != nil {
 		if errors.Is(err, ErrPermissionDenied) {
-			fmt.Fprintf(out, "\nprepare-commit-msg: error: permission denied while updating %s\n", execPath)
-			fmt.Fprintf(out, "prepare-commit-msg: please rerun the command with elevated permissions:\n")
-			fmt.Fprintf(out, "    sudo prepare-commit-msg update\n\n")
+			printMsg(out, "\nprepare-commit-msg: error: permission denied while updating %s\n", execPath)
+			printMsg(out, "prepare-commit-msg: please rerun the command with elevated permissions:\n")
+			printMsg(out, "    sudo prepare-commit-msg update\n\n")
 			return nil, fmt.Errorf("permission denied updating %s", execPath)
 		}
 		return nil, fmt.Errorf("replace executable %s: %w", execPath, err)
 	}
 
 	result.Updated = true
-	fmt.Fprintf(out, "[✓] Successfully updated prepare-commit-msg to %s!\n", latestVer)
+	printMsg(out, "[✓] Successfully updated prepare-commit-msg to %s!\n", latestVer)
 	return result, nil
 }
 

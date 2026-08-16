@@ -117,6 +117,9 @@ func runUpdate(args []string) error {
 	fs.BoolVar(yes, "y", false, "non-interactive update (shorthand)")
 
 	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return nil
+		}
 		return err
 	}
 
@@ -151,6 +154,9 @@ func runConfigure(args []string) error {
 	fs.Var(&fallbacks, "fallback", "fallback model (repeatable, max 3)")
 
 	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return nil
+		}
 		return err
 	}
 
