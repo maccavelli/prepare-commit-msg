@@ -31,10 +31,16 @@ func PlatformAssetFor(goos, goarch string) (string, error) {
 	switch {
 	case goos == "linux" && goarch == "amd64":
 		return "prepare-commit-msg-linux-amd64", nil
+	case goos == "linux" && goarch == "arm64":
+		return "prepare-commit-msg-linux-arm64", nil
 	case goos == "darwin" && goarch == "arm64":
 		return "prepare-commit-msg-darwin-arm64", nil
+	case goos == "darwin" && goarch == "amd64":
+		return "prepare-commit-msg-darwin-amd64", nil
 	case goos == "windows" && goarch == "amd64":
 		return "prepare-commit-msg-windows-amd64.exe", nil
+	case goos == "windows" && goarch == "arm64":
+		return "prepare-commit-msg-windows-arm64.exe", nil
 	default:
 		return "", fmt.Errorf("no prebuilt release binary available for %s/%s. Build from source via 'make build' or 'go install'", goos, goarch)
 	}

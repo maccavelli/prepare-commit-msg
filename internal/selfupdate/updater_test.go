@@ -22,8 +22,11 @@ func TestPlatformAssetFor(t *testing.T) {
 		wantErr bool
 	}{
 		{"linux", "amd64", "prepare-commit-msg-linux-amd64", false},
+		{"linux", "arm64", "prepare-commit-msg-linux-arm64", false},
 		{"darwin", "arm64", "prepare-commit-msg-darwin-arm64", false},
+		{"darwin", "amd64", "prepare-commit-msg-darwin-amd64", false},
 		{"windows", "amd64", "prepare-commit-msg-windows-amd64.exe", false},
+		{"windows", "arm64", "prepare-commit-msg-windows-arm64.exe", false},
 		{"freebsd", "amd64", "", true},
 		{"linux", "386", "", true},
 	}

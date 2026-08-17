@@ -9,7 +9,7 @@ GOLANGCI_LINT  ?= $(GOPATH_BIN)/golangci-lint
 FLEET_LINT_CFG := .golangci.yml
 
 .PHONY: all build clean test run install version build-all \
-	linux darwin-arm64 windows-amd64 \
+	linux linux-amd64 linux-arm64 darwin-arm64 darwin-amd64 windows-amd64 windows-arm64 \
 	help fmt vet lint
 
 all: help build-all
@@ -18,19 +18,33 @@ build: ## Compiles the Go application for the local OS/Arch
 	@mkdir -p $(DIST_DIR)
 	@CGO_ENABLED=0 go build -trimpath -tags netgo -ldflags "-extldflags '-static' -s -w -X main.Version=$(VERSION)" -o $(DIST_DIR)/$(BINARY_NAME)-$(shell go env GOOS)-$(shell go env GOARCH)$(if $(filter windows,$(shell go env GOOS)),.exe,) .
 
-build-all: linux darwin-arm64 windows-amd64 ## Compiles for Linux x86_64, macOS ARM64, and Windows x86_64
+build-all: linux-amd64 linux-arm64 darwin-arm64 darwin-amd64 windows-amd64 windows-arm64 ## Compiles for all 6 target platforms (Linux, macOS, Windows on AMD64 and ARM64)
 
-linux: ## Compiles for Linux x86_64 (AMD64)
+linux: linux-amd64 ## Alias for linux-amd64
+
+linux-amd64: ## Compiles for Linux x86_64 (AMD64)
 	@mkdir -p $(DIST_DIR)
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -tags netgo -ldflags "-extldflags '-static' -s -w -X main.Version=$(VERSION)" -o $(DIST_DIR)/$(BINARY_NAME)-linux-amd64 .
+
+linux-arm64: ## Compiles for Linux ARM64 (aarch64)
+	@mkdir -p $(DIST_DIR)
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -tags netgo -ldflags "-extldflags '-static' -s -w -X main.Version=$(VERSION)" -o $(DIST_DIR)/$(BINARY_NAME)-linux-arm64 .
 
 darwin-arm64: ## Compiles for macOS ARM64 (Apple Silicon)
 	@mkdir -p $(DIST_DIR)
 	GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.Version=$(VERSION)" -o $(DIST_DIR)/$(BINARY_NAME)-darwin-arm64 .
 
+darwin-amd64: ## Compiles for macOS x86_64 (Intel)
+	@mkdir -p $(DIST_DIR)
+	GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.Version=$(VERSION)" -o $(DIST_DIR)/$(BINARY_NAME)-darwin-amd64 .
+
 windows-amd64: ## Compiles for Windows x86_64 (AMD64)
 	@mkdir -p $(DIST_DIR)
 	GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.Version=$(VERSION)" -o $(DIST_DIR)/$(BINARY_NAME)-windows-amd64.exe .
+
+windows-arm64: ## Compiles for Windows ARM64
+	@mkdir -p $(DIST_DIR)
+	GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.Version=$(VERSION)" -o $(DIST_DIR)/$(BINARY_NAME)-windows-arm64.exe .
 
 clean: ## Removes all build artifacts
 	rm -rf $(DIST_DIR)
