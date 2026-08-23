@@ -1,5 +1,5 @@
-github.com/maccavelli/mcplib v1.0.0 h1:YPZQpalCcWGNZ2Rw7K4o6FpfVeSD3Q91yUaJg5Jjyo0=
-github.com/maccavelli/mcplib v1.0.0/go.mod h1:XclEJPtBLvm3wT719Q0S6N4Kn9tEX9B2OUDmdyBLmHE=
+github.com/maccavelli/mcplib v1.0.1 h1:rhdNRvJcs2ktrFBT0/7uCQzzupS4ctoMI6AMXah6pzM=
+github.com/maccavelli/mcplib v1.0.1/go.mod h1:XclEJPtBLvm3wT719Q0S6N4Kn9tEX9B2OUDmdyBLmHE=
 golang.org/x/sys v0.45.0 h1:dO4czNzziLiiXplLQgBCEpCvXQ3dnkn0SdaZSYdQ+FY=
 golang.org/x/sys v0.45.0/go.mod h1:4GL1E5IUh+htKOUEOaiffhrAeqysfVGipDYzABqnCmw=
 golang.org/x/term v0.43.0 h1:S4RLU2sB31O/NCl+zFN9Aru9A/Cq2aqKpTZJ6B+DwT4=
