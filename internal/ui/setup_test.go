@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"github.com/maccavelli/mcplib/llmprovider"
 	"os"
 	"path/filepath"
 	"strings"
@@ -209,5 +210,38 @@ func TestDefaultModels(t *testing.T) {
 	}
 	if len(defaultModels("unknown")) != 0 {
 		t.Error("expected no default models for unknown provider")
+	}
+}
+
+// TestSetup_OffersEveryDescriptor is the drift guard. Grok shipped in mcplib
+// MADR 0001 and this wizard never offered it, because the provider menu was a
+// hard-coded list of three. The menu now comes from llmprovider.Descriptors(),
+// and this test fails the build if that ever stops being true — so a provider
+// added to mcplib cannot silently go unreachable here again.
+func TestSetup_OffersEveryDescriptor(t *testing.T) {
+	descriptors := llmprovider.Descriptors()
+	if len(descriptors) == 0 {
+		t.Fatal("llmprovider.Descriptors() is empty")
+	}
+
+	// Every descriptor must be a provider this app can validate and configure.
+	for _, d := range descriptors {
+		if _, ok := llmprovider.DescriptorFor(d.ID); !ok {
+			t.Errorf("descriptor %q does not resolve", d.ID)
+		}
+	}
+
+	// The providers this wizard once hard-coded must still be present, and the
+	// set must now be strictly larger than that original three.
+	for _, id := range []string{
+		llmprovider.ProviderGemini, llmprovider.ProviderOpenAI, llmprovider.ProviderClaude,
+		llmprovider.ProviderGrok, // the one that was missing for a full release
+	} {
+		if _, ok := llmprovider.DescriptorFor(id); !ok {
+			t.Errorf("provider %q must be offerable", id)
+		}
+	}
+	if len(descriptors) <= 3 {
+		t.Errorf("expected more than the 3 originally hard-coded providers, got %d", len(descriptors))
 	}
 }
