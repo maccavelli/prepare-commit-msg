@@ -8,3 +8,5 @@ require (
 	github.com/maccavelli/mcplib v1.1.1
 	golang.org/x/sys v0.45.0 // indirect
 )
+
+replace github.com/maccavelli/mcplib => ../mcplib
