@@ -97,64 +97,48 @@ and after the change.
 
 ## Controlled release
 
-Choose a new strict `vMAJOR.MINOR.PATCH` value and dispatch from `main`:
+Releases are tag-driven and fully automated via [`.github/workflows/ci.yml`](../.github/workflows/ci.yml):
+
+1. Ensure `main` is up to date and passes verification locally (`make verify`).
+2. Create and push a semantic version tag:
 
 ```bash
 VERSION=v1.2.3
-gh workflow run release.yml --ref main \
-  -f version="$VERSION" \
-  -f prerelease=false
-gh run list --workflow release.yml --limit 1
+git tag "$VERSION"
+git push origin "$VERSION"
 ```
 
-The workflow runs the shared quality workflow before any publication step,
-builds the six binaries once from the dispatched SHA, creates and validates
-`SHA256SUMS`, and records build-provenance attestations. The publish job then
-downloads and independently verifies exactly seven files, refuses an existing
-tag or release, creates a draft, verifies its metadata and assets, and only
-then publishes it.
+The CI/CD pipeline triggers automatically on the `v*` tag push:
+* Runs the quality contract (`make verify`).
+* Compiles all six cross-platform binaries with embedded version metadata.
+* Executes native tests on Linux, macOS, and Windows.
+* Generates `SHA256SUMS`.
+* Creates the GitHub Release and attaches all binaries and checksums directly.
+
+Monitor release progress with:
+
+```bash
+gh run list --workflow ci.yml --limit 1
+```
 
 Verify downloaded artifacts with:
 
 ```bash
 (cd download && sha256sum --check SHA256SUMS)
-gh attestation verify download/prepare-commit-msg-linux-amd64 \
-  --repo maccavelli/prepare-commit-msg
 ```
-
-Repeat `gh attestation verify` for each binary consumed. The checksum proves
-the downloaded byte set matches the release manifest; the attestation binds an
-artifact to the repository, workflow, event, and source commit.
 
 ## Failed-release recovery
 
-Validation and build failures occur before tag or release creation. Fix the
-source problem, rerun `make verify`, and dispatch the same unused version.
+If a release tag fails verification or build before completion:
+1. Fix the underlying issue on `main` and run `make verify`.
+2. Delete the remote and local failed tag if unreleased:
+   ```bash
+   git push --delete origin "$VERSION"
+   git tag -d "$VERSION"
+   ```
+3. Re-tag the fixed commit and push the tag to trigger the pipeline again.
 
-A failure after draft creation can leave an unpublished draft and its tag.
-Inspect both before cleanup:
-
-```bash
-VERSION=v1.2.3
-gh release view "$VERSION" \
-  --repo maccavelli/prepare-commit-msg \
-  --json isDraft,tagName,targetCommitish,assets
-git ls-remote --tags origin "refs/tags/$VERSION"
-```
-
-Never delete a published release through this recovery path. If and only if
-`isDraft` is `true` and the draft is the failed workflow's incomplete output,
-remove the draft and its generated tag, then redispatch:
-
-```bash
-gh release delete "$VERSION" \
-  --repo maccavelli/prepare-commit-msg \
-  --cleanup-tag \
-  --yes
-```
-
-If the release was published, choose a new patch version; do not replace its
-tag or assets.
+If a release was already published to GitHub, increment the patch version (e.g. `v1.2.4`) rather than overwriting an existing release.
 
 ## Dependency and action-pin updates
 

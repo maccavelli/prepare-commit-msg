@@ -101,5 +101,22 @@ install_wrapper() {
 install_wrapper pre-commit
 install_wrapper pre-push
 
+if [ -d "$PREVIOUS_HOOKS_DIR" ]; then
+	for hook_file in "$PREVIOUS_HOOKS_DIR"/*; do
+		[ -f "$hook_file" ] && [ -x "$hook_file" ] || continue
+		hook_name="$(basename "$hook_file")"
+		[ ! -e "$MANAGED_DIR/$hook_name" ] || continue
+		candidate="$MANAGED_DIR/.$hook_name.candidate.$$"
+		target="$MANAGED_DIR/$hook_name"
+		{
+			printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail'
+			printf 'PREVIOUS_HOOK=%q\n' "$hook_file"
+			printf '%s\n' 'exec "$PREVIOUS_HOOK" "$@"'
+		} > "$candidate"
+		chmod +x "$candidate"
+		mv "$candidate" "$target"
+	done
+fi
+
 git config --local core.hooksPath "$MANAGED_DIR"
 echo "installed composable hooks in $MANAGED_DIR"
