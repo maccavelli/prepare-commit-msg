@@ -186,8 +186,8 @@ func TestRunAnalyzer(t *testing.T) {
 		return "bad", nil
 	}
 	err = runAnalyzer(msgPath, conf, info)
-	if err == nil || !strings.Contains(err.Error(), "AI message too short") {
-		t.Errorf("expected too short error")
+	if err == nil || !strings.Contains(err.Error(), "all models for gemini failed") {
+		t.Errorf("expected all-models-failed error after every model returned unusable output, got: %v", err)
 	}
 
 	// Empty API key after clearing config + env
@@ -201,6 +201,112 @@ func TestRunAnalyzer(t *testing.T) {
 	err = runAnalyzer(msgPath, conf, info)
 	if err == nil || !strings.Contains(err.Error(), "no API key") {
 		t.Errorf("expected no API key error, got %v", err)
+	}
+}
+
+// TestRunAnalyzer_FallbackAfterEmptyPrimary is the regression test for the
+// fallback-loop bug: a primary model that returns a successful but unusable
+// response (empty, filler, or short) must NOT short-circuit the loop. The
+// configured fallback must still be tried, and if it returns a valid message
+// it must be written to COMMIT_EDITMSG.
+func TestRunAnalyzer_FallbackAfterEmptyPrimary(t *testing.T) {
+	oldHook := generateWithRetry
+	defer func() { generateWithRetry = oldHook }()
+
+	conf := &config.Config{
+		ActiveProvider: "gemini",
+		Providers: map[string]config.ProviderConfig{
+			"gemini": {APIKey: "test", Model: "primary", FallbackModels: []string{"fallback"}},
+		},
+		TimeoutSeconds: 5,
+	}
+	config.ApplyDefaults(conf)
+
+	dir := t.TempDir()
+	msgPath := filepath.Join(dir, "COMMIT_EDITMSG")
+	if err := os.WriteFile(msgPath, []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	info := &git.Info{Files: []string{"a.go"}, Additions: 1, Deletions: 0}
+
+	cases := []struct {
+		name    string
+		primary string
+	}{
+		{"empty success", ""},
+		{"only filler prefix", "Based on"},
+		{"only separator", "---"},
+		{"short post-cleanup", "ab"},
+		{"whitespace only", "   \n   "},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			calls := 0
+			generateWithRetry = func(ctx context.Context, p llmprovider.Provider, prompt string, retries int, delay time.Duration) (string, error) {
+				calls++
+				if calls == 1 {
+					return tc.primary, nil
+				}
+				return "feat: fallback message succeeded", nil
+			}
+
+			if err := runAnalyzer(msgPath, conf, info); err != nil {
+				t.Fatalf("fallback should have produced a valid message, got: %v", err)
+			}
+			if calls != 2 {
+				t.Errorf("expected 2 model calls (primary then fallback), got %d", calls)
+			}
+
+			got, err := os.ReadFile(msgPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(got), "feat: fallback message succeeded") {
+				t.Errorf("fallback message not written to COMMIT_EDITMSG; file:\n%s", got)
+			}
+		})
+	}
+}
+
+// TestRunAnalyzer_AllModelsReturnUnusable documents that when every model
+// returns a successful but unusable response, runAnalyzer surfaces a clear
+// "all models failed" error instead of the previous cryptic "too short".
+func TestRunAnalyzer_AllModelsReturnUnusable(t *testing.T) {
+	oldHook := generateWithRetry
+	defer func() { generateWithRetry = oldHook }()
+
+	conf := &config.Config{
+		ActiveProvider: "gemini",
+		Providers: map[string]config.ProviderConfig{
+			"gemini": {APIKey: "test", Model: "p1", FallbackModels: []string{"p2", "p3"}},
+		},
+		TimeoutSeconds: 5,
+	}
+	config.ApplyDefaults(conf)
+
+	dir := t.TempDir()
+	msgPath := filepath.Join(dir, "COMMIT_EDITMSG")
+	if err := os.WriteFile(msgPath, []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	info := &git.Info{Files: []string{"a.go"}, Additions: 1}
+
+	calls := 0
+	generateWithRetry = func(ctx context.Context, p llmprovider.Provider, prompt string, retries int, delay time.Duration) (string, error) {
+		calls++
+		return "x", nil
+	}
+
+	err := runAnalyzer(msgPath, conf, info)
+	if err == nil {
+		t.Fatal("expected error when every model returns unusable output")
+	}
+	if !strings.Contains(err.Error(), "all models for gemini failed") {
+		t.Errorf("expected 'all models for gemini failed' error, got: %v", err)
+	}
+	if calls != 3 {
+		t.Errorf("expected 3 model calls (primary + 2 fallbacks), got %d", calls)
 	}
 }
 

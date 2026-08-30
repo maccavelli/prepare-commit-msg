@@ -284,40 +284,41 @@ func runAnalyzer(file string, conf *config.Config, info *git.Info) error {
 	fallbacks := config.ClampFallbacks(pc.FallbackModels)
 	modelsToTry := slices.Concat([]string{pc.Model}, fallbacks)
 
-	var msg string
-	var loopErr error
+	var lastErr error
 
 	for _, m := range modelsToTry {
 		fmt.Fprintf(os.Stderr, "%s: generating via %s (%s)...\n", AppTitle, conf.ActiveProvider, m)
 
 		provider, err := llmprovider.NewProvider(conf.ActiveProvider, apiKey, m)
 		if err != nil {
-			loopErr = fmt.Errorf("failed to init %s: %w", conf.ActiveProvider, err)
-			fmt.Fprintf(os.Stderr, "%s: warning: %v\n", AppTitle, loopErr)
+			lastErr = fmt.Errorf("failed to init %s: %w", conf.ActiveProvider, err)
+			fmt.Fprintf(os.Stderr, "%s: warning: %v\n", AppTitle, lastErr)
 			continue
 		}
 
-		msg, loopErr = generateWithRetry(ctx, provider, prompt, conf.RetryCount, time.Duration(conf.RetryDelaySeconds)*time.Second)
-		if loopErr == nil {
-			break
+		raw, err := generateWithRetry(ctx, provider, prompt, conf.RetryCount, time.Duration(conf.RetryDelaySeconds)*time.Second)
+		if err != nil {
+			// Non-retryable auth: do not burn through all fallbacks with the same key.
+			if errors.Is(err, llmprovider.ErrAuthFailure) {
+				return fmt.Errorf("authentication failed for %s: %w", conf.ActiveProvider, err)
+			}
+			lastErr = fmt.Errorf("model %s failed: %w", m, err)
+			fmt.Fprintf(os.Stderr, "%s: warning: %v\n", AppTitle, lastErr)
+			continue
 		}
-		// Non-retryable auth: do not burn through all fallbacks with the same key.
-		if errors.Is(loopErr, llmprovider.ErrAuthFailure) {
-			return fmt.Errorf("authentication failed for %s: %w", conf.ActiveProvider, loopErr)
+
+		cleaned := cleanLLMOutput(raw)
+		if utf8.RuneCountInString(cleaned) >= minMessageRunes {
+			return writeMessage(file, cleaned, info)
 		}
-		fmt.Fprintf(os.Stderr, "%s: warning: model %s failed: %v\n", AppTitle, m, loopErr)
+		lastErr = fmt.Errorf("model %s returned unusable message after cleaning", m)
+		fmt.Fprintf(os.Stderr, "%s: warning: %v; trying next model\n", AppTitle, lastErr)
 	}
 
-	if loopErr != nil {
-		return fmt.Errorf("all models for %s failed, last error: %w", conf.ActiveProvider, loopErr)
+	if lastErr == nil {
+		lastErr = errors.New("no models configured")
 	}
-
-	msg = cleanLLMOutput(msg)
-	if utf8.RuneCountInString(msg) < minMessageRunes {
-		return fmt.Errorf("AI message too short or empty after cleaning")
-	}
-
-	return writeMessage(file, msg, info)
+	return fmt.Errorf("all models for %s failed, last error: %w", conf.ActiveProvider, lastErr)
 }
 
 // cleanLLMOutput strips conversational filler and markdown fences.
