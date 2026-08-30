@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/maccavelli/prepare-commit-msg/internal/config"
 )
 
 func TestMain_RunConfigure(t *testing.T) {
@@ -79,19 +81,17 @@ func TestRunHook_ConfigError(t *testing.T) {
 	t.Setenv("APPDATA", filepath.Join(tmp, "AppData", "Roaming"))
 	t.Setenv("LOCALAPPDATA", filepath.Join(tmp, "AppData", "Local"))
 
-	// Block the app's config dir with a regular file so reading the primary
-	// config path fails with ENOTDIR on every platform — poisoning
-	// XDG_CONFIG_HOME only affects Linux, since macOS resolves UserConfigDir
-	// from HOME alone.
-	base, err := os.UserConfigDir()
+	// Malformed primary configuration deterministically exercises the load
+	// failure on every supported filesystem and operating system.
+	configPath, err := config.GetConfigPath()
 	if err != nil {
-		t.Fatalf("UserConfigDir: %v", err)
+		t.Fatalf("GetConfigPath: %v", err)
 	}
-	if err := os.MkdirAll(base, 0o750); err != nil {
-		t.Fatalf("mkdir config base: %v", err)
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o750); err != nil {
+		t.Fatalf("mkdir config directory: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(base, "prepare-commit-msg"), []byte("block"), 0o600); err != nil {
-		t.Fatalf("write blocker: %v", err)
+	if err := os.WriteFile(configPath, []byte("{not-json"), 0o600); err != nil {
+		t.Fatalf("write malformed config: %v", err)
 	}
 
 	dir := t.TempDir()
