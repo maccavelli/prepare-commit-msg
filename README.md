@@ -211,6 +211,28 @@ Focused targets remain available: `make fmt-check`, `make lint`, `make vet`,
 `make test`, `make coverage`, `make vuln`, `make workflow-lint`, and
 `make build-all`.
 
+### Maintainer release procedure
+
+Releases are manually dispatched from `main` after its quality checks pass.
+Use a new strict semantic version; the workflow refuses an existing tag or
+release and creates the tag only after it has built, verified, and attested all
+assets.
+
+```bash
+gh workflow run release.yml --ref main \
+  -f version=v1.2.3 \
+  -f prerelease=false
+```
+
+The release contains six platform binaries and `SHA256SUMS`. Verify a download
+with the checksum manifest and GitHub's build-provenance attestation:
+
+```bash
+sha256sum --check SHA256SUMS
+gh attestation verify prepare-commit-msg-linux-amd64 \
+  --repo maccavelli/prepare-commit-msg
+```
+
 Module: `github.com/maccavelli/prepare-commit-msg` (Go 1.26.6), depends on split
 private module `github.com/maccavelli/mcplib`. Vendor directory is intentionally
 disabled for this repository.
