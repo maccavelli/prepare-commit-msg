@@ -12,7 +12,7 @@ FLEET_LINT_CFG := .golangci.yml
 .PHONY: all build clean test coverage test-coverage run install version build-all \
 	linux linux-amd64 linux-arm64 darwin-arm64 darwin-amd64 windows-amd64 windows-arm64 \
 	help tools fmt fmt-check mod-check vet lint vuln workflow-lint verify verify-staged \
-	release-artifacts verify-release
+	release-artifacts verify-release hooks-install hooks-uninstall hooks-test
 
 all: help build-all
 
@@ -98,6 +98,15 @@ verify: tools mod-check fmt-check lint vet test coverage vuln workflow-lint buil
 
 verify-staged: tools ## Checks the exact staged Go snapshot
 	./scripts/go-precheck.sh
+
+hooks-install: ## Installs composable repository-local Git hook wrappers
+	./scripts/install-hooks.sh
+
+hooks-uninstall: ## Restores the hooks-path state from before installation
+	./scripts/uninstall-hooks.sh
+
+hooks-test: ## Tests hook composition in isolated temporary repositories
+	./scripts/test-hooks.sh
 
 release-artifacts: clean build-all ## Builds and checksums the complete release asset set
 	./scripts/verify-release.sh --write-checksums $(DIST_DIR)

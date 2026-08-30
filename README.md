@@ -1,9 +1,9 @@
+# prepare-commit-msg
+
 > **Mirror notice:** This repository is a one-way published export of a
 > privately hosted project. History is squashed into sync snapshots, and pull
 > requests cannot be merged here directly — open an issue instead. Changes
 > land in the private source and are re-exported.
-
-# prepare-commit-msg
 
 AI-powered Git `prepare-commit-msg` hook written in Go. When you run a normal
 `git commit` (empty editor / comment-only template), it gathers the **staged**
@@ -17,8 +17,8 @@ to stderr and the editor is left unchanged so you can type a message manually.
 
 - Conventional commit messages from staged diffs (numstat + unified patch)
 - Providers: **gemini**, **openai**, **claude** (via split `mcplib.git/llmprovider`)
-- **Curated model menus** (max 6): stable production text models only — not the raw
-  Gemini catalog of embeddings/TTS/Live/image/preview IDs
+- **Curated model menus** (max 6): stable production text models only — not the
+  raw Gemini catalog of embeddings/TTS/Live/image/preview IDs
 - Primary model + up to **3** fallback models
 - Interactive `configure` wizard **and** equivalent CLI flags
 - Environment API keys (`GEMINI_API_KEY`, `OPENAI_API_KEY`, `CLAUDE_API_KEY`)
@@ -66,7 +66,7 @@ prepare-commit-msg configure --yes \
 ```
 
 | Flag | Meaning |
-|------|---------|
+| --- | --- |
 | `--provider` | `gemini`, `openai`, or `claude` |
 | `--model` | Primary model |
 | `--api-key` | API key (else env or existing config) |
@@ -82,8 +82,8 @@ prepare-commit-msg configure --yes \
 Path (via `os.UserConfigDir`):
 
 | OS | Typical path |
-|----|----------------|
-| Linux | `~/.config/prepare-commit-msg/config.json` (or `$XDG_CONFIG_HOME/...`) |
+| --- | --- |
+| Linux | `~/.config/prepare-commit-msg/config.json` (or `$XDG_CONFIG_HOME`) |
 | macOS | `~/Library/Application Support/prepare-commit-msg/config.json` |
 | Windows | `%AppData%\prepare-commit-msg\config.json` |
 
@@ -132,7 +132,7 @@ prepare-commit-msg <COMMIT_EDITMSG> [source] [sha]
 ```
 
 | `source` | AI generation |
-|----------|----------------|
+| --- | --- |
 | *(empty)* plain `git commit` | Yes, if message is empty / comments-only |
 | `template` | Yes, if message is empty / comments-only |
 | `message` (`-m`) | Skipped |
@@ -141,10 +141,14 @@ prepare-commit-msg <COMMIT_EDITMSG> [source] [sha]
 
 On LLM/config/git errors the hook **exits 0** after printing:
 
+<!-- markdownlint-disable MD013 -->
+
 ```text
 prepare-commit-msg: could not generate a message (...)
 prepare-commit-msg: commit editor left unchanged — type a message manually or run: prepare-commit-msg configure
 ```
+
+<!-- markdownlint-enable MD013 -->
 
 ## Self-Update
 
@@ -170,7 +174,10 @@ prepare-commit-msg update --version v4.4.0
 prepare-commit-msg update --yes
 ```
 
-> **Elevated Permissions Note:** If your binary is installed in a system-wide path requiring elevated privileges (such as `/usr/local/bin/prepare-commit-msg`), run with `sudo`:
+> **Elevated Permissions Note:** If your binary is installed in a system-wide
+> path requiring elevated privileges (such as `/usr/local/bin`), run with
+> `sudo`:
+>
 > ```bash
 > sudo prepare-commit-msg update
 > ```
@@ -188,15 +195,25 @@ prepare-commit-msg <commit_msg_file> [source] [sha]
 ## Development
 
 ```bash
-make fmt
-make vet
-make test
-make lint
+make tools          # install exact repository-pinned development tools
+make verify         # run the same complete quality contract as CI
+make hooks-install  # compose local quality hooks with existing Git hooks
 ```
 
-Module: `github.com/maccavelli/prepare-commit-msg` (Go 1.26.5), depends on split private module
-`github.com/maccavelli/mcplib`. Vendor directory is
-intentionally disabled for this repository.
+The installed pre-commit hook checks the exact staged Go snapshot. The
+pre-push hook runs `make verify` after any pre-existing pre-push hook succeeds.
+The installer uses a repository-local managed hooks directory and never edits
+or replaces the previous hook files. Use `make hooks-test` to exercise the
+composition behavior or `make hooks-uninstall` to restore the previous local
+`core.hooksPath` state.
+
+Focused targets remain available: `make fmt-check`, `make lint`, `make vet`,
+`make test`, `make coverage`, `make vuln`, `make workflow-lint`, and
+`make build-all`.
+
+Module: `github.com/maccavelli/prepare-commit-msg` (Go 1.26.6), depends on split
+private module `github.com/maccavelli/mcplib`. Vendor directory is intentionally
+disabled for this repository.
 
 ## License / context
 
