@@ -1,5 +1,5 @@
 ---
-status: ready
+status: completed
 date: 2026-08-30
 associated-madr: 0003-MADR-layer-and-harden-ci-cd-quality-gates.md
 owner: Maintainers of prepare-commit-msg
@@ -47,8 +47,8 @@ or public release.
   workflow that creates a draft release and tag only after validation and then
   publishes the complete asset set.
 * Adding GitHub Actions and Go module Dependabot configuration.
-* Adding a deterministic, idempotent repository-settings script and applying
-  only settings that are safe before unpublished workflow commits exist.
+* Adding a deterministic, idempotent repository-settings script while
+  deferring activation until the workflow commits exist on remote `main`.
 * Updating developer and release documentation.
 * Committing each completed phase locally. No phase pushes commits or tags.
 
@@ -570,15 +570,62 @@ The implementation is accepted end to end in a later authorized rollout when:
 
 ## Phase Commit Ledger
 
-The commit IDs and final results are populated only after each phase actually
-completes:
+The commit IDs and final results were populated only after each phase actually
+completed. A Git commit cannot contain its own eventual object ID, so the
+Phase 6 row identifies the commit containing this ledger as `this commit`.
 
 | Phase | Commit | Result |
 | --- | --- | --- |
-| 0 | Pending | Decision and plan acceptance |
-| 1 | Pending | Secure green application baseline |
-| 2 | Pending | Repository verification contract |
-| 3 | Pending | Composable local hooks |
-| 4 | Pending | Hardened GitHub workflows |
-| 5 | Pending | Enforcement scripts and runbook |
-| 6 | Pending | Final implementation record |
+| 0 | `85e350d` | Accepted MADR and ready implementation plan |
+| 1 | `faea9f3` | Secure green application baseline |
+| 2 | `7a3ce27` | Deterministic repository verification contract |
+| 3 | `ba717de` | Composable local hooks |
+| 4 | `c511501` | Hardened GitHub workflows |
+| 5 | `8aad997` | Enforcement scripts and operations runbook |
+| 6 | This commit | Completed plan and final verification record |
+
+## Implementation Results
+
+Local implementation completed on 2026-08-30 with these observed results:
+
+* The original CI failures were repaired: the unused `readPassword` seam was
+  removed and `internal/ui/setup_test.go` now satisfies `goimports`.
+* Go was raised to `1.26.6`. The final `govulncheck ./...` runs reported no
+  reachable vulnerabilities.
+* Aggregate statement coverage is `82.1%`, above the unchanged `80.0%`
+  threshold. The full gate reported zero `golangci-lint` issues and completed
+  all six cross-builds.
+* `make verify-staged` was exercised against synthetic staged `goimports` and
+  unused-variable defects and rejected both without allowing unstaged content
+  to mask the index.
+* Release validation accepted a complete `v1.1.1` test asset set and rejected
+  a missing asset. It enforces strict version syntax, six binaries, a
+  six-entry non-self-referential manifest, checksums, and embedded native
+  version consistency.
+* Hook installation, repeated installation, failure propagation, pre-push
+  stdin replay, and exact uninstallation restoration passed in isolated test
+  repositories. The final effective hooks path is repository-managed. The
+  original global disclosure `pre-push` SHA-256 remains
+  `8522a697596001a2d4778e8e878de1647d43a863f0d4c5e5a98093101717cff6`.
+* `actionlint` accepts the reusable quality, CI, and controlled release
+  workflows. All external action references are full commit SHAs, and a scan
+  found no `@latest`, mutable branch, or mutable major-tag references in the
+  workflows, scripts, or Makefile.
+* Two consecutive `make verify` runs completed from and returned to an
+  unchanged tracked tree. `make hooks-test`, the deterministic settings audit,
+  Markdown lint, shell syntax checks, and `git diff --check` also passed.
+* The live read-only audit still reports Actions allowed without enforced SHA
+  pinning, no `main` protection or rulesets, no `release` environment, and
+  Dependabot security updates disabled. Secret scanning and push protection
+  remain enabled.
+* `scripts/configure-github.sh` produced the same normalized eight-mutation
+  dry-run twice and reported `remote_ready: false`. It made no mutation.
+  `origin/main` remained
+  `ce73a982163b250231dc6af22f2fc851ca032f5a` before and after final
+  verification, and no push, tag, release, or settings activation occurred.
+
+Repository implementation is therefore complete within the approved local
+scope. GitHub-hosted native runs, remote ruleset and environment activation,
+invalid-dispatch testing, and a valid controlled release remain the explicitly
+deferred rollout steps listed above; they require a later push and separate
+authorization.
