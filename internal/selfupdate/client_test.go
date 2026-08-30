@@ -159,3 +159,76 @@ func TestClient_DownloadAndVerifyAsset(t *testing.T) {
 		}
 	}
 }
+
+func TestNewClientDefaultsAndEnvironmentToken(t *testing.T) {
+	t.Setenv("GITHUB_TOKEN", "environment-token")
+	t.Setenv("GH_TOKEN", "ignored-token")
+
+	client := NewClient("", "", "", nil)
+	if client.BaseURL != DefaultGitHubAPI {
+		t.Fatalf("BaseURL = %q, want %q", client.BaseURL, DefaultGitHubAPI)
+	}
+	if client.Token != "environment-token" {
+		t.Fatalf("Token = %q, want environment-token", client.Token)
+	}
+	if client.HTTPClient == nil || client.HTTPClient.Timeout != DefaultHTTPTimeout {
+		t.Fatalf("HTTPClient timeout = %v, want %v", client.HTTPClient.Timeout, DefaultHTTPTimeout)
+	}
+
+	req, err := client.newRequest(context.Background(), http.MethodGet, "https://example.com")
+	if err != nil {
+		t.Fatalf("newRequest() error = %v", err)
+	}
+	if got := req.Header.Get("User-Agent"); got != "prepare-commit-msg-selfupdate" {
+		t.Fatalf("User-Agent = %q, want default", got)
+	}
+}
+
+func TestClientHTTPAndManifestErrors(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/repos/owner/repo/releases/latest", func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "unavailable", http.StatusServiceUnavailable)
+	})
+	mux.HandleFunc("/repos/owner/repo/releases/tags/v9.9.9", func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "missing", http.StatusNotFound)
+	})
+	mux.HandleFunc("/checksums", func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "unavailable", http.StatusBadGateway)
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+	client := NewClient(server.URL, "test-agent", "", server.Client())
+
+	if _, err := client.FetchLatestRelease(context.Background(), "owner", "repo"); err == nil {
+		t.Fatal("FetchLatestRelease() error = nil, want HTTP error")
+	}
+	if _, err := client.FetchReleaseByTag(context.Background(), "owner", "repo", "9.9.9"); err == nil {
+		t.Fatal("FetchReleaseByTag() error = nil, want HTTP error")
+	}
+	if _, err := client.FetchChecksums(context.Background(), &Release{TagName: "v9.9.9"}); err == nil {
+		t.Fatal("FetchChecksums() error = nil, want missing manifest")
+	}
+	if _, err := client.FetchChecksums(context.Background(), &Release{
+		TagName: "v9.9.9",
+		Assets: []ReleaseAsset{{
+			Name:               ChecksumsFileName,
+			BrowserDownloadURL: server.URL + "/checksums",
+		}},
+	}); err == nil {
+		t.Fatal("FetchChecksums() error = nil, want HTTP error")
+	}
+	if _, err := ParseChecksums(strings.NewReader("not-a-manifest\n")); err == nil {
+		t.Fatal("ParseChecksums() error = nil, want invalid manifest error")
+	}
+}
+
+func TestDownloadAndVerifyAssetRejectsMissingChecksum(t *testing.T) {
+	client := NewClient("", "test-agent", "", nil)
+	_, _, err := client.DownloadAndVerifyAsset(context.Background(), &ReleaseAsset{
+		Name: "prepare-commit-msg-linux-amd64",
+	}, "", t.TempDir())
+	if err == nil || !strings.Contains(err.Error(), "cannot be empty") {
+		t.Fatalf("DownloadAndVerifyAsset() error = %v, want empty checksum error", err)
+	}
+}

@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/term"
-
 	"github.com/maccavelli/mcplib/llmprovider"
 	"github.com/maccavelli/mcplib/wizard"
 	"github.com/maccavelli/prepare-commit-msg/internal/config"
@@ -27,7 +25,6 @@ const (
 )
 
 var osGetenv = os.Getenv
-var readPassword = term.ReadPassword // Mockable for tests
 
 // SetupOptions holds non-interactive / flag-driven configure settings.
 // Zero values mean "unset" and interactive mode will prompt (unless Yes is set).

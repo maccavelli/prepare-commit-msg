@@ -1,12 +1,14 @@
 package ui
 
 import (
+	"bufio"
 	"context"
-	"github.com/maccavelli/mcplib/llmprovider"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/maccavelli/mcplib/llmprovider"
 
 	"github.com/maccavelli/prepare-commit-msg/internal/config"
 )
@@ -210,6 +212,64 @@ func TestDefaultModels(t *testing.T) {
 	}
 	if len(defaultModels("unknown")) != 0 {
 		t.Error("expected no default models for unknown provider")
+	}
+}
+
+func TestProviderEnvVar(t *testing.T) {
+	if got := providerEnvVar(providerGemini); got != "GEMINI_API_KEY" {
+		t.Fatalf("providerEnvVar(gemini) = %q, want GEMINI_API_KEY", got)
+	}
+	if got := providerEnvVar("unknown"); got != "" {
+		t.Fatalf("providerEnvVar(unknown) = %q, want empty", got)
+	}
+}
+
+func TestPromptInt(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		current int
+		want    int
+	}{
+		{name: "empty keeps current", input: "\n", current: 10, want: 10},
+		{name: "positive replaces current", input: "42\n", current: 10, want: 42},
+		{name: "text keeps current", input: "nope\n", current: 10, want: 10},
+		{name: "zero keeps current", input: "0\n", current: 10, want: 10},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := promptInt(bufio.NewReader(strings.NewReader(tt.input)), "value", tt.current)
+			if err != nil {
+				t.Fatalf("promptInt() error = %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("promptInt() = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRunSetupWithOptionsNonInteractiveErrors(t *testing.T) {
+	isolate(t)
+	conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
+	config.ApplyDefaults(conf)
+
+	err := RunSetupWithOptions(context.Background(), conf, SetupOptions{
+		Provider: "not-a-provider",
+		Yes:      true,
+	}, strings.NewReader(""))
+	if err == nil || !strings.Contains(err.Error(), "unsupported provider") {
+		t.Fatalf("RunSetupWithOptions() error = %v, want unsupported provider", err)
+	}
+
+	err = RunSetupWithOptions(context.Background(), conf, SetupOptions{
+		Provider: providerGemini,
+		NoEnv:    true,
+		Yes:      true,
+	}, strings.NewReader(""))
+	if err == nil || !strings.Contains(err.Error(), "API key required") {
+		t.Fatalf("RunSetupWithOptions() error = %v, want API key required", err)
 	}
 }
 
