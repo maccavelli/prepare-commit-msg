@@ -3,14 +3,16 @@ BINARY_NAME=prepare-commit-msg
 DIST_DIR=dist
 GIT_VERSION=$(shell git describe --tags --always --dirty 2>/dev/null)
 VERSION?=$(GIT_VERSION)
-# Prefer the user's Go toolchain install (go install ...), then PATH.
-GOPATH_BIN     := $(shell go env GOPATH)/bin
-GOLANGCI_LINT  ?= $(GOPATH_BIN)/golangci-lint
+TOOLS_BIN       := $(CURDIR)/.tools/bin
+GOLANGCI_LINT   ?= $(TOOLS_BIN)/golangci-lint
+GOVULNCHECK     ?= $(TOOLS_BIN)/govulncheck
+ACTIONLINT      ?= $(TOOLS_BIN)/actionlint
 FLEET_LINT_CFG := .golangci.yml
 
-.PHONY: all build clean test run install version build-all \
+.PHONY: all build clean test coverage test-coverage run install version build-all \
 	linux linux-amd64 linux-arm64 darwin-arm64 darwin-amd64 windows-amd64 windows-arm64 \
-	help fmt vet lint
+	help tools fmt fmt-check mod-check vet lint vuln workflow-lint verify verify-staged \
+	release-artifacts verify-release
 
 all: help build-all
 
@@ -54,23 +56,54 @@ COVERAGE_MIN ?= 80.0
 test: ## Runs all tests with verbose output and the race detector
 	go test -race -v ./...
 
-test-coverage: ## Runs tests and fails if overall statement coverage is below COVERAGE_MIN (default 80.0)
+coverage: ## Enforces the aggregate statement coverage threshold
 	@go test -coverprofile=coverage.out ./...
 	@go tool cover -func=coverage.out | awk -v min=$(COVERAGE_MIN) '/total:/ { gsub(/%/,"",$$NF); printf "total coverage: %s%% (minimum %.1f%%)\n", $$NF, min; if (($$NF+0) < min) exit 1 }'
 
-fmt: ## Formats all Go source files
-	go fmt ./...
+test-coverage: coverage ## Backward-compatible alias for coverage
+
+tools: ## Installs repository-pinned development tools under .tools/bin
+	./scripts/bootstrap-tools.sh
+
+fmt: tools ## Formats Go source and imports
+	$(GOLANGCI_LINT) fmt -c $(FLEET_LINT_CFG)
+
+fmt-check: tools ## Checks Go formatting and imports without rewriting files
+	@files="$$(git ls-files '*.go')"; \
+		unformatted="$$(gofmt -l $$files)"; \
+		if [ -n "$$unformatted" ]; then \
+			echo "gofmt found unformatted files:"; \
+			echo "$$unformatted"; \
+			exit 1; \
+		fi
+	$(GOLANGCI_LINT) fmt --diff -c $(FLEET_LINT_CFG)
+
+mod-check: ## Verifies module tidiness and downloaded module checksums
+	go mod tidy -diff
+	go mod verify
 
 vet: ## Runs go vet on the project
 	go vet ./...
 
-lint: ## Runs golangci-lint from $(go env GOPATH)/bin (override with GOLANGCI_LINT=)
-	@if [ ! -x "$(GOLANGCI_LINT)" ]; then \
-		echo "golangci-lint not found at $(GOLANGCI_LINT)"; \
-		echo "Install: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest"; \
-		exit 1; \
-	fi
+lint: tools ## Runs the repository-pinned golangci-lint configuration
 	$(GOLANGCI_LINT) run -c $(FLEET_LINT_CFG) ./...
+
+vuln: tools ## Reports reachable vulnerabilities using the current Go database
+	$(GOVULNCHECK) ./...
+
+workflow-lint: tools ## Checks shell scripts and GitHub Actions workflows
+	ACTIONLINT=$(ACTIONLINT) ./scripts/verify-scripts.sh
+
+verify: tools mod-check fmt-check lint vet test coverage vuln workflow-lint build-all ## Runs the complete local and CI quality contract
+
+verify-staged: tools ## Checks the exact staged Go snapshot
+	./scripts/go-precheck.sh
+
+release-artifacts: clean build-all ## Builds and checksums the complete release asset set
+	./scripts/verify-release.sh --write-checksums $(DIST_DIR)
+
+verify-release: release-artifacts ## Builds and validates release assets (set VERSION=vX.Y.Z)
+	./scripts/verify-release.sh "$(VERSION)" "$(DIST_DIR)"
 
 run: build ## Builds and executes the local binary
 	@BIN_NAME=$(DIST_DIR)/$(BINARY_NAME)-$(shell go env GOOS)-$(shell go env GOARCH)$(if $(filter windows,$(shell go env GOOS)),.exe,) ; \

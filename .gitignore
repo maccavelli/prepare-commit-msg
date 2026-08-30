@@ -1,4 +1,5 @@
 dist/
+.tools/
 coverage.out
 coverage.log
 test.log
