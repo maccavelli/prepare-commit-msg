@@ -256,8 +256,18 @@ verification contract.
 
 All reusable actions will be pinned to reviewed full commit SHAs. Repository
 Actions policy will require SHA pinning and allow only GitHub-authored actions
-plus explicitly reviewed exceptions. Dependabot will maintain Go module and
-GitHub Actions references so immutability does not cause silent staleness.
+plus explicitly reviewed exceptions. Go module and GitHub Actions references
+will be reviewed and updated manually so immutability does not cause silent
+staleness.
+
+#### Maintainer amendment: Dependabot disabled
+
+On 2026-08-30, after the initial implementation reached `main`, the maintainer
+directed that Dependabot be turned off. This amendment supersedes the original
+automation choice: the repository will have no Dependabot update configuration,
+and the settings configurator will converge Dependabot security updates to
+disabled. Vulnerability scanning remains mandatory in `make verify`; dependency
+and action-pin updates remain a manual, reviewed maintenance responsibility.
 
 Workflow permissions will default to `contents: read`. Only the job that
 creates the release will receive `contents: write`; only the attestation step
@@ -402,7 +412,5 @@ as GoReleaser authoritative rather than using repository-native entrypoints.
   [Available rules for rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets).
 * GitHub documents binary build provenance and the required permissions in
   [Using artifact attestations to establish provenance for builds](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations).
-* GitHub documents automated maintenance of action references in
-  [Keeping your actions up to date with Dependabot](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/auto-update-actions).
 * The Go project describes `govulncheck` as a reachability-aware, low-noise
   scanner in [Go Vulnerability Management](https://go.dev/doc/security/vuln/).

@@ -212,7 +212,7 @@ jq -n -S \
 		{method: "PUT", endpoint: "actions/permissions", body: $actions[0]},
 		{method: "PUT", endpoint: "actions/permissions/selected-actions", body: $selected[0]},
 		{method: "PUT", endpoint: "actions/permissions/workflow", body: $workflow[0]},
-		{method: "PUT", endpoint: "automated-security-fixes", body: null},
+		{method: "DELETE", endpoint: "automated-security-fixes", body: null},
 		{method: "PUT", endpoint: "environments/release", body: $environment[0]},
 		{method: "RECONCILE", endpoint: "environments/release/deployment-branch-policies",
 			body: {name: "main", type: "branch"}},
@@ -254,7 +254,7 @@ api --method PUT "repos/$REPOSITORY/actions/permissions/selected-actions" \
 	--input "$CONFIG_TMP/selected-actions.json" >/dev/null
 api --method PUT "repos/$REPOSITORY/actions/permissions/workflow" \
 	--input "$CONFIG_TMP/workflow-permissions.json" >/dev/null
-api --method PUT "repos/$REPOSITORY/automated-security-fixes" >/dev/null
+api --method DELETE "repos/$REPOSITORY/automated-security-fixes" >/dev/null
 api --method PUT "repos/$REPOSITORY/environments/release" \
 	--input "$CONFIG_TMP/environment.json" >/dev/null
 

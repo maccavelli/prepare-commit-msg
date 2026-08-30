@@ -3,6 +3,7 @@ package selfupdate
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -42,8 +43,8 @@ func TestReplaceExecutable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Stat targetPath failed: %v", err)
 	}
-	// Check execute bits on Unix
-	if info.Mode()&0o111 == 0 {
+	// Windows does not implement Unix execute permission bits.
+	if runtime.GOOS != "windows" && info.Mode()&0o111 == 0 {
 		t.Errorf("targetPath mode %v is not executable", info.Mode())
 	}
 }

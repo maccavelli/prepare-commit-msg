@@ -8,22 +8,30 @@ import (
 )
 
 func TestWriteFileAtomic_Errors(t *testing.T) {
-	// 1. mkdir failure
-	err := WriteFileAtomic("/proc/sys/fs/file-max/forbidden", []byte("bad"), 0o644)
+	// 1. mkdir failure: a regular file cannot become a parent directory.
+	blocker := filepath.Join(t.TempDir(), "blocker")
+	if err := os.WriteFile(blocker, []byte("block"), 0o600); err != nil {
+		t.Fatalf("write blocker: %v", err)
+	}
+	err := WriteFileAtomic(filepath.Join(blocker, "child", "test.txt"), []byte("bad"), 0o644)
 	if err == nil {
 		t.Error("expected mkdir error")
 	}
 
-	// 2. create temp failure (directory exists but cannot host regular files)
-	err = WriteFileAtomic("/proc/test.txt", []byte("bad"), 0o644)
+	// 2. create temp failure: NUL is invalid in a filename on every supported OS.
+	err = WriteFileAtomic(filepath.Join(t.TempDir(), "bad\x00name"), []byte("bad"), 0o644)
 	if err == nil {
 		t.Error("expected create temp error")
 	}
 }
 
 func TestReplaceFileAtomic_Errors(t *testing.T) {
-	// 1. mkdir failure
-	err := ReplaceFileAtomic("/proc/sys/fs/file-max/forbidden", func(f *os.File) error {
+	// 1. create temp failure: the destination's parent is a regular file.
+	blocker := filepath.Join(t.TempDir(), "blocker")
+	if err := os.WriteFile(blocker, []byte("block"), 0o600); err != nil {
+		t.Fatalf("write blocker: %v", err)
+	}
+	err := ReplaceFileAtomic(filepath.Join(blocker, "test.txt"), func(f *os.File) error {
 		return nil
 	})
 	if err == nil {

@@ -76,6 +76,8 @@ func TestRunHook_ConfigError(t *testing.T) {
 	t.Setenv("HOME", tmp)
 	t.Setenv("USERPROFILE", tmp)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmp, ".config"))
+	t.Setenv("APPDATA", filepath.Join(tmp, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(tmp, "AppData", "Local"))
 
 	// Block the app's config dir with a regular file so reading the primary
 	// config path fails with ENOTDIR on every platform — poisoning

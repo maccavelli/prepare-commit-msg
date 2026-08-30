@@ -64,7 +64,7 @@ The intended converged state is:
 
 - read-only default `GITHUB_TOKEN` permissions and no pull-request approvals;
 - GitHub-authored and repository-local actions only, with full-SHA pinning;
-- Dependabot security updates enabled;
+- Dependabot security updates disabled by maintainer policy;
 - a `release` environment restricted to the `main` branch;
 - a default-branch ruleset that blocks deletion and non-fast-forward updates,
   with repository administrators able to publish mirror snapshots; and
@@ -158,11 +158,11 @@ tag or assets.
 
 ## Dependency and action-pin updates
 
-Dependabot groups Go-module and GitHub Actions changes weekly. Review grouped
-updates as normal source changes and run `make verify`. For an action update,
-confirm that the new full SHA belongs to the official action and that the
-end-of-line release comment matches it. Never replace a SHA with a mutable
-major tag.
+Dependabot version updates and security updates are disabled by maintainer
+policy. Review Go module and GitHub Actions updates manually on a regular
+cadence and run `make verify`. For an action update, confirm that the new full
+SHA belongs to the official action and that the end-of-line release comment
+matches it. Never replace a SHA with a mutable major tag.
 
 This GitHub repository is a one-way mirror, so accepted dependency updates must
 also land in the authoritative private source before the next export. Do not

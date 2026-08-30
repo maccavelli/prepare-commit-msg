@@ -10,6 +10,20 @@ owner: Maintainers of prepare-commit-msg
 Associated MADR:
 [0003-MADR-layer-and-harden-ci-cd-quality-gates.md](0003-MADR-layer-and-harden-ci-cd-quality-gates.md)
 
+## Post-Implementation Maintainer Directive
+
+On 2026-08-30, after commit `f4fecb0` reached `origin/main`, the maintainer
+directed that Dependabot be turned off. The follow-up removes
+`.github/dependabot.yml`, changes repository-settings convergence from enabling
+to disabling Dependabot security updates, and replaces automated update claims
+with a manual review cadence. This directive supersedes the Dependabot-specific
+items in the original completed phase record without changing its historical
+account of what those phases implemented.
+
+The first hosted native matrix also exposed Unix-only test assumptions on
+Windows. The same follow-up makes config-path setup, filesystem error cases,
+and executable-mode assertions portable without changing product behavior.
+
 ## Goal
 
 Replace the repository's fragmented local checks, post-integration-only CI,
@@ -592,7 +606,7 @@ Local implementation completed on 2026-08-30 with these observed results:
   removed and `internal/ui/setup_test.go` now satisfies `goimports`.
 * Go was raised to `1.26.6`. The final `govulncheck ./...` runs reported no
   reachable vulnerabilities.
-* Aggregate statement coverage is `82.1%`, above the unchanged `80.0%`
+* Aggregate statement coverage is `82.2%`, above the unchanged `80.0%`
   threshold. The full gate reported zero `golangci-lint` issues and completed
   all six cross-builds.
 * `make verify-staged` was exercised against synthetic staged `goimports` and
