@@ -233,6 +233,13 @@ gh attestation verify prepare-commit-msg-linux-amd64 \
   --repo maccavelli/prepare-commit-msg
 ```
 
+Repository enforcement is codified but separately activated after the hardened
+commit reaches `origin/main`. Audit current settings with
+`scripts/audit-github.sh` and preview the exact intended settings with
+`scripts/configure-github.sh`. See the
+[CI/CD operations runbook](docs/cicd-operations.md) for activation, failure
+recovery, dependency handling, and rollback procedures.
+
 Module: `github.com/maccavelli/prepare-commit-msg` (Go 1.26.6), depends on split
 private module `github.com/maccavelli/mcplib`. Vendor directory is intentionally
 disabled for this repository.
