@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -131,18 +132,16 @@ func TestMain_RunUpdate_Help(t *testing.T) {
 
 	defer func() {
 		_ = recover()
+		if exitCode != 0 {
+			t.Errorf("expected update --help to exit 0, got %d", exitCode)
+		}
 	}()
 
 	main()
-
-	if exitCode != -1 {
-		t.Errorf("expected update --help to exit cleanly without osExit error, got %d", exitCode)
-	}
 }
 
 func TestRunUpdate_Flags(t *testing.T) {
-	// Invalid flag should return an error
-	err := runUpdate([]string{"--invalid-flag-12345"})
+	_, err := runUpdate(context.Background(), []string{"--invalid-flag-12345"})
 	if err == nil {
 		t.Errorf("expected error on invalid flag")
 	}

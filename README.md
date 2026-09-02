@@ -155,8 +155,13 @@ prepare-commit-msg: commit editor left unchanged — type a message manually or 
 Keep your binary up-to-date with the latest LLM providers and fixes:
 
 ```bash
-prepare-commit-msg update
+prepare-commit-msg update [--check] [--force] [--version vX.Y.Z] [--yes|-y]
 ```
+
+Self-update replaces only a regular executable under the current user's home
+directory. Package-manager and system prefixes (`/usr`, Homebrew Cellar, Nix,
+WindowsApps, and similar) are refused. A non-TTY apply requires `--yes`.
+`--check` exits 10 when a different actionable target exists.
 
 ### Update Options
 
@@ -164,23 +169,15 @@ prepare-commit-msg update
 # Check if an update is available without applying (dry run)
 prepare-commit-msg update --check
 
-# Force reinstall / overwrite current version
-prepare-commit-msg update --force
+# Force reinstall of the selected version, or replace a local/dev build
+prepare-commit-msg update --force --yes
 
-# Target a specific version or downgrade
-prepare-commit-msg update --version v4.4.0
+# Target a specific version; a lower tag is an explicit rollback
+prepare-commit-msg update --version v1.2.0 --yes
 
-# Non-interactive mode
+# Non-interactive apply
 prepare-commit-msg update --yes
 ```
-
-> **Elevated Permissions Note:** If your binary is installed in a system-wide
-> path requiring elevated privileges (such as `/usr/local/bin`), run with
-> `sudo`:
->
-> ```bash
-> sudo prepare-commit-msg update
-> ```
 
 ## Usage (CLI)
 

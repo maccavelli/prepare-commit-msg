@@ -7,25 +7,27 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"slices"
 	"strings"
+	"syscall"
 	"time"
 	"unicode/utf8"
 
 	"github.com/maccavelli/prepare-commit-msg/internal/config"
 	"github.com/maccavelli/prepare-commit-msg/internal/fsutil"
 	"github.com/maccavelli/prepare-commit-msg/internal/git"
-	"github.com/maccavelli/prepare-commit-msg/internal/selfupdate"
 	"github.com/maccavelli/prepare-commit-msg/internal/ui"
 
 	"github.com/maccavelli/mcplib/llmprovider"
+	"github.com/maccavelli/mcplib/selfupdate"
 )
 
 var generateWithRetry = llmprovider.GenerateWithRetry
 var osGetenv = os.Getenv
 
 // Version is overwritten by build flags during the compilation process.
-var Version = "4.3.2"
+var Version = localVersionIdentity
 
 const (
 	// AppTitle is the name of the application used in help text and version output.
@@ -83,7 +85,7 @@ func main() {
 
 	switch args[0] {
 	case "version", "--version", "-V":
-		fmt.Printf("%s version %s\n", AppTitle, strings.TrimPrefix(Version, "v"))
+		fmt.Printf("%s version %s (%s)\n", AppTitle, strings.TrimPrefix(displayVersion(), "v"), RawBuildKind)
 		return
 	case "help", "--help", "-h":
 		printUsage()
@@ -95,10 +97,15 @@ func main() {
 		}
 		return
 	case "update":
-		if err := runUpdate(args[1:]); err != nil {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		ctx, cancel := context.WithTimeout(ctx, updateTimeout)
+		defer cancel()
+		res, err := runUpdate(ctx, args[1:])
+		if err != nil && !errors.Is(err, selfupdate.ErrUpdateAvailable) {
 			fmt.Fprintf(os.Stderr, "Update failed: %v\n", err)
-			osExit(1)
 		}
+		osExit(selfupdate.ExitCode(res, err))
 		return
 	}
 
@@ -106,34 +113,11 @@ func main() {
 	runHook(args)
 }
 
-func runUpdate(args []string) error {
-	fs := flag.NewFlagSet("update", flag.ContinueOnError)
-	fs.SetOutput(os.Stderr)
-
-	check := fs.Bool("check", false, "check for updates without applying")
-	force := fs.Bool("force", false, "reinstall current version or force overwrite")
-	targetVersion := fs.String("version", "", "target specific version tag (e.g. v4.4.0)")
-	yes := fs.Bool("yes", false, "non-interactive update")
-	fs.BoolVar(yes, "y", false, "non-interactive update (shorthand)")
-
-	if err := fs.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return nil
-		}
-		return err
+func displayVersion() string {
+	if RawVersion != "" && RawVersion != localVersionIdentity {
+		return RawVersion
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-
-	_, err := selfupdate.Run(ctx, selfupdate.Options{
-		CurrentVersion: Version,
-		TargetVersion:  *targetVersion,
-		CheckOnly:      *check,
-		Force:          *force,
-		Output:         os.Stdout,
-	})
-	return err
+	return Version
 }
 
 func runConfigure(args []string) error {

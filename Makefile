@@ -24,29 +24,31 @@ build-all: linux-amd64 linux-arm64 darwin-arm64 darwin-amd64 windows-amd64 windo
 
 linux: linux-amd64 ## Alias for linux-amd64
 
+RELEASE_LDFLAGS := -s -w -X main.Version=$(VERSION) -X main.RawVersion=$(VERSION) -X main.RawBuildKind=release
+
 linux-amd64: ## Compiles for Linux x86_64 (AMD64)
 	@mkdir -p $(DIST_DIR)
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -tags netgo -ldflags "-extldflags '-static' -s -w -X main.Version=$(VERSION)" -o $(DIST_DIR)/$(BINARY_NAME)-linux-amd64 .
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -tags netgo -ldflags "-extldflags '-static' $(RELEASE_LDFLAGS)" -o $(DIST_DIR)/$(BINARY_NAME)-linux-amd64 .
 
 linux-arm64: ## Compiles for Linux ARM64 (aarch64)
 	@mkdir -p $(DIST_DIR)
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -tags netgo -ldflags "-extldflags '-static' -s -w -X main.Version=$(VERSION)" -o $(DIST_DIR)/$(BINARY_NAME)-linux-arm64 .
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -tags netgo -ldflags "-extldflags '-static' $(RELEASE_LDFLAGS)" -o $(DIST_DIR)/$(BINARY_NAME)-linux-arm64 .
 
 darwin-arm64: ## Compiles for macOS ARM64 (Apple Silicon)
 	@mkdir -p $(DIST_DIR)
-	GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.Version=$(VERSION)" -o $(DIST_DIR)/$(BINARY_NAME)-darwin-arm64 .
+	GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "$(RELEASE_LDFLAGS)" -o $(DIST_DIR)/$(BINARY_NAME)-darwin-arm64 .
 
 darwin-amd64: ## Compiles for macOS x86_64 (Intel)
 	@mkdir -p $(DIST_DIR)
-	GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.Version=$(VERSION)" -o $(DIST_DIR)/$(BINARY_NAME)-darwin-amd64 .
+	GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "$(RELEASE_LDFLAGS)" -o $(DIST_DIR)/$(BINARY_NAME)-darwin-amd64 .
 
 windows-amd64: ## Compiles for Windows x86_64 (AMD64)
 	@mkdir -p $(DIST_DIR)
-	GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.Version=$(VERSION)" -o $(DIST_DIR)/$(BINARY_NAME)-windows-amd64.exe .
+	GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$(RELEASE_LDFLAGS)" -o $(DIST_DIR)/$(BINARY_NAME)-windows-amd64.exe .
 
 windows-arm64: ## Compiles for Windows ARM64
 	@mkdir -p $(DIST_DIR)
-	GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.Version=$(VERSION)" -o $(DIST_DIR)/$(BINARY_NAME)-windows-arm64.exe .
+	GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "$(RELEASE_LDFLAGS)" -o $(DIST_DIR)/$(BINARY_NAME)-windows-arm64.exe .
 
 clean: ## Removes all build artifacts
 	rm -rf $(DIST_DIR)
