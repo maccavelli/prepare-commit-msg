@@ -112,7 +112,7 @@ jobs:
       contents: write
       id-token: write
       attestations: write
-    uses: maccavelli/mcplib/.github/workflows/publish-selfupdate-release.yml@3e64e3078c875a3dc3ffe235952be9f76c1ac787 # v1.3.0
+    uses: maccavelli/mcplib/.github/workflows/publish-selfupdate-release.yml@8d4d89ff34ff79c1ed65f223cc3d83b3ec0550aa # mcplib v1.4.1
     with:
       artifact-name: prepare-commit-msg-${{ needs.go.outputs.version || github.sha }}
       products-json: '["prepare-commit-msg"]'
