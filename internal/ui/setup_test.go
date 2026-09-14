@@ -2,9 +2,11 @@ package ui
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -103,14 +105,35 @@ func TestRunSetupInteractive_CoverageBranches(t *testing.T) {
 		isolate(t)
 		conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
 		config.ApplyDefaults(conf)
-		// 2: openai, key, model 1, fallbacks enter, ops enter
-		input := "2\ntest-key\n1\n\n\n\n\n\n"
+		store, err := config.NewOAuthStore()
+		if err != nil {
+			t.Fatalf("NewOAuthStore() error = %v", err)
+		}
+		if err := store.Save(context.Background(), llmprovider.ProviderOpenAI, &llmprovider.OAuthSession{
+			Provider: llmprovider.ProviderOpenAI,
+			Access:   "stale-access",
+		}); err != nil {
+			t.Fatalf("seed stale OpenAI OAuth session: %v", err)
+		}
+		// 2: openai, auth 1: API key, key, model 1, fallbacks enter, ops enter
+		input := "2\n1\ntest-key\n1\n\n\n\n\n\n"
 		r := strings.NewReader(input)
 		if err := runSetupInteractive(context.Background(), conf, SetupOptions{}, r); err != nil {
 			t.Fatalf("%v", err)
 		}
 		if conf.ActiveProvider != "openai" {
 			t.Errorf("Expected openai")
+		}
+		pc := conf.Providers[llmprovider.ProviderOpenAI]
+		if pc.AuthKind != "" || pc.APIKey != "test-key" {
+			t.Errorf("OpenAI auth kind/key = %q/%q", pc.AuthKind, pc.APIKey)
+		}
+		oauthDir, err := config.OAuthDir()
+		if err != nil {
+			t.Fatalf("OAuthDir() error = %v", err)
+		}
+		if _, err := os.Stat(filepath.Join(oauthDir, llmprovider.ProviderOpenAI+".json")); !os.IsNotExist(err) {
+			t.Fatalf("OpenAI OAuth session exists after API-key setup: %v", err)
 		}
 	})
 
@@ -129,11 +152,117 @@ func TestRunSetupInteractive_CoverageBranches(t *testing.T) {
 	})
 }
 
+const grokAuthFixture = `{
+  "xai::api_key": {
+    "key": "xai-MUST-SKIP",
+    "auth_mode": "api_key"
+  },
+  "https://auth.x.ai::b1a00492-073a-47ea-816f-4c329264a828": {
+    "key": "sess-grok",
+    "auth_mode": "oidc",
+    "refresh_token": "rt-grok",
+    "expires_at": "2099-01-01T00:00:00Z",
+    "oidc_issuer": "https://auth.x.ai",
+    "oidc_client_id": "b1a00492-073a-47ea-816f-4c329264a828"
+  }
+}`
+
+const openAIAuthFixture = `{
+  "OPENAI_API_KEY": "sk-MUST-IGNORE",
+  "tokens": {
+    "access_token": "at-chatgpt",
+    "refresh_token": "rt-chatgpt",
+    "account_id": "acct_test"
+  }
+}`
+
+func TestRunSetupInteractive_ImportGrokSession(t *testing.T) {
+	isolate(t)
+	vendorHome := t.TempDir()
+	t.Setenv("GROK_HOME", vendorHome)
+	if err := os.WriteFile(filepath.Join(vendorHome, "auth.json"), []byte(grokAuthFixture), 0o600); err != nil {
+		t.Fatalf("write Grok fixture: %v", err)
+	}
+	originalEnv := osGetenv
+	osGetenv = os.Getenv
+	t.Cleanup(func() { osGetenv = originalEnv })
+
+	conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
+	config.ApplyDefaults(conf)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	input := "4\n5\ny\n1\n\n\n\n\n\n"
+	if err := runSetupInteractive(ctx, conf, SetupOptions{}, strings.NewReader(input)); err != nil {
+		t.Fatalf("runSetupInteractive() error = %v", err)
+	}
+	pc := conf.Providers[llmprovider.ProviderGrok]
+	if pc.AuthKind != "oauth" || pc.APIKey != "" {
+		t.Fatalf("Grok auth kind/key = %q/%q", pc.AuthKind, pc.APIKey)
+	}
+	oauthDir, err := config.OAuthDir()
+	if err != nil {
+		t.Fatalf("OAuthDir() error = %v", err)
+	}
+	tokenPath := filepath.Join(oauthDir, llmprovider.ProviderGrok+".json")
+	info, err := os.Stat(tokenPath)
+	if err != nil {
+		t.Fatalf("stat Grok OAuth session: %v", err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
+		t.Fatalf("Grok OAuth mode = %04o, want 0600", info.Mode().Perm())
+	}
+	assertConfigOmitsOAuthTokens(t)
+}
+
+func TestRunSetupInteractive_ChatGPTDoesNotCopyAccessIntoAPIKey(t *testing.T) {
+	isolate(t)
+	vendorHome := t.TempDir()
+	t.Setenv("CODEX_HOME", vendorHome)
+	if err := os.WriteFile(filepath.Join(vendorHome, "auth.json"), []byte(openAIAuthFixture), 0o600); err != nil {
+		t.Fatalf("write OpenAI fixture: %v", err)
+	}
+	originalEnv := osGetenv
+	osGetenv = os.Getenv
+	t.Cleanup(func() { osGetenv = originalEnv })
+
+	conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
+	config.ApplyDefaults(conf)
+	input := "2\n5\ny\n1\n\n\n\n\n\n"
+	if err := runSetupInteractive(context.Background(), conf, SetupOptions{}, strings.NewReader(input)); err != nil {
+		t.Fatalf("runSetupInteractive() error = %v", err)
+	}
+	pc := conf.Providers[llmprovider.ProviderOpenAI]
+	if pc.AuthKind != "oauth" || pc.APIKey != "" {
+		t.Fatalf("OpenAI auth kind/key = %q/%q", pc.AuthKind, pc.APIKey)
+	}
+	assertConfigOmitsOAuthTokens(t)
+}
+
+func assertConfigOmitsOAuthTokens(t *testing.T) {
+	t.Helper()
+	path, err := config.GetConfigPath()
+	if err != nil {
+		t.Fatalf("GetConfigPath() error = %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read config: %v", err)
+	}
+	for _, key := range [][]byte{[]byte(`"access"`), []byte(`"refresh"`)} {
+		if bytes.Contains(data, key) {
+			t.Fatalf("config contains OAuth token key %s:\n%s", key, data)
+		}
+	}
+}
+
 func TestRunSetupNonInteractive(t *testing.T) {
 	isolate(t)
 
 	conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
 	config.ApplyDefaults(conf)
+	openAIPC := conf.Providers[llmprovider.ProviderOpenAI]
+	openAIPC.AuthKind = "oauth"
+	conf.Providers[llmprovider.ProviderOpenAI] = openAIPC
 
 	oldEnv := osGetenv
 	defer func() { osGetenv = oldEnv }()
@@ -158,6 +287,9 @@ func TestRunSetupNonInteractive(t *testing.T) {
 	}
 	if conf.Providers["openai"].APIKey != "env-key" {
 		t.Errorf("key from env: %q", conf.Providers["openai"].APIKey)
+	}
+	if conf.Providers["openai"].AuthKind != "" {
+		t.Errorf("non-interactive auth kind: %q", conf.Providers["openai"].AuthKind)
 	}
 	if conf.Providers["openai"].Model != "gpt-4o-mini" {
 		t.Errorf("model: %q", conf.Providers["openai"].Model)

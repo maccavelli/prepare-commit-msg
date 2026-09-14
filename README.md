@@ -192,6 +192,12 @@ The wizard guides you through:
 5. Fallback model multi-selection (up to 3 fallbacks).
 6. Operational settings (timeout, max diff size, retry count, retry delay).
 
+For OpenAI and Grok, the interactive wizard can also use ChatGPT or Grok
+subscription authentication. OAuth sessions are stored separately from the
+main configuration in its private `oauth/` directory; access and refresh tokens
+are never copied into `config.json`. Non-interactive `configure --yes` remains
+API-key-only.
+
 ---
 
 ### Non-Interactive CLI Flags

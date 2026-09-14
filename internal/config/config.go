@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -25,6 +26,7 @@ var SupportedProviders = []string{
 	llmprovider.ProviderGemini,
 	llmprovider.ProviderOpenAI,
 	llmprovider.ProviderClaude,
+	llmprovider.ProviderGrok,
 }
 
 // Config holds the application configuration including the active LLM provider,
@@ -44,6 +46,8 @@ type Config struct {
 
 // ProviderConfig stores credentials and model selection for a single LLM provider.
 type ProviderConfig struct {
+	// AuthKind is empty for legacy/API-key auth and "oauth" for a saved session.
+	AuthKind       string   `json:"auth_kind,omitempty"`
 	APIKey         string   `json:"api_key"`
 	Model          string   `json:"model"`
 	FallbackModels []string `json:"fallback_models,omitempty"`
@@ -68,6 +72,24 @@ func GetConfigPath() (string, error) {
 		return filepath.Join(home, ".config", "prepare-commit-msg", "config.json"), nil
 	}
 	return filepath.Join(cfgDir, "prepare-commit-msg", "config.json"), nil
+}
+
+// OAuthDir returns the private token directory beside the main config file.
+func OAuthDir() (string, error) {
+	path, err := GetConfigPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(filepath.Dir(path), "oauth"), nil
+}
+
+// NewOAuthStore creates the file-backed store for provider OAuth sessions.
+func NewOAuthStore() (*llmprovider.FileTokenStore, error) {
+	dir, err := OAuthDir()
+	if err != nil {
+		return nil, err
+	}
+	return llmprovider.NewFileTokenStore(dir)
 }
 
 // DefaultModelForProvider returns the recommended primary model for a given provider.
@@ -103,6 +125,14 @@ func ApplyDefaults(c *Config) {
 	}
 	if c.ActiveProvider == "" {
 		c.ActiveProvider = llmprovider.ProviderGemini
+	}
+	for provider, pc := range c.Providers {
+		if IsOAuth(pc) {
+			pc.AuthKind = "oauth"
+		} else {
+			pc.AuthKind = ""
+		}
+		c.Providers[provider] = pc
 	}
 	for _, p := range SupportedProviders {
 		pc, ok := c.Providers[p]
@@ -245,6 +275,37 @@ func ValidateActive(provider string, pc ProviderConfig, apiKey string) error {
 	}
 	if strings.TrimSpace(pc.Model) == "" {
 		return fmt.Errorf("no model configured for provider %q; run 'prepare-commit-msg configure'", provider)
+	}
+	return nil
+}
+
+// IsOAuth reports whether a provider config selects subscription authentication.
+func IsOAuth(pc ProviderConfig) bool {
+	return strings.EqualFold(pc.AuthKind, "oauth")
+}
+
+// ValidateOAuth checks that an OAuth provider has both a model and a saved session.
+func ValidateOAuth(
+	ctx context.Context,
+	provider string,
+	pc ProviderConfig,
+	store llmprovider.TokenStore,
+) error {
+	if strings.TrimSpace(provider) == "" {
+		return fmt.Errorf("no active provider configured; please run 'prepare-commit-msg configure'")
+	}
+	if strings.TrimSpace(pc.Model) == "" {
+		return fmt.Errorf("no model configured for provider %q; run 'prepare-commit-msg configure'", provider)
+	}
+	if store == nil {
+		return fmt.Errorf("no OAuth session for provider %q; run 'prepare-commit-msg configure'", provider)
+	}
+	session, err := store.Load(ctx, provider)
+	if err != nil {
+		return fmt.Errorf("load OAuth session for provider %q: %w", provider, err)
+	}
+	if session == nil {
+		return fmt.Errorf("no OAuth session for provider %q; run 'prepare-commit-msg configure'", provider)
 	}
 	return nil
 }

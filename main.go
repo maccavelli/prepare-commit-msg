@@ -24,6 +24,8 @@ import (
 )
 
 var generateWithRetry = llmprovider.GenerateWithRetry
+var newProvider = llmprovider.NewProvider
+var newProviderWithSource = llmprovider.NewProviderWithSource
 var osGetenv = os.Getenv
 
 // Version is overwritten by build flags during the compilation process.
@@ -48,7 +50,7 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  %s help                           - show this help\n", AppTitle)
 	fmt.Fprintf(os.Stderr, "  %s <commit_msg_file> [source] [sha] - run as git prepare-commit-msg hook\n", AppTitle)
 	fmt.Fprintf(os.Stderr, "\nConfigure flags:\n")
-	fmt.Fprintf(os.Stderr, "  --provider string         gemini|openai|claude\n")
+	fmt.Fprintf(os.Stderr, "  --provider string         gemini|openai|claude|grok\n")
 	fmt.Fprintf(os.Stderr, "  --model string            primary model name\n")
 	fmt.Fprintf(os.Stderr, "  --api-key string          API key (or use provider env var)\n")
 	fmt.Fprintf(os.Stderr, "  --fallback string         fallback model (repeatable, max %d)\n", config.MaxFallbacks)
@@ -252,17 +254,27 @@ func runAnalyzer(file string, conf *config.Config, info *git.Info) error {
 		return err
 	}
 
-	apiKey := config.ResolveAPIKey(pc, conf.ActiveProvider, true, osGetenv)
-	if err := config.ValidateActive(conf.ActiveProvider, pc, apiKey); err != nil {
-		return err
-	}
-
 	timeout := time.Duration(conf.TimeoutSeconds) * time.Second
 	if timeout <= 0 {
 		timeout = time.Duration(config.DefaultTimeoutSeconds) * time.Second
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+
+	if config.IsOAuth(pc) {
+		store, storeErr := config.NewOAuthStore()
+		if storeErr != nil {
+			return storeErr
+		}
+		if err := config.ValidateOAuth(ctx, conf.ActiveProvider, pc, store); err != nil {
+			return err
+		}
+	} else {
+		apiKey := config.ResolveAPIKey(pc, conf.ActiveProvider, true, osGetenv)
+		if err := config.ValidateActive(conf.ActiveProvider, pc, apiKey); err != nil {
+			return err
+		}
+	}
 
 	prompt := buildPrompt(info)
 	fallbacks := config.ClampFallbacks(pc.FallbackModels)
@@ -273,7 +285,7 @@ func runAnalyzer(file string, conf *config.Config, info *git.Info) error {
 	for _, m := range modelsToTry {
 		fmt.Fprintf(os.Stderr, "%s: generating via %s (%s)...\n", AppTitle, conf.ActiveProvider, m)
 
-		provider, err := llmprovider.NewProvider(conf.ActiveProvider, apiKey, m)
+		provider, err := newActiveProvider(conf, pc, m)
 		if err != nil {
 			lastErr = fmt.Errorf("failed to init %s: %w", conf.ActiveProvider, err)
 			fmt.Fprintf(os.Stderr, "%s: warning: %v\n", AppTitle, lastErr)
@@ -303,6 +315,29 @@ func runAnalyzer(file string, conf *config.Config, info *git.Info) error {
 		lastErr = errors.New("no models configured")
 	}
 	return fmt.Errorf("all models for %s failed, last error: %w", conf.ActiveProvider, lastErr)
+}
+
+func newActiveProvider(conf *config.Config, pc config.ProviderConfig, model string) (llmprovider.Provider, error) {
+	if config.IsOAuth(pc) {
+		store, err := config.NewOAuthStore()
+		if err != nil {
+			return nil, err
+		}
+		session, err := store.Load(context.Background(), conf.ActiveProvider)
+		if err != nil {
+			return nil, fmt.Errorf("load OAuth session for provider %q: %w", conf.ActiveProvider, err)
+		}
+		if session == nil {
+			return nil, fmt.Errorf("no OAuth session for provider %q; run 'prepare-commit-msg configure'", conf.ActiveProvider)
+		}
+		session.Store = store
+		return newProviderWithSource(conf.ActiveProvider, session, model)
+	}
+	apiKey := config.ResolveAPIKey(pc, conf.ActiveProvider, true, osGetenv)
+	if err := config.ValidateActive(conf.ActiveProvider, pc, apiKey); err != nil {
+		return nil, err
+	}
+	return newProvider(conf.ActiveProvider, apiKey, model)
 }
 
 // cleanLLMOutput strips conversational filler and markdown fences.

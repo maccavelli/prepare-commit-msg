@@ -19,6 +19,7 @@ const (
 	providerGemini = llmprovider.ProviderGemini
 	providerOpenAI = llmprovider.ProviderOpenAI
 	providerClaude = llmprovider.ProviderClaude
+	providerGrok   = llmprovider.ProviderGrok
 
 	// DiscoveryTimeout bounds model list API calls during configure.
 	DiscoveryTimeout = 45 * time.Second
@@ -168,6 +169,10 @@ func recommendedFallbacks(models []string, primary string) []string {
 func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOptions, in io.Reader) error {
 	reader := bufio.NewReader(in)
 	fmt.Println("--- prepare-commit-msg Setup ---")
+	store, err := config.NewOAuthStore()
+	if err != nil {
+		return fmt.Errorf("create OAuth store: %w", err)
+	}
 
 	defProvider := opts.Provider
 	if defProvider == "" {
@@ -175,8 +180,27 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 	}
 	existing := wizard.Result{Provider: defProvider}
 	if pc, ok := conf.Providers[defProvider]; ok {
-		existing.APIKey = pc.APIKey
 		existing.Model = pc.Model
+		if config.IsOAuth(pc) {
+			session, loadErr := store.Load(ctx, defProvider)
+			if loadErr != nil {
+				return fmt.Errorf("load existing OAuth session: %w", loadErr)
+			}
+			if session != nil {
+				existing.Kind = wizard.CredOAuth
+				existing.AccessToken = session.Access
+				existing.RefreshToken = session.Refresh
+				existing.TokenExpiry = session.Expiry
+				existing.Issuer = session.Issuer
+				existing.ClientID = session.ClientID
+				existing.AccountID = session.AccountID
+			}
+		} else {
+			existing.APIKey = pc.APIKey
+			if pc.APIKey != "" {
+				existing.Kind = wizard.CredAPIKey
+			}
+		}
 	}
 	if opts.Model != "" {
 		existing.Model = opts.Model
@@ -185,6 +209,7 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 	// Provider menu, key precedence, model discovery and fallback selection all
 	// live in mcplib now, so a provider added there appears here with no change
 	// to this file. TestSetup_OffersEveryDescriptor guards that.
+	orchestrated := false
 	res, err := wizard.ConfigureLLM(ctx, &wizard.TextPrompter{In: in, Out: os.Stdout}, wizard.Options{
 		Existing:      existing,
 		AllowEnv:      !opts.NoEnv,
@@ -192,6 +217,9 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 		Discover:      true,
 		DiscoverLimit: DiscoveryTimeout,
 		NeedFallbacks: true,
+		TokenStore:    store,
+		OpenURL:       openBrowser,
+		Orchestrated:  &orchestrated,
 	})
 	if err != nil {
 		return err
@@ -201,15 +229,25 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 	if !ok {
 		pc = config.ProviderConfig{}
 	}
-	if res.APIKey != "" {
-		pc.APIKey = res.APIKey
-	}
-	d, _ := llmprovider.DescriptorFor(res.Provider)
-	if d.RequiresAPIKey && strings.TrimSpace(pc.APIKey) == "" {
-		return fmt.Errorf("API key is required")
-	}
 	pc.Model = res.Model
 	pc.FallbackModels = res.Fallbacks
+	if res.Kind == wizard.CredOAuth {
+		pc.AuthKind = string(wizard.CredOAuth)
+		pc.APIKey = ""
+		if err := config.ValidateOAuth(ctx, res.Provider, pc, store); err != nil {
+			return err
+		}
+	} else {
+		pc.AuthKind = ""
+		pc.APIKey = res.APIKey
+		d, _ := llmprovider.DescriptorFor(res.Provider)
+		if d.RequiresAPIKey && strings.TrimSpace(pc.APIKey) == "" {
+			return fmt.Errorf("API key is required")
+		}
+		if err := store.Delete(ctx, res.Provider); err != nil {
+			return fmt.Errorf("delete stale OAuth session: %w", err)
+		}
+	}
 
 	if err := promptOperational(reader, conf, opts); err != nil {
 		return err
@@ -264,6 +302,7 @@ func runSetupNonInteractive(ctx context.Context, conf *config.Config, opts Setup
 		return fmt.Errorf("API key required: pass --api-key or set %s", envName)
 	}
 	pc.APIKey = apiKey
+	pc.AuthKind = ""
 
 	model := strings.TrimSpace(opts.Model)
 	if model == "" {

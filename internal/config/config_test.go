@@ -1,11 +1,15 @@
 package config
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/maccavelli/mcplib/llmprovider"
 )
 
 func isolateHome(t *testing.T) string {
@@ -52,6 +56,56 @@ func TestConfig_SaveAndLoad(t *testing.T) {
 	}
 	if loaded.TimeoutSeconds != DefaultTimeoutSeconds {
 		t.Errorf("expected default timeout %d, got %d", DefaultTimeoutSeconds, loaded.TimeoutSeconds)
+	}
+}
+
+func TestSave_OAuthKindDoesNotWriteTokens(t *testing.T) {
+	isolateHome(t)
+	conf := &Config{
+		ActiveProvider: llmprovider.ProviderOpenAI,
+		Providers: map[string]ProviderConfig{
+			llmprovider.ProviderOpenAI: {AuthKind: "oauth", Model: "gpt-5.4"},
+		},
+	}
+	if err := conf.Save(); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+	path, err := GetConfigPath()
+	if err != nil {
+		t.Fatalf("GetConfigPath() error = %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	for _, key := range [][]byte{[]byte(`"access_token"`), []byte(`"refresh_token"`)} {
+		if bytes.Contains(data, key) {
+			t.Fatalf("config contains OAuth token key %s:\n%s", key, data)
+		}
+	}
+}
+
+func TestSave_NonOAuthAuthKindIsOmitted(t *testing.T) {
+	isolateHome(t)
+	conf := &Config{
+		ActiveProvider: llmprovider.ProviderOpenAI,
+		Providers: map[string]ProviderConfig{
+			llmprovider.ProviderOpenAI: {AuthKind: "api_key", APIKey: "static-key", Model: "gpt-4.1-mini"},
+		},
+	}
+	if err := conf.Save(); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+	path, err := GetConfigPath()
+	if err != nil {
+		t.Fatalf("GetConfigPath() error = %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	if bytes.Contains(data, []byte(`"auth_kind": "api_key"`)) {
+		t.Fatalf("config persisted API-key auth kind:\n%s", data)
 	}
 }
 
@@ -136,6 +190,14 @@ func TestConfig_TemplateDefaults(t *testing.T) {
 	c := loaded.Providers["claude"]
 	if c.Model != "claude-haiku-4-5" {
 		t.Errorf("expected claude model 'claude-haiku-4-5', got %q", c.Model)
+	}
+}
+
+func TestApplyDefaults_IncludesGrok(t *testing.T) {
+	conf := &Config{}
+	ApplyDefaults(conf)
+	if _, ok := conf.Providers[llmprovider.ProviderGrok]; !ok {
+		t.Fatal("ApplyDefaults() omitted Grok")
 	}
 }
 
@@ -229,6 +291,41 @@ func TestValidateActive(t *testing.T) {
 	}
 	if err := ValidateActive("openai", ProviderConfig{Model: "m"}, "key"); err != nil {
 		t.Errorf("unexpected: %v", err)
+	}
+}
+
+func TestValidateActive_OAuthWithoutKeyOK(t *testing.T) {
+	store, err := llmprovider.NewFileTokenStore(t.TempDir())
+	if err != nil {
+		t.Fatalf("NewFileTokenStore() error = %v", err)
+	}
+	session := &llmprovider.OAuthSession{
+		Provider: llmprovider.ProviderOpenAI,
+		Access:   "access-token",
+		Issuer:   llmprovider.DefaultOpenAIIssuer,
+	}
+	if err := store.Save(context.Background(), llmprovider.ProviderOpenAI, session); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+	pc := ProviderConfig{AuthKind: "OAUTH", Model: "gpt-5.4"}
+	if !IsOAuth(pc) {
+		t.Fatal("IsOAuth() = false for case-insensitive OAuth auth kind")
+	}
+	if err := ValidateOAuth(context.Background(), llmprovider.ProviderOpenAI, pc, store); err != nil {
+		t.Fatalf("ValidateOAuth() error = %v", err)
+	}
+}
+
+func TestValidateActive_OAuthMissingSessionErrors(t *testing.T) {
+	store, err := llmprovider.NewFileTokenStore(t.TempDir())
+	if err != nil {
+		t.Fatalf("NewFileTokenStore() error = %v", err)
+	}
+	pc := ProviderConfig{AuthKind: "oauth", Model: "gpt-5.4"}
+	err = ValidateOAuth(context.Background(), llmprovider.ProviderOpenAI, pc, store)
+	want := `no OAuth session for provider "openai"; run 'prepare-commit-msg configure'`
+	if err == nil || err.Error() != want {
+		t.Fatalf("ValidateOAuth() error = %v, want %q", err, want)
 	}
 }
 
