@@ -211,7 +211,8 @@ git diff --check
 * `.gitignore`
 * `Makefile`
 * `scripts/bootstrap-tools.sh`
-* `scripts/go-precheck.sh`
+* `scripts/go-precheck.py` (originally `scripts/go-precheck.sh`; rewritten in
+  Python on 2026-09-14)
 * `scripts/verify-release.sh`
 * `scripts/verify-scripts.sh`
 
@@ -230,7 +231,7 @@ git diff --check
 5. Define `make verify` as the single full contract: pinned tools, module
    checks, format/import checks, lint, vet, race tests, coverage, vulnerability
    scan, script/workflow validation, and all six cross-builds.
-6. Implement `scripts/go-precheck.sh` so it accepts the changed filenames used
+6. Implement `scripts/go-precheck.py` so it accepts the changed filenames used
    by the external agent gate, exports the complete staged index into a clean
    temporary tree with `git checkout-index`, and runs format/import and lint
    checks there. Deleted files are ignored. The working tree must not mask the

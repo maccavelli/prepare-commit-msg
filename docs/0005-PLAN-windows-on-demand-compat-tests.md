@@ -62,8 +62,8 @@ promotes `golang.org/x/sys` to a direct test import. Do not upgrade it.
 * `.github/workflows/ci.yml` and any always-on CI job.
 * `make test` / `make coverage` / `make verify` membership.
 * Rewriting `scripts/install-hooks.sh`, `scripts/uninstall-hooks.sh`,
-  `scripts/test-hooks.sh`, `scripts/go-precheck.sh`, or other existing
-  bash into Python.
+  `scripts/test-hooks.sh`, or other existing bash into Python.
+  (`scripts/go-precheck.py` is already Python.)
 * Pointing `core.hooksPath` at `.githooks` alone (drops global
   `prepare-commit-msg.exe`).
 * `make install` Windows `.exe` destination.
@@ -151,10 +151,9 @@ on this host).
    * Shebang `#!/usr/bin/env python3`.
    * Keep the file executable (`100755`).
    * Run staged-Go gate first: if `shutil.which("make")`,
-     `make -C root verify-staged`; else if `scripts/go-precheck.sh`
-     exists and a `bash` executable exists, invoke that **existing**
-     script; else print a one-line warning that the staged gate could
-     not run. Non-zero from the staged gate fails the hook.
+     `make -C root verify-staged`; else run
+     `[sys.executable, "scripts/go-precheck.py"]` with `cwd=root` (no
+     bash). Non-zero from the staged gate fails the hook.
    * Then import/run the wincompat driver the same way as
      `python scripts/run_wincompat.py` (subprocess of
      `sys.executable` on that file, not a bash wrapper).
@@ -344,8 +343,8 @@ stop the Windows pre-commit trigger without reverting tests:
 
 * Always-on CI `-tags wincompat` on `windows-2025` — different machine;
   needs its own decision.
-* Rewriting 0003 bash (`install-hooks.sh`, `go-precheck.sh`,
-  `verify-scripts.sh` itself) into Python — owner rule applies to **new**
+* Rewriting 0003 bash (`install-hooks.sh`, `verify-scripts.sh` itself)
+  into Python (`go-precheck` is already `scripts/go-precheck.py`) — owner rule applies to **new**
   scripting in this pair, not a fleet-wide conversion.
 * `make install` writing `prepare-commit-msg.exe` — product change.
 * `syscall` → `golang.org/x/sys/windows` in `cmd_windows.go`.

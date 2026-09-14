@@ -25,7 +25,8 @@ Python, never bash** (and not PowerShell).
 
 The suite still must not join `make test`, `make verify`, or the CI
 `go-native` Windows job. Existing fleet bash (`install-hooks.sh`,
-`go-precheck.sh`, Makefile recipes) is not rewritten in this decision.
+Makefile recipes) is not rewritten in this decision. The staged-Go gate is
+already Python ([`scripts/go-precheck.py`](../scripts/go-precheck.py)).
 
 ### What was measured, not assumed
 
@@ -118,8 +119,8 @@ Measured on 2026-09-14 against worktree
     Python files would break `make verify`.
 11. **F11** — Existing `.githooks/pre-commit` is bash and calls `make
     verify-staged`. Native Windows has no `make` on PATH. Replacing that
-    file with Python is required; rewriting `install-hooks.sh` /
-    `go-precheck.sh` is not.
+    file with Python is required; rewriting `install-hooks.sh` is not.
+    The staged-Go gate `scripts/go-precheck.py` is already Python.
 
 ## Decision Drivers
 
@@ -187,9 +188,9 @@ Measured on 2026-09-14 against worktree
 9. **D9** — Replace [`.githooks/pre-commit`](../.githooks/pre-commit) with
    a Python 3 script (`#!/usr/bin/env python3`) that: (1) on all
    platforms, runs the existing staged-Go gate when it can (`make
-   verify-staged` if `make` exists; otherwise `scripts/go-precheck.sh`
-   via the already-present Git Bash only as an invocation of **existing**
-   0003 bash, not new bash); (2) on `win32` only, then runs
+   verify-staged` if `make` exists; otherwise `scripts/go-precheck.py`
+   run with `sys.executable`, so no bash is involved); (2) on `win32`
+   only, then runs
    `scripts/run_wincompat.py` and fails the commit on non-zero; (3) on
    Linux/macOS, skips (2) with one stderr line and does not re-exec
    Windows `go.exe`.
@@ -218,8 +219,8 @@ Measured on 2026-09-14 against worktree
 * Bad, because until `hooks-install` is run on this host, Git for Windows
   still uses only the global hooks directory. D10 is mandatory for the
   owner's stated trigger.
-* Bad, because invoking existing `go-precheck.sh` from Python may still
-  start Git Bash. That is composition with 0003, not new bash source.
+* Good, because the staged-Go gate `scripts/go-precheck.py` is Python, so
+  the hook runs it with `sys.executable` without starting Git Bash.
 
 ### Confirmation
 
@@ -311,10 +312,9 @@ path, D5 AppData path, D6 hook `.exe` soft-fail, D7 Windows apply.
 ### Open questions for the plan
 
 * Exact stderr skip text (must be one line, must mention Windows).
-* Whether `make verify-staged` on Windows (no `make`) should invoke Git
-  Bash `go-precheck.sh` or skip the staged gate with a warning. Prefer
-  invoke existing `go-precheck.sh` when `bash.exe` from Git for Windows
-  exists; if neither `make` nor that bash exists, fail closed on Windows
-  only for **wincompat**, and print a warning for the staged gate.
+* Whether the staged gate on Windows (no `make`) should always run
+  `scripts/go-precheck.py` directly. Prefer running it with
+  `sys.executable` whenever `make` is absent; it needs no bash, so the
+  staged gate never has to be skipped for a missing shell.
 * Python shebang `#!/usr/bin/env python3` vs `python` — use `python3`
   first with a fallback inside the hook if `env` cannot find it.

@@ -1,12 +1,14 @@
 MOD_VERSION := 1.26.6
 BINARY_NAME=prepare-commit-msg
 DIST_DIR=dist
-GIT_VERSION=$(shell git describe --tags --always --dirty 2>/dev/null)
+GIT_DESCRIBE_REDIRECT := $(if $(filter Windows_NT,$(OS)),,2>/dev/null)
+GIT_VERSION := $(shell git describe --tags --always --dirty $(GIT_DESCRIBE_REDIRECT))
 VERSION?=$(GIT_VERSION)
 TOOLS_BIN       := $(CURDIR)/.tools/bin
 GOLANGCI_LINT   ?= $(TOOLS_BIN)/golangci-lint
 GOVULNCHECK     ?= $(TOOLS_BIN)/govulncheck
 ACTIONLINT      ?= $(TOOLS_BIN)/actionlint
+PYTHON          ?= python3
 FLEET_LINT_CFG := .golangci.yml
 
 .PHONY: all build clean test coverage test-coverage run install version build-all \
@@ -94,12 +96,12 @@ vuln: tools ## Reports reachable vulnerabilities using the current Go database
 	$(GOVULNCHECK) ./...
 
 workflow-lint: tools ## Checks shell scripts and GitHub Actions workflows
-	ACTIONLINT=$(ACTIONLINT) ./scripts/verify-scripts.sh
+	ACTIONLINT=$(ACTIONLINT) PYTHON=$(PYTHON) ./scripts/verify-scripts.sh
 
 verify: tools mod-check fmt-check lint vet test coverage vuln workflow-lint build-all ## Runs the complete local and CI quality contract
 
 verify-staged: tools ## Checks the exact staged Go snapshot
-	./scripts/go-precheck.sh
+	$(PYTHON) scripts/go-precheck.py
 
 hooks-install: ## Installs composable repository-local Git hook wrappers
 	./scripts/install-hooks.sh

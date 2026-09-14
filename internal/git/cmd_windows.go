@@ -13,6 +13,7 @@ import (
 const createNoWindow = 0x08000000
 
 func newGitCmdContext(ctx context.Context, name string, args ...string) *exec.Cmd {
+	//nolint:gosec // G204: git binary name and args are constructed by trusted callers.
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		HideWindow:    true,
