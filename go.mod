@@ -2,9 +2,6 @@ module github.com/maccavelli/prepare-commit-msg
 
 go 1.26.6
 
-// TODO: drop after mcplib tag carrying Phases 1–9
-replace github.com/maccavelli/mcplib => ../mcplib
-
 require (
 	github.com/google/jsonschema-go v0.4.3 // indirect
 	github.com/modelcontextprotocol/go-sdk v1.6.1 // indirect
@@ -17,6 +14,6 @@ require (
 )
 
 require (
-	github.com/maccavelli/mcplib v1.4.1
+	github.com/maccavelli/mcplib v1.5.0
 	golang.org/x/sys v0.47.0 // indirect
 )
