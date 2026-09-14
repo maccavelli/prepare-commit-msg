@@ -4,32 +4,53 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/maccavelli/prepare-commit-msg/internal/config"
 )
 
 func TestMain_RunConfigure(t *testing.T) {
+	testConfigRoot := t.TempDir()
+	t.Setenv("HOME", testConfigRoot)
+	t.Setenv("USERPROFILE", testConfigRoot)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(testConfigRoot, ".config"))
+	t.Setenv("APPDATA", filepath.Join(testConfigRoot, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(testConfigRoot, "AppData", "Local"))
+
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
-	os.Args = []string{"prepare-commit-msg", "configure", "--yes", "--provider=gemini", "--model=test"}
+	os.Args = []string{
+		"prepare-commit-msg", "configure", "--yes", "--provider=gemini",
+		"--model=test", "--api-key=test-key",
+	}
 
-	var exitCode = -1
 	oldExit := osExit
 	defer func() { osExit = oldExit }()
 	osExit = func(code int) {
-		exitCode = code
-		panic("osExit")
+		t.Fatalf("configure unexpectedly called osExit(%d)", code)
 	}
-
-	defer func() {
-		_ = recover()
-	}()
 
 	main()
 
-	if exitCode != -1 {
-		t.Errorf("expected configure to not exit with error, got %d", exitCode)
+	configPath, err := config.GetConfigPath()
+	if err != nil {
+		t.Fatalf("GetConfigPath() error = %v", err)
+	}
+	rel, err := filepath.Rel(testConfigRoot, configPath)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		t.Fatalf("config path %q is outside isolated root", configPath)
+	}
+	if _, err := os.Stat(configPath); err != nil {
+		t.Fatalf("isolated config was not written: %v", err)
+	}
+	conf, err := config.Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	pc := conf.Providers["gemini"]
+	if conf.ActiveProvider != "gemini" || pc.Model != "test" || pc.APIKey != "test-key" {
+		t.Fatalf("isolated config = provider %q, model %q, key match %t", conf.ActiveProvider, pc.Model, pc.APIKey == "test-key")
 	}
 }
 
