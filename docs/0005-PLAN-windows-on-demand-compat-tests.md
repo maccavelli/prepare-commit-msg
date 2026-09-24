@@ -75,7 +75,7 @@ promotes `golang.org/x/sys` to a direct test import. Do not upgrade it.
 Every phase ends with **all** of:
 
 ```text
-cmd.exe /C "cd /d C:\Users\macsm\gitrepos\prepare-commit-msg && go test ./... -count=1"
+cmd.exe /C "cd /d C:\Users\<user>\gitrepos\prepare-commit-msg && go test ./... -count=1"
 python3 scripts/run_wincompat.py --self-test
 git diff --check
 ```
@@ -86,7 +86,7 @@ From P1 onward, additionally:
 # WSL skip (must be exit 0):
 python3 scripts/run_wincompat.py
 # Native run (must exercise go test -tags wincompat):
-cmd.exe /C "cd /d C:\Users\macsm\gitrepos\prepare-commit-msg && python scripts\run_wincompat.py"
+cmd.exe /C "cd /d C:\Users\<user>\gitrepos\prepare-commit-msg && python scripts\run_wincompat.py"
 ```
 
 Do not `git push`. Do not create tags. Commit locally once per phase, with
@@ -170,11 +170,11 @@ on this host).
 **Verification:**
 
 ```text
-cmd.exe /C "cd /d C:\Users\macsm\gitrepos\prepare-commit-msg && go test ./... -count=1"
+cmd.exe /C "cd /d C:\Users\<user>\gitrepos\prepare-commit-msg && go test ./... -count=1"
 python3 scripts/run_wincompat.py --self-test
 python3 scripts/run_wincompat.py
 # expect skip, exit 0
-cmd.exe /C "cd /d C:\Users\macsm\gitrepos\prepare-commit-msg && python scripts\run_wincompat.py"
+cmd.exe /C "cd /d C:\Users\<user>\gitrepos\prepare-commit-msg && python scripts\run_wincompat.py"
 # expect go test -tags wincompat (guard only in P1)
 python3 -m py_compile scripts/run_wincompat.py .githooks/pre-commit
 ./scripts/verify-scripts.sh

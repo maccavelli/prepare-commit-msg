@@ -16,7 +16,7 @@ Investigation revealed three distinct issues in the current CI/CD configuration:
 2. **Invalid Action Reference**: [`.github/workflows/release.yml`](../.github/workflows/release.yml#L78) referenced a non-existent commit SHA (`1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.1.0`) for `actions/attest-build-provenance`, causing GitHub Actions runner setup to fail immediately (Run [`33329311164`](https://github.com/maccavelli/prepare-commit-msg/actions/runs/33329311164)).
 3. **Over-Engineered Staging Scheme**: The workflow attempted multi-step draft creation, verification, and editing (`gh release create --draft` followed by `gh release edit --draft=false`) rather than publishing directly to GitHub Releases upon successful build.
 
-The maintainer directed adopting the established, proven CI/CD architecture from [`magic-cli-remote`](/Users/saxsmith/gitrepos/go/magic-cli-remote/.github/workflows/ci.yml) as the baseline for `prepare-commit-msg`.
+The maintainer directed adopting the established, proven CI/CD architecture from [`magic-cli-remote`](/Users/<user>/gitrepos/go/magic-cli-remote/.github/workflows/ci.yml) as the baseline for `prepare-commit-msg`.
 
 ## Decision Drivers
 

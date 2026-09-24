@@ -31,8 +31,8 @@ already Python ([`scripts/go-precheck.py`](../scripts/go-precheck.py)).
 ### What was measured, not assumed
 
 Measured on 2026-09-14 against worktree
-`C:\Users\macsm\gitrepos\prepare-commit-msg` (WSL path
-`/mnt/c/Users/macsm/gitrepos/prepare-commit-msg`).
+`C:\Users\<user>\gitrepos\prepare-commit-msg` (WSL path
+`/mnt/c/Users/<user>/gitrepos/prepare-commit-msg`).
 
 **Host and toolchain**
 
@@ -44,9 +44,9 @@ Measured on 2026-09-14 against worktree
 * Native Git is Git for Windows `2.53.0.windows.2` at
   `C:\Program Files\Git\cmd\git.exe`.
 * Native `make` is not on PATH. `mingw32-make.exe` exists at
-  `C:\Users\macsm\toolchains\mingw64\bin\mingw32-make.exe`.
+  `C:\Users\<user>\toolchains\mingw64\bin\mingw32-make.exe`.
 * Real native Python is
-  `C:\Users\macsm\AppData\Local\Python\pythoncore-3.14-64\python.exe`
+  `C:\Users\<user>\AppData\Local\Python\pythoncore-3.14-64\python.exe`
   **3.14.3**, `sys.platform=win32`. Git Bash `command -v python3` lists
   `WindowsApps` first, but `python -c` resolved to the 3.14 core
   (`sys.executable` was the `pythoncore-3.14-64` binary).
@@ -58,7 +58,7 @@ Measured on 2026-09-14 against worktree
   `http.sslBackend=schannel`. Global config overrides `core.autocrlf=false`.
 * System `core.longpaths` is `true`. Registry `LongPathsEnabled` is `0x1`.
 * Native Git **global** `core.hooksPath` is
-  `C:/Users/macsm/.global-git-hooks` (contains `prepare-commit-msg.exe` and
+  `C:/Users/<user>/.global-git-hooks` (contains `prepare-commit-msg.exe` and
   `pre-push` / `post-*`). Native Git **local** `core.hooksPath` for this
   repo is **unset**. Effective hook dir is therefore the **global**
   directory, not `.githooks/` and not `.git/hooks`.
@@ -143,7 +143,7 @@ Measured on 2026-09-14 against worktree
 * **B** — Keep a manual `go test -tags wincompat` command only (the
   2026-09-14 morning draft). Rejected: the owner required a pre-commit.
 * **C** — Put the suite in the **global** `pre-commit` under
-  `C:/Users/macsm/.global-git-hooks`. Rejected: that would run for every
+  `C:/Users/<user>/.global-git-hooks`. Rejected: that would run for every
   repository on the machine.
 * **D** — New bash/PowerShell drivers plus a bash one-liner in
   `.githooks/pre-commit`. Rejected: the owner forbade new bash.
@@ -226,11 +226,11 @@ Measured on 2026-09-14 against worktree
 
 ```text
 # Default gate unchanged (native Windows).
-cmd.exe /C "cd /d C:\Users\macsm\gitrepos\prepare-commit-msg && go test ./... -count=1"
+cmd.exe /C "cd /d C:\Users\<user>\gitrepos\prepare-commit-msg && go test ./... -count=1"
 # Expected: five packages ok; no wincompat tests.
 
 # Python driver on Windows runs the tagged suite.
-cmd.exe /C "cd /d C:\Users\macsm\gitrepos\prepare-commit-msg && python scripts\run_wincompat.py"
+cmd.exe /C "cd /d C:\Users\<user>\gitrepos\prepare-commit-msg && python scripts\run_wincompat.py"
 # Expected: extra Windows tests run; required cases do not skip on this host.
 
 # Python driver on WSL skips.
@@ -292,7 +292,7 @@ path, D5 AppData path, D6 hook `.exe` soft-fail, D7 Windows apply.
 | Native tests pass on windows/amd64 | `cmd.exe /C "go test ./... -count=1"` 2026-09-14 |
 | `newGitCmdContext` 100% statements, no flag assert | native `go tool cover -func`; `rg SysProcAttr` only in `cmd_windows.go` |
 | CI Windows job is untagged `go test ./...` | `.github/workflows/ci.yml` `go-native` |
-| Native local hooksPath unset; global is `C:/Users/macsm/.global-git-hooks` | `git config --local/--global --get core.hooksPath` via `cmd.exe` |
+| Native local hooksPath unset; global is `C:/Users/<user>/.global-git-hooks` | `git config --local/--global --get core.hooksPath` via `cmd.exe` |
 | WSL Git effective hooks are `.git/hooks` | `git rev-parse --git-path hooks` in WSL |
 | `.githooks/pre-commit` is bash `make verify-staged` | `.githooks/pre-commit` |
 | `install-hooks.sh` sets local managed `core.hooksPath` | `scripts/install-hooks.sh` last lines |
