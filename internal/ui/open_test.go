@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -19,31 +18,26 @@ func TestOpenBrowserDefault_CommandResult(t *testing.T) {
 		commandName = "open"
 	}
 
-	for _, test := range []struct {
-		name     string
-		exitCode int
-		wantErr  bool
-	}{
-		{name: "success", exitCode: 0},
-		{name: "failure", exitCode: 9, wantErr: true},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			dir := t.TempDir()
-			commandPath := filepath.Join(dir, commandName)
-			script := fmt.Sprintf("#!/bin/sh\nexit %d\n", test.exitCode)
-			if err := os.WriteFile(commandPath, []byte(script), 0o700); err != nil {
-				t.Fatalf("write command fixture: %v", err)
-			}
-			t.Setenv("PATH", dir)
+	dir := t.TempDir()
+	commandPath := filepath.Join(dir, commandName)
+	if err := os.WriteFile(commandPath, []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
+		t.Fatalf("write command fixture: %v", err)
+	}
+	t.Setenv("PATH", dir)
 
-			err := openBrowserDefault("https://example.invalid/authorize")
-			if test.wantErr && (err == nil || !strings.Contains(err.Error(), "open browser")) {
-				t.Fatalf("openBrowserDefault() error = %v, want open-browser error", err)
-			}
-			if !test.wantErr && err != nil {
-				t.Fatalf("openBrowserDefault() error = %v", err)
-			}
-		})
+	if err := openBrowserDefault("https://example.invalid/authorize"); err != nil {
+		t.Fatalf("openBrowserDefault() error = %v", err)
+	}
+}
+
+func TestOpenBrowserDefault_StartFailure(t *testing.T) {
+	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
+		t.Skip("test command fixture covers the Unix browser launchers")
+	}
+	t.Setenv("PATH", t.TempDir())
+	err := openBrowserDefault("https://example.invalid/authorize")
+	if err == nil || !strings.Contains(err.Error(), "open browser") {
+		t.Fatalf("openBrowserDefault() error = %v, want open-browser error", err)
 	}
 }
 

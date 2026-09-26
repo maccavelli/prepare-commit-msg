@@ -29,9 +29,10 @@ func openBrowserDefault(rawURL string) error {
 	default:
 		return fmt.Errorf("opening a browser is not supported on %s", runtime.GOOS)
 	}
-	if _, err := command.CombinedOutput(); err != nil {
+	if err := command.Start(); err != nil {
 		return fmt.Errorf("open browser: %w", err)
 	}
+	go func() { _ = command.Wait() }()
 	return nil
 }
 

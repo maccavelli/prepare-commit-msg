@@ -308,7 +308,7 @@ func runSetupNonInteractive(ctx context.Context, conf *config.Config, opts Setup
 	if model == "" {
 		models := discoverModels(ctx, provider, apiKey)
 		if len(models) == 0 {
-			models = defaultModels(provider)
+			return fmt.Errorf("no live models listed for %s; pass --model", provider)
 		}
 		model = models[0]
 		if len(opts.Fallbacks) == 0 {
@@ -319,11 +319,9 @@ func runSetupNonInteractive(ctx context.Context, conf *config.Config, opts Setup
 
 	if len(opts.Fallbacks) > 0 {
 		pc.FallbackModels = config.ClampFallbacks(opts.Fallbacks)
+	} else if len(pc.FallbackModels) == 0 {
+		pc.FallbackModels = config.ClampFallbacks(recommendedFallbacks(discoverModels(ctx, provider, apiKey), model))
 	} else {
-		// Keep existing fallbacks if any; otherwise recommend from static list.
-		if len(pc.FallbackModels) == 0 {
-			pc.FallbackModels = recommendedFallbacks(defaultModels(provider), model)
-		}
 		pc.FallbackModels = config.ClampFallbacks(pc.FallbackModels)
 	}
 
