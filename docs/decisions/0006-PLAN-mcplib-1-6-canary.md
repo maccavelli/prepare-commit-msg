@@ -289,7 +289,10 @@ Only after S6 passes:
   * The red check (`make lint` on `HEAD`) had failed as recorded in
     Appendix A.
   * `make verify` passed in the repository, with mcplib `v1.5.0`.
-  * **Pending:** the push, and CI on it.
+  * **Pushed** with `800bf0e`, `dc79464` and `3106f7d` (`4b5dab4..3106f7d`).
+    The pre-push `make verify` passed.
+  * **CI** run `36463370832` on `3106f7d` passed: `Go (test; build on tag)`,
+    and Native Tests on Linux, macOS and Windows. `main` is green again.
 
 ## Appendix A — Proof record (2026-09-28)
 
