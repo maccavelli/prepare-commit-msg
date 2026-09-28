@@ -293,6 +293,13 @@ Only after S6 passes:
     * `make verify` passes;
     * B.S1 is unchanged, byte for byte.
   * **Code:** unchanged.
+* **2026-09-28: S4 and S5 were executed by the owner.**
+  * **Found:** the owner pushed `main` (S4) and the tag `v1.4.0` (S5). The
+    tag is annotated, on `9f5a796`, with the message `v1.4.0`, not
+    `prepare-commit-msg v1.4.0` as S5 step 1 wrote it.
+  * **Decision:** keep the tag. The release is immutable and verified, and
+    nothing reads the tag's message.
+  * **Scope:** unchanged.
 
 ## 10. Execution record
 
@@ -333,7 +340,33 @@ Only after S6 passes:
      `main.go`, `main_oauth_test.go`, and in `internal/config/` and
      `internal/ui/`, `config.go`, `config_test.go`, `setup.go` and
      `setup_test.go`.
-  * **Pending:** S4, the push and CI.
+* **S4**, executed by the owner (§9):
+  * `main` pushed to `9f5a796`, which was then level with `origin/main`.
+  * **CI** run `36465235684` on `9f5a796` passed: `Go (test; build on tag)`,
+    and Native Tests on Linux, macOS and Windows. `Publish GitHub Release`
+    was skipped, as it is on a branch.
+* **S5**, executed by the owner (§9):
+  * annotated tag `v1.4.0` on `9f5a796`;
+  * release run `36476589024` passed every job, including
+    `Publish GitHub Release / publish`;
+  * the release was published `2026-09-28T20:05:32Z`. It is immutable, not a
+    draft or prerelease, and is the latest release. It has six binaries and
+    `SHA256SUMS`;
+  * `gh release verify v1.4.0` exit 0: "Release v1.4.0 verified!";
+  * **Not done:** step 3, the release-note additions. The notes are the
+    generated changelog link only. The additions are drafted and wait for
+    the owner's ask, because editing them changes a public page.
+* **S6**, the four canary checks, run by the owner, who reported all four
+  passing. Their outputs were not captured here. Observed afterwards:
+  1. **macOS:** `~/.global-git-hooks/prepare-commit-msg version` reports
+     `prepare-commit-msg version 1.4.0 (release)`.
+  2. **Windows laptop:** the hook binary reports
+     `prepare-commit-msg version 1.4.0 (release)`. Before S5 it was a local
+     build. The laptop's mcplib `TestNativeReplaceRunningCopy` failure did
+     not recur as a failed update.
+  3. **Gemini** and 4. **Codex CLI login:** reported passing by the owner,
+     including the unchanged Codex `auth.json` checksum.
+  * **Pending:** S7, the promotion, needs the owner's decision and ask.
 
 ## Appendix A — Proof record (2026-09-28)
 
