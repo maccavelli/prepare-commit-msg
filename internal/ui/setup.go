@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -26,6 +27,10 @@ const (
 )
 
 var osGetenv = os.Getenv
+
+// listingClient carries configure's live model listing. Nil uses mcplib's
+// default client; tests set one that never reaches the network.
+var listingClient *http.Client
 
 // SetupOptions holds non-interactive / flag-driven configure settings.
 // Zero values mean "unset" and interactive mode will prompt (unless Yes is set).
@@ -137,7 +142,11 @@ func promptOperational(reader *bufio.Reader, conf *config.Config, opts SetupOpti
 func discoverModels(ctx context.Context, provider, apiKey string) []string {
 	dCtx, cancel := context.WithTimeout(ctx, DiscoveryTimeout)
 	defer cancel()
-	models, err := llmprovider.ListAvailableModels(dCtx, provider, apiKey)
+	var opts []llmprovider.ProviderOption
+	if listingClient != nil {
+		opts = append(opts, llmprovider.WithHTTPClient(listingClient))
+	}
+	models, err := llmprovider.ListAvailableModels(dCtx, provider, apiKey, opts...)
 	if err != nil {
 		return nil
 	}
@@ -216,6 +225,7 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 		LookupEnv:     osGetenv,
 		Discover:      true,
 		DiscoverLimit: DiscoveryTimeout,
+		HTTPClient:    listingClient,
 		NeedFallbacks: true,
 		TokenStore:    store,
 		OpenURL:       openBrowser,
@@ -231,13 +241,27 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 	}
 	pc.Model = res.Model
 	pc.FallbackModels = res.Fallbacks
-	if res.Kind == wizard.CredOAuth {
+	pc.VendorAuthPath = ""
+	switch res.Kind {
+	case wizard.CredOAuth:
 		pc.AuthKind = string(wizard.CredOAuth)
 		pc.APIKey = ""
 		if err := config.ValidateOAuth(ctx, res.Provider, pc, store); err != nil {
 			return err
 		}
-	} else {
+	case wizard.CredVendorCLI:
+		pc.AuthKind = config.AuthKindVendorCLI
+		pc.APIKey = ""
+		pc.VendorAuthPath = res.VendorAuthPath
+		if err := config.ValidateVendorCLI(res.Provider, pc); err != nil {
+			return err
+		}
+		// A session an older release copied from the CLI shares the CLI's
+		// refresh token; drop it so it is never refreshed again.
+		if err := store.Delete(ctx, res.Provider); err != nil {
+			return fmt.Errorf("delete stale OAuth session: %w", err)
+		}
+	default:
 		pc.AuthKind = ""
 		pc.APIKey = res.APIKey
 		d, _ := llmprovider.DescriptorFor(res.Provider)
@@ -303,6 +327,7 @@ func runSetupNonInteractive(ctx context.Context, conf *config.Config, opts Setup
 	}
 	pc.APIKey = apiKey
 	pc.AuthKind = ""
+	pc.VendorAuthPath = ""
 
 	model := strings.TrimSpace(opts.Model)
 	if model == "" {

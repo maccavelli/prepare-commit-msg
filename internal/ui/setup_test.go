@@ -4,10 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/maccavelli/mcplib/llmprovider"
@@ -15,13 +18,27 @@ import (
 	"github.com/maccavelli/prepare-commit-msg/internal/config"
 )
 
-func isolate(t *testing.T) {
+// offlineTransport fails every request, so configure's unit tests never
+// reach a live listing endpoint; requests counts the attempts.
+type offlineTransport struct{ requests atomic.Int32 }
+
+func (o *offlineTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	o.requests.Add(1)
+	return nil, errors.New("offline: unit tests make no network calls")
+}
+
+func isolate(t *testing.T) *offlineTransport {
 	t.Helper()
+	offline := &offlineTransport{}
+	previous := listingClient
+	listingClient = &http.Client{Transport: offline}
+	t.Cleanup(func() { listingClient = previous })
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 	t.Setenv("USERPROFILE", tmp)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmp, ".config"))
 	t.Setenv("AppData", filepath.Join(tmp, "AppData", "Roaming"))
+	return offline
 }
 
 func TestRunSetupInteractive_Success(t *testing.T) {
@@ -41,11 +58,12 @@ func TestRunSetupInteractive_Success(t *testing.T) {
 
 	// 1: gemini
 	// y: use env key
-	// Static gemini catalog has 6 models → 7 is Other
-	// Enter custom model
-	// fallbacks: enter = recommended
+	// search: enter; the listing is offline, so the menu is the built-in
+	// catalog: 6 models, then 7 Other
+	// 7, then the custom model id
+	// fallbacks: enter to search, enter for none
 	// operational: all enter (defaults)
-	input := "1\ny\n7\nmy-custom-model\n\n\n\n\n\n"
+	input := "1\ny\n\n7\nmy-custom-model\n\n\n\n\n\n\n"
 	r := strings.NewReader(input)
 
 	if err := runSetupInteractive(context.Background(), conf, SetupOptions{}, r); err != nil {
@@ -62,6 +80,42 @@ func TestRunSetupInteractive_Success(t *testing.T) {
 	}
 	if conf.TimeoutSeconds != config.DefaultTimeoutSeconds {
 		t.Errorf("timeout defaults: %d", conf.TimeoutSeconds)
+	}
+}
+
+// TestRunSetupInteractive_ListingUsesInjectedClient: configure's live model
+// listing goes through listingClient, so tests can keep it offline.
+func TestRunSetupInteractive_ListingUsesInjectedClient(t *testing.T) {
+	offline := isolate(t)
+
+	conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
+	config.ApplyDefaults(conf)
+
+	oldEnv := osGetenv
+	defer func() { osGetenv = oldEnv }()
+	osGetenv = func(k string) string {
+		if k == "GEMINI_API_KEY" {
+			return "test-key"
+		}
+		return ""
+	}
+
+	input := "1\ny\n\n1\n\n\n\n\n\n\n"
+	if err := runSetupInteractive(context.Background(), conf, SetupOptions{}, strings.NewReader(input)); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if offline.requests.Load() == 0 {
+		t.Fatal("configure listed models without the injected client")
+	}
+}
+
+// TestDiscoverModels_UsesInjectedClient: the non-interactive listing goes
+// through listingClient too.
+func TestDiscoverModels_UsesInjectedClient(t *testing.T) {
+	offline := isolate(t)
+	discoverModels(context.Background(), providerGemini, "test-key")
+	if offline.requests.Load() == 0 {
+		t.Fatal("discoverModels listed models without the injected client")
 	}
 }
 
@@ -176,49 +230,57 @@ const openAIAuthFixture = `{
   }
 }`
 
-func TestRunSetupInteractive_ImportGrokSession(t *testing.T) {
+// TestRunSetupInteractive_GrokCLILoginReadsThrough: choosing the Grok CLI
+// login saves only the path to its auth file. No token is copied, and a
+// session an older release copied from the CLI is removed, so it is never
+// refreshed against the CLI's own (mcplib MADR 0012 §5.1).
+func TestRunSetupInteractive_GrokCLILoginReadsThrough(t *testing.T) {
 	isolate(t)
 	vendorHome := t.TempDir()
 	t.Setenv("GROK_HOME", vendorHome)
-	if err := os.WriteFile(filepath.Join(vendorHome, "auth.json"), []byte(grokAuthFixture), 0o600); err != nil {
+	authPath := filepath.Join(vendorHome, "auth.json")
+	if err := os.WriteFile(authPath, []byte(grokAuthFixture), 0o600); err != nil {
 		t.Fatalf("write Grok fixture: %v", err)
 	}
 	originalEnv := osGetenv
 	osGetenv = os.Getenv
 	t.Cleanup(func() { osGetenv = originalEnv })
 
+	store, err := config.NewOAuthStore()
+	if err != nil {
+		t.Fatalf("NewOAuthStore() error = %v", err)
+	}
+	stale := &llmprovider.OAuthSession{Provider: llmprovider.ProviderGrok, Access: "copied-by-an-older-release"}
+	if err := store.Save(context.Background(), llmprovider.ProviderGrok, stale); err != nil {
+		t.Fatalf("save stale session: %v", err)
+	}
+
 	conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
 	config.ApplyDefaults(conf)
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	input := "4\n5\ny\n1\n\n\n\n\n\n"
-	if err := runSetupInteractive(ctx, conf, SetupOptions{}, strings.NewReader(input)); err != nil {
+	input := "4\n5\ny\n\n1\n\n\n\n\n\n\n"
+	if err := runSetupInteractive(context.Background(), conf, SetupOptions{}, strings.NewReader(input)); err != nil {
 		t.Fatalf("runSetupInteractive() error = %v", err)
 	}
 	pc := conf.Providers[llmprovider.ProviderGrok]
-	if pc.AuthKind != "oauth" || pc.APIKey != "" {
-		t.Fatalf("Grok auth kind/key = %q/%q", pc.AuthKind, pc.APIKey)
+	if pc.AuthKind != "vendor_cli" || pc.APIKey != "" {
+		t.Fatalf("Grok auth kind/key = %q/%q, want vendor_cli and no key", pc.AuthKind, pc.APIKey)
 	}
-	oauthDir, err := config.OAuthDir()
-	if err != nil {
-		t.Fatalf("OAuthDir() error = %v", err)
-	}
-	tokenPath := filepath.Join(oauthDir, llmprovider.ProviderGrok+".json")
-	info, err := os.Stat(tokenPath)
-	if err != nil {
-		t.Fatalf("stat Grok OAuth session: %v", err)
-	}
-	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
-		t.Fatalf("Grok OAuth mode = %04o, want 0600", info.Mode().Perm())
+	assertSavedVendorPath(t, llmprovider.ProviderGrok, authPath)
+	if session, loadErr := store.Load(context.Background(), llmprovider.ProviderGrok); loadErr != nil || session != nil {
+		t.Fatalf("stored Grok session = %+v, %v; want none", session, loadErr)
 	}
 	assertConfigOmitsOAuthTokens(t)
 }
 
-func TestRunSetupInteractive_ChatGPTDoesNotCopyAccessIntoAPIKey(t *testing.T) {
+// TestRunSetupInteractive_CodexCLILoginReadsThrough: choosing the Codex CLI
+// login saves only the path to its auth file; neither its access token nor
+// its OPENAI_API_KEY becomes the configured API key.
+func TestRunSetupInteractive_CodexCLILoginReadsThrough(t *testing.T) {
 	isolate(t)
 	vendorHome := t.TempDir()
 	t.Setenv("CODEX_HOME", vendorHome)
-	if err := os.WriteFile(filepath.Join(vendorHome, "auth.json"), []byte(openAIAuthFixture), 0o600); err != nil {
+	authPath := filepath.Join(vendorHome, "auth.json")
+	if err := os.WriteFile(authPath, []byte(openAIAuthFixture), 0o600); err != nil {
 		t.Fatalf("write OpenAI fixture: %v", err)
 	}
 	originalEnv := osGetenv
@@ -227,15 +289,41 @@ func TestRunSetupInteractive_ChatGPTDoesNotCopyAccessIntoAPIKey(t *testing.T) {
 
 	conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
 	config.ApplyDefaults(conf)
-	input := "2\n5\ny\n1\n\n\n\n\n\n"
+	input := "2\n5\ny\ngpt-5.4\n\n\n\n\n\n\n"
 	if err := runSetupInteractive(context.Background(), conf, SetupOptions{}, strings.NewReader(input)); err != nil {
 		t.Fatalf("runSetupInteractive() error = %v", err)
 	}
 	pc := conf.Providers[llmprovider.ProviderOpenAI]
-	if pc.AuthKind != "oauth" || pc.APIKey != "" {
-		t.Fatalf("OpenAI auth kind/key = %q/%q", pc.AuthKind, pc.APIKey)
+	if pc.AuthKind != "vendor_cli" || pc.APIKey != "" {
+		t.Fatalf("OpenAI auth kind/key = %q/%q, want vendor_cli and no key", pc.AuthKind, pc.APIKey)
 	}
+	assertSavedVendorPath(t, llmprovider.ProviderOpenAI, authPath)
 	assertConfigOmitsOAuthTokens(t)
+}
+
+// assertSavedVendorPath reads the saved configuration file and checks the
+// provider's vendor_auth_path.
+func assertSavedVendorPath(t *testing.T, provider, want string) {
+	t.Helper()
+	path, err := config.GetConfigPath()
+	if err != nil {
+		t.Fatalf("GetConfigPath() error = %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read config: %v", err)
+	}
+	var saved struct {
+		Providers map[string]struct {
+			VendorAuthPath string `json:"vendor_auth_path"`
+		} `json:"providers"`
+	}
+	if err := json.Unmarshal(data, &saved); err != nil {
+		t.Fatalf("decode config: %v", err)
+	}
+	if got := saved.Providers[provider].VendorAuthPath; got != want {
+		t.Fatalf("saved %s vendor_auth_path = %q, want %q", provider, got, want)
+	}
 }
 
 func assertConfigOmitsOAuthTokens(t *testing.T) {

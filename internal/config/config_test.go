@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -440,5 +441,26 @@ func TestFallbackModels(t *testing.T) {
 	pc := c.Providers["openai"]
 	if len(pc.FallbackModels) != 1 || pc.FallbackModels[0] != "gpt-4o-mini" {
 		t.Errorf("expected 1 fallback model 'gpt-4o-mini', got %v", pc.FallbackModels)
+	}
+}
+
+// TestApplyDefaults_KeepsVendorCLILogin: a vendor CLI login, and the path to
+// its auth file, survive ApplyDefaults and the JSON round trip.
+func TestApplyDefaults_KeepsVendorCLILogin(t *testing.T) {
+	raw := `{"active_provider":"grok","providers":{"grok":{"auth_kind":"vendor_cli",` +
+		`"vendor_auth_path":"/x/grok/auth.json","model":"grok-4.6"}}}`
+	var c Config
+	if err := json.Unmarshal([]byte(raw), &c); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	ApplyDefaults(&c)
+	out, err := json.Marshal(c.Providers["grok"])
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	for _, want := range []string{`"auth_kind":"vendor_cli"`, `"vendor_auth_path":"/x/grok/auth.json"`} {
+		if !bytes.Contains(out, []byte(want)) {
+			t.Errorf("grok config = %s, want %s", out, want)
+		}
 	}
 }

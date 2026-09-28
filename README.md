@@ -198,6 +198,12 @@ main configuration in its private `oauth/` directory; access and refresh tokens
 are never copied into `config.json`. Non-interactive `configure --yes` remains
 API-key-only.
 
+Choosing **Use the Codex CLI login** or **Use the Grok CLI login** stores only
+the path to that CLI's `auth.json` (`vendor_auth_path` in `config.json`). The
+file is read on every run and never refreshed here: the CLI keeps its own
+login current. When it expires, sign in again with the CLI; there is no need
+to re-run `configure`.
+
 ---
 
 ### Non-Interactive CLI Flags

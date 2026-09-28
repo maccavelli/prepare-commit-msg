@@ -269,6 +269,10 @@ func runAnalyzer(file string, conf *config.Config, info *git.Info) error {
 		if err := config.ValidateOAuth(ctx, conf.ActiveProvider, pc, store); err != nil {
 			return err
 		}
+	} else if config.IsVendorCLI(pc) {
+		if err := config.ValidateVendorCLI(conf.ActiveProvider, pc); err != nil {
+			return err
+		}
 	} else {
 		apiKey := config.ResolveAPIKey(pc, conf.ActiveProvider, true, osGetenv)
 		if err := config.ValidateActive(conf.ActiveProvider, pc, apiKey); err != nil {
@@ -332,6 +336,12 @@ func newActiveProvider(conf *config.Config, pc config.ProviderConfig, model stri
 		}
 		session.Store = store
 		return newProviderWithSource(conf.ActiveProvider, session, model)
+	}
+	if config.IsVendorCLI(pc) {
+		// The CLI's auth file is read on every request and never refreshed here,
+		// so the CLI keeps its refresh token (mcplib MADR 0012 §5.1).
+		source := &llmprovider.VendorCLISession{Provider: conf.ActiveProvider, Path: pc.VendorAuthPath}
+		return newProviderWithSource(conf.ActiveProvider, source, model)
 	}
 	apiKey := config.ResolveAPIKey(pc, conf.ActiveProvider, true, osGetenv)
 	if err := config.ValidateActive(conf.ActiveProvider, pc, apiKey); err != nil {

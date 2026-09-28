@@ -44,10 +44,19 @@ type Config struct {
 	RetryDelaySeconds int `json:"retry_delay_seconds"`
 }
 
+// AuthKindVendorCLI selects a vendor CLI's own login (Codex or Grok), read in
+// place through llmprovider.VendorCLISession (mcplib MADR 0012 §5.1).
+const AuthKindVendorCLI = "vendor_cli"
+
 // ProviderConfig stores credentials and model selection for a single LLM provider.
 type ProviderConfig struct {
-	// AuthKind is empty for legacy/API-key auth and "oauth" for a saved session.
-	AuthKind       string   `json:"auth_kind,omitempty"`
+	// AuthKind is empty for legacy/API-key auth, "oauth" for a saved session,
+	// and AuthKindVendorCLI for a vendor CLI's own login.
+	AuthKind string `json:"auth_kind,omitempty"`
+	// VendorAuthPath is the vendor CLI's auth file when AuthKind is
+	// AuthKindVendorCLI. It holds no token: the file is read on every request,
+	// and the CLI keeps refreshing its own login.
+	VendorAuthPath string   `json:"vendor_auth_path,omitempty"`
 	APIKey         string   `json:"api_key"`
 	Model          string   `json:"model"`
 	FallbackModels []string `json:"fallback_models,omitempty"`
@@ -127,9 +136,12 @@ func ApplyDefaults(c *Config) {
 		c.ActiveProvider = llmprovider.ProviderGemini
 	}
 	for provider, pc := range c.Providers {
-		if IsOAuth(pc) {
+		switch {
+		case IsOAuth(pc):
 			pc.AuthKind = "oauth"
-		} else {
+		case IsVendorCLI(pc):
+			pc.AuthKind = AuthKindVendorCLI
+		default:
 			pc.AuthKind = ""
 		}
 		c.Providers[provider] = pc
@@ -282,6 +294,26 @@ func ValidateActive(provider string, pc ProviderConfig, apiKey string) error {
 // IsOAuth reports whether a provider config selects subscription authentication.
 func IsOAuth(pc ProviderConfig) bool {
 	return strings.EqualFold(pc.AuthKind, "oauth")
+}
+
+// IsVendorCLI reports whether a provider config reads a vendor CLI's login.
+func IsVendorCLI(pc ProviderConfig) bool {
+	return strings.EqualFold(pc.AuthKind, AuthKindVendorCLI)
+}
+
+// ValidateVendorCLI checks that a vendor CLI login has a model and an auth
+// file path. The file, and the token in it, are read on use.
+func ValidateVendorCLI(provider string, pc ProviderConfig) error {
+	if strings.TrimSpace(provider) == "" {
+		return fmt.Errorf("no active provider configured; please run 'prepare-commit-msg configure'")
+	}
+	if strings.TrimSpace(pc.Model) == "" {
+		return fmt.Errorf("no model configured for provider %q; run 'prepare-commit-msg configure'", provider)
+	}
+	if strings.TrimSpace(pc.VendorAuthPath) == "" {
+		return fmt.Errorf("no CLI login path for provider %q; run 'prepare-commit-msg configure'", provider)
+	}
+	return nil
 }
 
 // ValidateOAuth checks that an OAuth provider has both a model and a saved session.
