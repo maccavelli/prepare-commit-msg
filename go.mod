@@ -14,6 +14,6 @@ require (
 )
 
 require (
-	github.com/maccavelli/mcplib v1.6.0-rc1
+	github.com/maccavelli/mcplib v1.6.0
 	golang.org/x/sys v0.47.0 // indirect
 )
