@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"net/url"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -32,7 +33,13 @@ func openBrowserDefault(rawURL string) error {
 	if err := command.Start(); err != nil {
 		return fmt.Errorf("open browser: %w", err)
 	}
-	go func() { _ = command.Wait() }()
+	// Reap the launcher without blocking the sign-in flow. The URL is already
+	// printed, so a launcher that fails only needs saying so.
+	go func() {
+		if err := command.Wait(); err != nil {
+			fmt.Fprintf(os.Stderr, "could not open a browser (%v); open the URL above instead\n", err)
+		}
+	}()
 	return nil
 }
 
