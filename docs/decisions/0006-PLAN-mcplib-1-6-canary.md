@@ -1,13 +1,15 @@
 ---
-status: proposed
+status: in-progress
 date: 2026-09-28
 associated-madr: "0006-MADR-mcplib-1-6-canary.md"
 decision-makers: Project Owner
 ---
-# Implement the mcplib v1.6.0-rc.1 Canary
+# Implement the mcplib v1.6.0-rc1 Canary
 
 Associated MADR: [0006-MADR-mcplib-1-6-canary.md](0006-MADR-mcplib-1-6-canary.md)
-(`status: proposed`). The owner approves the MADR and this plan together.
+(`status: accepted`). The owner approved the MADR and this plan together on
+2026-09-28. The release candidate is `v1.6.0-rc1`; §9 records the name
+change.
 
 This plan executes the MADR, and nothing else. If a fact contradicts the MADR
 or this plan, **stop and prompt**. Add a dated entry to §9, amend the MADR when
@@ -17,7 +19,7 @@ a decision or an asserted fact changes, and only then continue.
 
 On 2026-09-28, in scratch copies only (`git archive` of `HEAD` `4b5dab4`):
 * **Base.** `go.mod` was pointed at an archive of mcplib `4e1f9a5`, the commit
-  `v1.6.0-rc.1` will tag, and `go mod tidy` was run. Step S3's `go get` makes
+  `v1.6.0-rc1` will tag, and `go mod tidy` was run. Step S3's `go get` makes
   the same change with the real tag.
 * **Red.** The tests diff was applied, and each red test was seen to fail on
   the unfixed code.
@@ -28,12 +30,12 @@ On 2026-09-28, in scratch copies only (`git archive` of `HEAD` `4b5dab4`):
   alone against mcplib `v1.5.0`.
 * **Diffs.** Appendix B's diffs were generated mechanically. Applied with
   `git apply` to a fresh `HEAD` archive, plus the dependency bump, they
-  reproduce the proven tree byte for byte: 50 files, 0 mismatches.
+  reproduce the proven tree byte for byte: 52 files, 0 mismatches.
 
 ## Goal
 
 * `main` is green again (the open.go errcheck failure is fixed).
-* `prepare-commit-msg` consumes mcplib `v1.6.0-rc.1`: in `go.mod`, and in the
+* `prepare-commit-msg` consumes mcplib `v1.6.0-rc1`: in `go.mod`, and in the
   release workflow's pin.
 * The Codex and Grok CLI logins work, read through.
 * Configure's tests are offline.
@@ -63,7 +65,8 @@ On 2026-09-28, in scratch copies only (`git archive` of `HEAD` `4b5dab4`):
 
 * **prepare-commit-msg:** `main` at `4b5dab4`, level with `origin/main`, with a
   clean tree.
-* **mcplib:** `main` contains `4e1f9a5`, and no tag `v1.6.0-rc.1` exists yet.
+* **mcplib:** `main` contains `4e1f9a5`, and no release-candidate tag exists
+  yet. The owner has since pushed `v1.6.0-rc1` (S2; §9, 2026-09-28).
 * **Hooks:** `core.hooksPath` here is `.git/prepare-commit-msg-hooks`. Its
   `prepare-commit-msg` hook runs `~/.global-git-hooks/prepare-commit-msg`, and
   its `pre-commit` hook chains to the global one. Commits therefore go through
@@ -121,26 +124,31 @@ a failure is reported on stderr instead of discarded.
 * **Commit.** Pushing it, with the owner's ask, turns CI green before the
   canary work.
 
-## Phase S2 — Tag mcplib `v1.6.0-rc.1` (in mcplib)
+## Phase S2 — Tag mcplib `v1.6.0-rc1` (in mcplib)
+
+> **Executed by the owner, 2026-09-28** (§9, §10). As approved, this phase
+> named the tag ~~`v1.6.0-rc.1`~~. The owner's tag is `v1.6.0-rc1`, and every
+> reference in this plan and the MADR now uses that name. Steps 3 and 4 were
+> checked against it.
 
 1. In mcplib, confirm `main` contains `4e1f9a5` and that CI run
    `36449357867` on `4e1f9a5` passed.
 2. With the owner's ask:
    ```
-   git tag -a v1.6.0-rc.1 4e1f9a53e265808bbfa740e3e3b09a51ed7f56ce -m "mcplib v1.6.0-rc.1"
-   git push origin v1.6.0-rc.1
+   git tag -a v1.6.0-rc1 4e1f9a53e265808bbfa740e3e3b09a51ed7f56ce -m "mcplib v1.6.0-rc1"
+   git push origin v1.6.0-rc1
    ```
    A tag message is not a commit message, so the hook rule does not apply to
    it.
 3. Confirm mcplib's CI (it runs on `v*` tags) passes on the tag.
 4. Confirm
-   `go list -m github.com/maccavelli/mcplib@v1.6.0-rc.1` resolves through the
+   `go list -m github.com/maccavelli/mcplib@v1.6.0-rc1` resolves through the
    module proxy.
 
 ## Phase S3 — Adopt the candidate (MADR §1–§3)
 
 1. Run
-   `go get github.com/maccavelli/mcplib@v1.6.0-rc.1 && go mod tidy`. Only
+   `go get github.com/maccavelli/mcplib@v1.6.0-rc1 && go mod tidy`. Only
    `go.mod` and `go.sum` change.
 2. Confirm the three tests of MADR "What was measured" fail, as recorded in
    Appendix A.
@@ -171,7 +179,7 @@ a failure is reported on stderr instead of discarded.
 2. The release job runs mcplib's workflow at `4e1f9a5`. Confirm the release
    is published, is immutable, and passes `gh release verify v1.4.0`.
 3. The release notes add, after the generated notes:
-   * **Built on mcplib `v1.6.0-rc.1`.**
+   * **Built on mcplib `v1.6.0-rc1`.**
    * **CLI logins read through.** Choosing "Use the Codex/Grok CLI login"
      now reads the CLI's file in place.
    * **Sessions copied by older releases.** A CLI session copied into
@@ -236,7 +244,33 @@ Only after S6 passes:
 
 ## 9. Deviation log
 
-None yet.
+* **2026-09-28: the release candidate is `v1.6.0-rc1`, not `v1.6.0-rc.1`.**
+  * **Found:**
+    * the owner tagged and pushed `v1.6.0-rc1`, annotated, on `4e1f9a5`;
+    * mcplib CI run `36461010700` passed on it;
+    * the Go module proxy serves it (`go list -m -json` reports time
+      `2026-09-28T16:11:38Z`);
+    * `v1.6.0-rc.1` does not exist (`unknown revision`).
+  * **Decision (owner):** keep `v1.6.0-rc1`. The proxy has cached it, so
+    replacing it would do more harm than the difference in name.
+  * **Changes to this plan and the MADR:**
+    * every reference now reads `v1.6.0-rc1`, including the CI pin comment in
+      Appendix B.S3;
+    * that diff was regenerated;
+    * `make verify` and the diff reproduction were re-run on it, and passed;
+    * the red and mutant runs were not re-run, because only a YAML comment
+      changed, and no test reads it;
+    * S2 is annotated as executed by the owner.
+  * **Note:** semver compares `rc10` before `rc2`. A further candidate is
+    `v1.6.0-rc2`.
+* **2026-09-28: the first push of the documents failed on the pre-push gate.**
+  * **Found:** the owner's commit `800bf0e` (this MADR and plan, documents
+    only) could not be pushed. This repository's pre-push hook runs
+    `make verify`, which fails on `HEAD` with the `open.go:35` errcheck issue
+    S1 fixes. The global disclosure guard passed.
+  * **Decision (owner):** no bypass. Land the amendment, S0 and S1, then push
+    them together with `800bf0e`.
+  * **Scope:** unchanged.
 
 ## 10. Execution record
 
@@ -300,7 +334,7 @@ c2-fix.diff: 203 lines
 git apply c1-fix: exit=0 
 git apply c2-tests: exit=0 
 git apply c2-fix: exit=0 
-compared 50 files with the proven green tree: mismatches=[] extra=[]
+compared 52 files with the proven green tree: mismatches=[] extra=[]
 ```
 
 ## Appendix B — Diffs
@@ -750,7 +784,7 @@ diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
        id-token: write
        attestations: write
 -    uses: maccavelli/mcplib/.github/workflows/publish-selfupdate-release.yml@d13f89cf6ee385bc76f8bf3d3c11155276c2af31 # mcplib v1.5.0
-+    uses: maccavelli/mcplib/.github/workflows/publish-selfupdate-release.yml@4e1f9a53e265808bbfa740e3e3b09a51ed7f56ce # mcplib v1.6.0-rc.1
++    uses: maccavelli/mcplib/.github/workflows/publish-selfupdate-release.yml@4e1f9a53e265808bbfa740e3e3b09a51ed7f56ce # mcplib v1.6.0-rc1
      with:
        artifact-name: prepare-commit-msg-${{ needs.go.outputs.version || github.sha }}
        products-json: '["prepare-commit-msg"]'

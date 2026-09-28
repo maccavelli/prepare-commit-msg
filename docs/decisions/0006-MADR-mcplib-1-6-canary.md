@@ -1,11 +1,11 @@
 ---
-status: proposed
+status: accepted
 date: 2026-09-28
 decision-makers: Project Owner
 consulted: mcplib (the library this repository consumes)
 informed: mcp-server-magictools, mcp-server-magicdev (the consumers that follow the canary)
 ---
-# Canary mcplib v1.6.0-rc.1 in prepare-commit-msg, Reading Vendor CLI Logins Through
+# Canary mcplib v1.6.0-rc1 in prepare-commit-msg, Reading Vendor CLI Logins Through
 
 ## Context and Problem Statement
 
@@ -23,7 +23,7 @@ mcplib's `main` has moved well past `v1.5.0`:
 
 The owner chose `prepare-commit-msg` as the **first consumer to canary** that
 work, on 2026-09-28. mcplib is published first as a release candidate,
-`v1.6.0-rc.1`, on commit `4e1f9a5`. Stable `v1.6.0` follows only once the canary
+`v1.6.0-rc1`, on commit `4e1f9a5`. Stable `v1.6.0` follows only once the canary
 works, so the other consumers never pick up a version the canary rejected.
 
 The question is what `prepare-commit-msg` must change to consume that
@@ -72,7 +72,7 @@ decision.
 ## Decision Drivers
 
 * **The canary must exercise exactly the candidate.** Consume
-  `v1.6.0-rc.1` in `go.mod` and in the release-workflow pin, with no local
+  `v1.6.0-rc1` in `go.mod` and in the release-workflow pin, with no local
   replace.
 * **No user-visible regression.** Every choice the wizard offers must work.
 * **The CLI owns its login.** Never copy or refresh a vendor CLI's refresh
@@ -85,22 +85,22 @@ decision.
 
 ## Considered Options
 
-* Adopt `v1.6.0-rc.1` and read vendor CLI logins through
-* Adopt `v1.6.0-rc.1` and reject the vendor CLI choice in setup
-* Adopt `v1.6.0-rc.1` and copy the CLI's tokens into this tool's store, as before
+* Adopt `v1.6.0-rc1` and read vendor CLI logins through
+* Adopt `v1.6.0-rc1` and reject the vendor CLI choice in setup
+* Adopt `v1.6.0-rc1` and copy the CLI's tokens into this tool's store, as before
 * Stay on mcplib `v1.5.0`
 
 ## Decision Outcome
 
-Chosen option (**proposed**): **"Adopt `v1.6.0-rc.1` and read vendor CLI logins
-through"**. It is the only option that exercises the candidate with every
+Chosen option (**accepted** by the owner, 2026-09-28): **"Adopt
+`v1.6.0-rc1` and read vendor CLI logins through"**. It is the only option that exercises the candidate with every
 wizard choice working, without sharing a refresh token with the CLI.
 
 ### 1. Consume the candidate
 
-* `go.mod` requires `github.com/maccavelli/mcplib v1.6.0-rc.1`.
+* `go.mod` requires `github.com/maccavelli/mcplib v1.6.0-rc1`.
 * The release job's pin moves to
-  `@4e1f9a53e265808bbfa740e3e3b09a51ed7f56ce # mcplib v1.6.0-rc.1`, the tag's
+  `@4e1f9a53e265808bbfa740e3e3b09a51ed7f56ce # mcplib v1.6.0-rc1`, the tag's
   commit, as mcplib's workflow requires.
 * **This repository's own release stays a stable tag.** The workflow rejects
   anything that is not `vX.Y.Z` ("Require a strict stable tag"). The canary
@@ -175,7 +175,7 @@ version, so it lands first.
 * the open.go fix alone passes `make verify` on `v1.5.0`.
 
 **The canary works when all of these hold:**
-1. CI passes on `main` with `v1.6.0-rc.1`: all jobs, including native tests on
+1. CI passes on `main` with `v1.6.0-rc1`: all jobs, including native tests on
    Linux, macOS and Windows.
 2. The `v1.4.0` release publishes through the pinned workflow, and
    `gh release verify v1.4.0` passes.
@@ -195,7 +195,7 @@ unchanged, and only its comment changes.
 
 ## Pros and Cons of the Options
 
-### Adopt `v1.6.0-rc.1` and read vendor CLI logins through
+### Adopt `v1.6.0-rc1` and read vendor CLI logins through
 
 * Good, because every wizard choice works.
 * Good, because the CLI keeps sole ownership of its refresh token.
@@ -203,14 +203,14 @@ unchanged, and only its comment changes.
 * Bad, because sessions copied by older releases need one re-run of
   `configure`, after their refresh fails.
 
-### Adopt `v1.6.0-rc.1` and reject the vendor CLI choice in setup
+### Adopt `v1.6.0-rc1` and reject the vendor CLI choice in setup
 
 * Good, because it is smaller: no config or runtime change.
 * Bad, because the wizard still offers the choice (mcplib has no option to hide
   it), so users meet an error for a listed feature.
 * Bad, because the canary would not exercise mcplib's read-through at all.
 
-### Adopt `v1.6.0-rc.1` and copy the CLI's tokens into this tool's store, as before
+### Adopt `v1.6.0-rc1` and copy the CLI's tokens into this tool's store, as before
 
 * Bad, because it recreates the shared refresh-token family that mcplib O1
   removed: the first refresh by either side revokes the other.
@@ -244,5 +244,11 @@ unchanged, and only its comment changes.
 * The scratch probes against mcplib `4e1f9a5`, and the proof (red, mutants,
   `make verify`) are in the PLAN's Appendix A.
 * CI run `36256206752` on `4b5dab4` (red on `open.go:35`).
+
+**Amendment, 2026-09-28: the tag name.** This record first named the
+candidate `v1.6.0-rc.1`. The owner tagged it `v1.6.0-rc1`, on the same commit
+(`4e1f9a5`). The module proxy already serves that name, so it was kept, and
+every reference above now uses it. The decision itself is unchanged. The next
+candidate, if one is needed, is `v1.6.0-rc2`. See the PLAN's §9.
 
 **Plan.** [0006-PLAN-mcplib-1-6-canary.md](0006-PLAN-mcplib-1-6-canary.md).
