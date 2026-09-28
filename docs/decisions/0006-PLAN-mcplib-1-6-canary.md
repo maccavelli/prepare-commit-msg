@@ -30,7 +30,7 @@ On 2026-09-28, in scratch copies only (`git archive` of `HEAD` `4b5dab4`):
   alone against mcplib `v1.5.0`.
 * **Diffs.** Appendix B's diffs were generated mechanically. Applied with
   `git apply` to a fresh `HEAD` archive, plus the dependency bump, they
-  reproduce the proven tree byte for byte: 52 files, 0 mismatches.
+  reproduce the proven tree byte for byte: 50 files, 0 mismatches.
 
 ## Goal
 
@@ -152,9 +152,14 @@ a failure is reported on stderr instead of discarded.
    `go.mod` and `go.sum` change.
 2. Confirm the three tests of MADR "What was measured" fail, as recorded in
    Appendix A.
-3. Apply Appendix B.S3 **Tests** with `git apply`. The five red tests must fail
-   as recorded, and the base guard must pass.
-4. Apply Appendix B.S3 **Fix** with `git apply`. It covers:
+3. ~~Apply Appendix B.S3 **Tests**, then B.S3 **Fix**.~~ The step-A tests
+   need step A's fix to compile (§9, 2026-09-28), so apply them with
+   `git apply`, in this order:
+   1. B.S3a **Tests**, then B.S3a **Fix**: offline listing, the search-first
+      menu, and the CI pin;
+   2. B.S3b **Tests**. The five red tests must fail as recorded, and the base
+      guard must pass.
+4. Apply B.S3b **Fix** with `git apply`. With B.S3a **Fix**, it covers:
    * `internal/config/config.go`: `AuthKindVendorCLI`, `VendorAuthPath`,
      `IsVendorCLI`, `ValidateVendorCLI`, and `ApplyDefaults` keeping the kind;
    * `main.go`: validation, and the `VendorCLISession` provider;
@@ -272,6 +277,23 @@ Only after S6 passes:
     them together with `800bf0e`.
   * **Scope:** unchanged.
 
+* **2026-09-28: S3's diffs split into the proven order.**
+  * **Found:** before S3 ran, B.S3's single **Tests** diff was found to
+    include step A's tests, which use `listingClient`. Only B.S3's **Fix**
+    adds it. Applied alone, the tests stop `internal/ui` compiling, so its
+    two red tests would fail on a build error, not with the recorded
+    messages. The proof had run step B's red check on a tree that already
+    had step A's fix.
+  * **Decision (owner, option 1):** split B.S3 into B.S3a (step A's tests and
+    fix) and B.S3b (step B's tests and fix). S3 step 3 applies them in the
+    proven order.
+  * **Re-proven on the harness, now pinned to `4b5dab4`:**
+    * the five diffs reproduce the proven tree (50 files, 0 mismatches);
+    * the red run gives the recorded failures;
+    * `make verify` passes;
+    * B.S1 is unchanged, byte for byte.
+  * **Code:** unchanged.
+
 ## 10. Execution record
 
 * **S0**, 2026-09-28:
@@ -343,24 +365,30 @@ The validity check was itself seen to fail. In a copy of the harness with the wr
 
 **Gate** (`make verify`, fixed tree, including the CI pin): passed. That covers module tidiness and checksums, `fmt-check`, golangci-lint, `go vet`, `go test -race`, the coverage threshold, govulncheck, actionlint and the script checks, and the six cross-builds.
 
-**Diffs:**
+**Diffs** (regenerated 2026-09-28 in S3's split order, from `4b5dab4`; §9):
 
 ```text
 c1-fix.diff: 26 lines
-c2-tests.diff: 389 lines
-c2-fix.diff: 203 lines
+c2a-tests.diff: 106 lines
+c2a-fix.diff: 55 lines
+c2b-tests.diff: 298 lines
+c2b-fix.diff: 151 lines
 git apply c1-fix: exit=0 
-git apply c2-tests: exit=0 
-git apply c2-fix: exit=0 
-compared 52 files with the proven green tree: mismatches=[] extra=[]
+git apply c2a-tests: exit=0 
+git apply c2a-fix: exit=0 
+git apply c2b-tests: exit=0 
+git apply c2b-fix: exit=0 
+compared 50 files with the proven green tree: mismatches=[] extra=[]
 ```
 
 ## Appendix B — Diffs
 
 Generated from the proof. Apply them with `git apply` in this order:
 1. B.S1, on the §0.1 baseline;
-2. B.S3 Tests, after S3 step 1;
-3. B.S3 Fix.
+2. B.S3a Tests, after S3 step 1;
+3. B.S3a Fix;
+4. B.S3b Tests;
+5. B.S3b Fix.
 
 ### B.S1 `main` green first
 
@@ -395,47 +423,11 @@ diff --git a/internal/ui/open.go b/internal/ui/open.go
  
 ```
 
-### B.S3 Adopt the candidate
+### B.S3a Adopt the candidate, step A: offline listing and the pin
 
-**Tests** (`c2-tests.diff`, 389 lines):
+**Tests** (`c2a-tests.diff`, 106 lines):
 
 ```diff
-diff --git a/internal/config/config_test.go b/internal/config/config_test.go
---- a/internal/config/config_test.go
-+++ b/internal/config/config_test.go
-@@ -3,6 +3,7 @@
- import (
- 	"bytes"
- 	"context"
-+	"encoding/json"
- 	"fmt"
- 	"os"
- 	"path/filepath"
-@@ -442,3 +443,24 @@
- 		t.Errorf("expected 1 fallback model 'gpt-4o-mini', got %v", pc.FallbackModels)
- 	}
- }
-+
-+// TestApplyDefaults_KeepsVendorCLILogin: a vendor CLI login, and the path to
-+// its auth file, survive ApplyDefaults and the JSON round trip.
-+func TestApplyDefaults_KeepsVendorCLILogin(t *testing.T) {
-+	raw := `{"active_provider":"grok","providers":{"grok":{"auth_kind":"vendor_cli",` +
-+		`"vendor_auth_path":"/x/grok/auth.json","model":"grok-4.6"}}}`
-+	var c Config
-+	if err := json.Unmarshal([]byte(raw), &c); err != nil {
-+		t.Fatalf("decode: %v", err)
-+	}
-+	ApplyDefaults(&c)
-+	out, err := json.Marshal(c.Providers["grok"])
-+	if err != nil {
-+		t.Fatalf("encode: %v", err)
-+	}
-+	for _, want := range []string{`"auth_kind":"vendor_cli"`, `"vendor_auth_path":"/x/grok/auth.json"`} {
-+		if !bytes.Contains(out, []byte(want)) {
-+			t.Errorf("grok config = %s, want %s", out, want)
-+		}
-+	}
-+}
 diff --git a/internal/ui/setup_test.go b/internal/ui/setup_test.go
 --- a/internal/ui/setup_test.go
 +++ b/internal/ui/setup_test.go
@@ -443,12 +435,11 @@ diff --git a/internal/ui/setup_test.go b/internal/ui/setup_test.go
  	"bufio"
  	"bytes"
  	"context"
-+	"encoding/json"
 +	"errors"
 +	"net/http"
  	"os"
  	"path/filepath"
--	"runtime"
+ 	"runtime"
  	"strings"
 +	"sync/atomic"
  	"testing"
@@ -543,7 +534,126 @@ diff --git a/internal/ui/setup_test.go b/internal/ui/setup_test.go
  	}
  }
  
-@@ -176,49 +230,57 @@
+```
+
+**Fix** (`c2a-fix.diff`, 55 lines):
+
+```diff
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -112,7 +112,7 @@
+       contents: write
+       id-token: write
+       attestations: write
+-    uses: maccavelli/mcplib/.github/workflows/publish-selfupdate-release.yml@d13f89cf6ee385bc76f8bf3d3c11155276c2af31 # mcplib v1.5.0
++    uses: maccavelli/mcplib/.github/workflows/publish-selfupdate-release.yml@4e1f9a53e265808bbfa740e3e3b09a51ed7f56ce # mcplib v1.6.0-rc1
+     with:
+       artifact-name: prepare-commit-msg-${{ needs.go.outputs.version || github.sha }}
+       products-json: '["prepare-commit-msg"]'
+diff --git a/internal/ui/setup.go b/internal/ui/setup.go
+--- a/internal/ui/setup.go
++++ b/internal/ui/setup.go
+@@ -5,6 +5,7 @@
+ 	"context"
+ 	"fmt"
+ 	"io"
++	"net/http"
+ 	"os"
+ 	"strconv"
+ 	"strings"
+@@ -26,6 +27,10 @@
+ )
+ 
+ var osGetenv = os.Getenv
++
++// listingClient carries configure's live model listing. Nil uses mcplib's
++// default client; tests set one that never reaches the network.
++var listingClient *http.Client
+ 
+ // SetupOptions holds non-interactive / flag-driven configure settings.
+ // Zero values mean "unset" and interactive mode will prompt (unless Yes is set).
+@@ -137,7 +142,11 @@
+ func discoverModels(ctx context.Context, provider, apiKey string) []string {
+ 	dCtx, cancel := context.WithTimeout(ctx, DiscoveryTimeout)
+ 	defer cancel()
+-	models, err := llmprovider.ListAvailableModels(dCtx, provider, apiKey)
++	var opts []llmprovider.ProviderOption
++	if listingClient != nil {
++		opts = append(opts, llmprovider.WithHTTPClient(listingClient))
++	}
++	models, err := llmprovider.ListAvailableModels(dCtx, provider, apiKey, opts...)
+ 	if err != nil {
+ 		return nil
+ 	}
+@@ -216,6 +225,7 @@
+ 		LookupEnv:     osGetenv,
+ 		Discover:      true,
+ 		DiscoverLimit: DiscoveryTimeout,
++		HTTPClient:    listingClient,
+ 		NeedFallbacks: true,
+ 		TokenStore:    store,
+ 		OpenURL:       openBrowser,
+```
+
+### B.S3b Adopt the candidate, step B: CLI logins read through
+
+**Tests** (`c2b-tests.diff`, 298 lines):
+
+```diff
+diff --git a/internal/config/config_test.go b/internal/config/config_test.go
+--- a/internal/config/config_test.go
++++ b/internal/config/config_test.go
+@@ -3,6 +3,7 @@
+ import (
+ 	"bytes"
+ 	"context"
++	"encoding/json"
+ 	"fmt"
+ 	"os"
+ 	"path/filepath"
+@@ -442,3 +443,24 @@
+ 		t.Errorf("expected 1 fallback model 'gpt-4o-mini', got %v", pc.FallbackModels)
+ 	}
+ }
++
++// TestApplyDefaults_KeepsVendorCLILogin: a vendor CLI login, and the path to
++// its auth file, survive ApplyDefaults and the JSON round trip.
++func TestApplyDefaults_KeepsVendorCLILogin(t *testing.T) {
++	raw := `{"active_provider":"grok","providers":{"grok":{"auth_kind":"vendor_cli",` +
++		`"vendor_auth_path":"/x/grok/auth.json","model":"grok-4.6"}}}`
++	var c Config
++	if err := json.Unmarshal([]byte(raw), &c); err != nil {
++		t.Fatalf("decode: %v", err)
++	}
++	ApplyDefaults(&c)
++	out, err := json.Marshal(c.Providers["grok"])
++	if err != nil {
++		t.Fatalf("encode: %v", err)
++	}
++	for _, want := range []string{`"auth_kind":"vendor_cli"`, `"vendor_auth_path":"/x/grok/auth.json"`} {
++		if !bytes.Contains(out, []byte(want)) {
++			t.Errorf("grok config = %s, want %s", out, want)
++		}
++	}
++}
+diff --git a/internal/ui/setup_test.go b/internal/ui/setup_test.go
+--- a/internal/ui/setup_test.go
++++ b/internal/ui/setup_test.go
+@@ -4,11 +4,11 @@
+ 	"bufio"
+ 	"bytes"
+ 	"context"
++	"encoding/json"
+ 	"errors"
+ 	"net/http"
+ 	"os"
+ 	"path/filepath"
+-	"runtime"
+ 	"strings"
+ 	"sync/atomic"
+ 	"testing"
+@@ -230,49 +230,57 @@
    }
  }`
  
@@ -625,7 +735,7 @@ diff --git a/internal/ui/setup_test.go b/internal/ui/setup_test.go
  		t.Fatalf("write OpenAI fixture: %v", err)
  	}
  	originalEnv := osGetenv
-@@ -227,15 +289,41 @@
+@@ -281,15 +289,41 @@
  
  	conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
  	config.ApplyDefaults(conf)
@@ -791,21 +901,9 @@ diff --git a/main_oauth_test.go b/main_oauth_test.go
  func (analyzerTestProvider) Name() string { return llmprovider.ProviderOpenAI }
 ```
 
-**Fix** (`c2-fix.diff`, 203 lines):
+**Fix** (`c2b-fix.diff`, 151 lines):
 
 ```diff
-diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
---- a/.github/workflows/ci.yml
-+++ b/.github/workflows/ci.yml
-@@ -112,7 +112,7 @@
-       contents: write
-       id-token: write
-       attestations: write
--    uses: maccavelli/mcplib/.github/workflows/publish-selfupdate-release.yml@d13f89cf6ee385bc76f8bf3d3c11155276c2af31 # mcplib v1.5.0
-+    uses: maccavelli/mcplib/.github/workflows/publish-selfupdate-release.yml@4e1f9a53e265808bbfa740e3e3b09a51ed7f56ce # mcplib v1.6.0-rc1
-     with:
-       artifact-name: prepare-commit-msg-${{ needs.go.outputs.version || github.sha }}
-       products-json: '["prepare-commit-msg"]'
 diff --git a/README.md b/README.md
 --- a/README.md
 +++ b/README.md
@@ -892,47 +990,7 @@ diff --git a/internal/config/config.go b/internal/config/config.go
 diff --git a/internal/ui/setup.go b/internal/ui/setup.go
 --- a/internal/ui/setup.go
 +++ b/internal/ui/setup.go
-@@ -5,6 +5,7 @@
- 	"context"
- 	"fmt"
- 	"io"
-+	"net/http"
- 	"os"
- 	"strconv"
- 	"strings"
-@@ -26,6 +27,10 @@
- )
- 
- var osGetenv = os.Getenv
-+
-+// listingClient carries configure's live model listing. Nil uses mcplib's
-+// default client; tests set one that never reaches the network.
-+var listingClient *http.Client
- 
- // SetupOptions holds non-interactive / flag-driven configure settings.
- // Zero values mean "unset" and interactive mode will prompt (unless Yes is set).
-@@ -137,7 +142,11 @@
- func discoverModels(ctx context.Context, provider, apiKey string) []string {
- 	dCtx, cancel := context.WithTimeout(ctx, DiscoveryTimeout)
- 	defer cancel()
--	models, err := llmprovider.ListAvailableModels(dCtx, provider, apiKey)
-+	var opts []llmprovider.ProviderOption
-+	if listingClient != nil {
-+		opts = append(opts, llmprovider.WithHTTPClient(listingClient))
-+	}
-+	models, err := llmprovider.ListAvailableModels(dCtx, provider, apiKey, opts...)
- 	if err != nil {
- 		return nil
- 	}
-@@ -216,6 +225,7 @@
- 		LookupEnv:     osGetenv,
- 		Discover:      true,
- 		DiscoverLimit: DiscoveryTimeout,
-+		HTTPClient:    listingClient,
- 		NeedFallbacks: true,
- 		TokenStore:    store,
- 		OpenURL:       openBrowser,
-@@ -231,13 +241,27 @@
+@@ -241,13 +241,27 @@
  	}
  	pc.Model = res.Model
  	pc.FallbackModels = res.Fallbacks
@@ -962,7 +1020,7 @@ diff --git a/internal/ui/setup.go b/internal/ui/setup.go
  		pc.AuthKind = ""
  		pc.APIKey = res.APIKey
  		d, _ := llmprovider.DescriptorFor(res.Provider)
-@@ -303,6 +327,7 @@
+@@ -313,6 +327,7 @@
  	}
  	pc.APIKey = apiKey
  	pc.AuthKind = ""
