@@ -274,7 +274,22 @@ Only after S6 passes:
 
 ## 10. Execution record
 
-Not executed yet.
+* **S0**, 2026-09-28:
+  * The owner committed the documents as `800bf0e`.
+  * Commit `dc79464` holds this plan's §9 amendment (the tag name), the MADR
+    set to `accepted`, and this plan set to `in-progress`.
+* **S2**, 2026-09-28, executed by the owner (§9):
+  * the annotated tag `v1.6.0-rc1` is on `4e1f9a5`;
+  * mcplib CI run `36461010700` on the tag passed;
+  * `go list -m github.com/maccavelli/mcplib@v1.6.0-rc1` resolves through the
+    module proxy (time `2026-09-28T16:11:38Z`).
+* **S1**, commit `86b21ef`:
+  * Appendix B.S1 was applied with `git apply`, taken from this document and
+    checked equal to the proven diff.
+  * The red check (`make lint` on `HEAD`) had failed as recorded in
+    Appendix A.
+  * `make verify` passed in the repository, with mcplib `v1.5.0`.
+  * **Pending:** the push, and CI on it.
 
 ## Appendix A — Proof record (2026-09-28)
 
