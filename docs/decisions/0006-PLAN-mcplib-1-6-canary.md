@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: complete
 date: 2026-09-28
 associated-madr: "0006-MADR-mcplib-1-6-canary.md"
 decision-makers: Project Owner
@@ -366,7 +366,24 @@ Only after S6 passes:
      not recur as a failed update.
   3. **Gemini** and 4. **Codex CLI login:** reported passing by the owner,
      including the unchanged Codex `auth.json` checksum.
-  * **Pending:** S7, the promotion, needs the owner's decision and ask.
+* **S7**, on the owner's ask:
+  1. The annotated tag `v1.6.0` (message `mcplib v1.6.0`) is on
+     `4e1f9a53e265808bbfa740e3e3b09a51ed7f56ce`, the commit `v1.6.0-rc1`
+     names, and was pushed. mcplib CI run `36494866725` on the tag passed.
+  2. `go get github.com/maccavelli/mcplib@v1.6.0 && go mod tidy` changed
+     only `go.mod` and `go.sum`; `go list -m` reports
+     `github.com/maccavelli/mcplib v1.6.0`. The pin's comment now reads
+     `# mcplib v1.6.0`; its SHA is unchanged. No `v1.6.0-rc1` reference
+     remains outside `docs/`.
+  3. `make verify` passed, with no failing test. Committed as `7ff0c55`
+     and pushed (`9f5a796..7ff0c55`, with `697c50d`); the pre-push
+     `make verify` passed. CI run `36494998893` on `7ff0c55` passed:
+     `Go (test; build on tag)`, and Native Tests on Linux, macOS and
+     Windows.
+* **S8:** S0–S7 are recorded here, every §7 criterion holds, and 0006 is in
+  `docs/README.md`. This plan is `complete`.
+  * **Not done:** S5 step 3, the release-note additions (see S5). §7 does
+    not require them; they wait for the owner's ask.
 
 ## Appendix A — Proof record (2026-09-28)
 

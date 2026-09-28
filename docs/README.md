@@ -20,6 +20,10 @@ This directory contains design documents, architectural decision records (MADR),
   * **Status:** Accepted
   * **Topic:** Unified CI/CD workflow, tag-driven release builds and direct GitHub release publication.
 
+* [0006-MADR: Canary mcplib v1.6.0-rc1 in prepare-commit-msg, Reading Vendor CLI Logins Through](decisions/0006-MADR-mcplib-1-6-canary.md)
+  * **Status:** Accepted
+  * **Topic:** First consumer of mcplib v1.6.0: CLI logins read through, hermetic model listing, the release-workflow pin, and the canary that promoted mcplib v1.6.0.
+
 ## Implementation Plans
 
 * [0001-PLAN: Gemini Provider Modernization Implementation Plan](file:///home/mac/gitrepos/prepare-commit-msg/docs/plans/0001-PLAN-gemini-provider-and-model-catalog-modernization.md)
@@ -37,3 +41,7 @@ This directory contains design documents, architectural decision records (MADR),
 * [0004-PLAN: Align CI/CD Workflow with magic-cli-remote](0004-PLAN-align-cicd-with-magic-cli-remote.md)
   * **Status:** In Progress
   * **Topic:** Consolidated single CI/CD workflow, automated tag builds, and direct GitHub release publication.
+
+* [0006-PLAN: Implement the mcplib v1.6.0-rc1 Canary](decisions/0006-PLAN-mcplib-1-6-canary.md)
+  * **Status:** Completed
+  * **Topic:** Phases S0–S8: fix `main`, adopt the candidate, release v1.4.0, canary on macOS and Windows, promote mcplib v1.6.0.
