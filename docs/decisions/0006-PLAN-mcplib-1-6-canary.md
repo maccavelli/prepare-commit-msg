@@ -315,6 +315,25 @@ Only after S6 passes:
     The pre-push `make verify` passed.
   * **CI** run `36463370832` on `3106f7d` passed: `Go (test; build on tag)`,
     and Native Tests on Linux, macOS and Windows. `main` is green again.
+* **S3**, commit `1ed8a74`, run after the §9 split (`8241b8a`). Each diff was
+  taken from this document and checked equal to the proven diff.
+  1. **Bump.** `go get …@v1.6.0-rc1 && go mod tidy` changed only `go.mod` and
+     `go.sum`. `go list -m` reports `github.com/maccavelli/mcplib v1.6.0-rc1`.
+  2. **The bump alone** fails exactly the three tests of MADR "What was
+     measured": `…_Success`, `…_ImportGrokSession` and
+     `…_ChatGPTDoesNotCopyAccessIntoAPIKey`.
+  3. **B.S3a Tests and Fix, then B.S3b Tests.** All five red tests failed with
+     the messages recorded in Appendix A, and
+     `TestRunAnalyzer_OAuthDoesNotCallNewProviderWithAccessToken` passed.
+  4. **B.S3b Fix.** `make verify` passed in the repository.
+  5. **Mutants** ran on an archive of `HEAD` plus the working diff. Each test
+     passed unmutated first, and all six were killed, with the messages of
+     Appendix A.
+  6. **Committed** 10 files: `go.mod`, `go.sum`, `ci.yml`, `README.md`,
+     `main.go`, `main_oauth_test.go`, and in `internal/config/` and
+     `internal/ui/`, `config.go`, `config_test.go`, `setup.go` and
+     `setup_test.go`.
+  * **Pending:** S4, the push and CI.
 
 ## Appendix A — Proof record (2026-09-28)
 
