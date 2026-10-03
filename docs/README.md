@@ -24,6 +24,10 @@ This directory contains design documents, architectural decision records (MADR),
   * **Status:** Accepted
   * **Topic:** First consumer of mcplib v1.6.0: CLI logins read through, hermetic model listing, the release-workflow pin, and the canary that promoted mcplib v1.6.0.
 
+* [0008-MADR: Drop mcplib for go-llmprovider-sdk v1.0.0 and go-selfupdate-lib v1.5.0](decisions/0008-MADR-adopt-go-llmprovider-sdk-and-go-selfupdate-lib.md)
+  * **Status:** Accepted
+  * **Topic:** Providers and the wizard from go-llmprovider-sdk, self-update and build stamps from go-selfupdate-lib, the supply-chain gate, and what a user notices.
+
 ## Implementation Plans
 
 * [0001-PLAN: Gemini Provider Modernization Implementation Plan](file:///home/mac/gitrepos/prepare-commit-msg/docs/plans/0001-PLAN-gemini-provider-and-model-catalog-modernization.md)
@@ -45,3 +49,7 @@ This directory contains design documents, architectural decision records (MADR),
 * [0006-PLAN: Implement the mcplib v1.6.0-rc1 Canary](decisions/0006-PLAN-mcplib-1-6-canary.md)
   * **Status:** Completed
   * **Topic:** Phases S0–S8: fix `main`, adopt the candidate, release v1.4.0, canary on macOS and Windows, promote mcplib v1.6.0.
+
+* [0008-PLAN: Implement dropping mcplib](decisions/0008-PLAN-adopt-go-llmprovider-sdk-and-go-selfupdate-lib.md)
+  * **Status:** In Progress
+  * **Topic:** Phases 0–6: self-update, providers, the supply-chain gate, docs, the release and live check, and close-out.

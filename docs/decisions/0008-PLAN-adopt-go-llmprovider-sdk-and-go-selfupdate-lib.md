@@ -1,0 +1,319 @@
+---
+status: in-progress
+date: 2026-10-03
+associated-madr: "0008-MADR-adopt-go-llmprovider-sdk-and-go-selfupdate-lib.md"
+---
+# Implement dropping mcplib for go-llmprovider-sdk v1.0.0 and go-selfupdate-lib v1.5.0
+
+Associated MADR: [0008-MADR-adopt-go-llmprovider-sdk-and-go-selfupdate-lib.md](0008-MADR-adopt-go-llmprovider-sdk-and-go-selfupdate-lib.md)
+
+## Goal
+
+* `go.mod` requires `go-llmprovider-sdk` `v1.0.0` and `go-selfupdate-lib`
+  `v1.5.0` (or newer `v1.x`), and `go list -m all` names no mcplib.
+* `update` and `version` are go-selfupdate-lib's canonical command and
+  build stamps.
+* Every behaviour change in the MADR's table is either intended and
+  documented in `README.md`, or kept by D2–D4.
+* go-llmprovider-sdk's 0002-PLAN Phase 10 is satisfied, its live check
+  included.
+
+Done means every item under Verification holds, CI is green on Linux,
+macOS and Windows, and a tag built from this work passes its release
+verification.
+
+## Scope
+
+### In scope
+
+| Phase | Who | What |
+| :--- | :--- | :--- |
+| 0 | owner, then agent | answer D1–D7, accept the MADR |
+| 1 | agent | Go 1.27.1, and self-update from go-selfupdate-lib |
+| 2 | agent | providers and the wizard from go-llmprovider-sdk, with D2–D5 |
+| 3 | agent | the supply-chain gate, mcplib removed, D6 |
+| 4 | agent | `README.md`, `docs/README.md`, 0007's amendment (D7) |
+| 5 | owner, then agent | push, CI, tag, release verification, the live check |
+| 6 | agent | close-out here and in go-llmprovider-sdk's 0002-PLAN |
+
+### Out of scope
+
+* **Any change in go-llmprovider-sdk, go-selfupdate-lib or mcplib** other
+  than Phase 6's record entry in go-llmprovider-sdk.
+* **0007's link and index work** (L-a, I-a). It stays under 0007.
+* **Historical records.** Their mcplib and Go 1.26.6 text stays as
+  written.
+* **Push and tags,** which are the owner's.
+
+## Rules for every phase
+
+1. **Order.** Phases run in order. Each ends green and in its own commit.
+2. **Commits.** `git commit --no-edit`, after the owner authorizes commits
+   to `main` in that turn. The hooks chain to the global
+   `prepare-commit-msg` hook.
+3. **Checks before each commit that changes code:**
+   * `make verify` (lint, coverage at least 80.0%, govulncheck, workflow
+     lint, build-all);
+   * `python3 scripts/go-precheck.py`;
+   * `go test -race -count=1 ./...`;
+   * `CGO_ENABLED=0 GOOS={linux,darwin,windows} go vet ./...`;
+   * `go mod tidy -diff`.
+4. **Proofs on scratch copies,** never in the tree. Each new check or test
+   is seen failing on a planted break.
+5. **Session tooling is Python.** The repository's own scripts and `make`
+   targets run as they always do.
+
+## Implementation Steps
+
+### Phase 0: accept the records
+
+1. The owner answers D1–D7, or accepts the recommendations. The answers go
+   into the MADR, which becomes `accepted`, and this PLAN `in-progress`.
+2. `docs/README.md` indexes both records.
+3. Commit the records.
+
+### Phase 1: Go 1.27.1 and self-update
+
+1. **Go 1.27.1.** In `go.mod`, `go 1.26.6` becomes `go 1.27.1`. The
+   Makefile's `MOD_VERSION` and `scripts/bootstrap-tools.sh`'s
+   `GO_VERSION` follow. *(Done first, as its own commit `e735fa3`:
+   deviation D1 below.)*
+   * **1a. Proposed 2026-10-03, not approved.** `bootstrap-tools.sh`
+     reinstalls a cached tool when the Go toolchain that built it is not
+     `GO_VERSION`, read with `go version <binary>`. Proof: a cache built
+     with another toolchain is rebuilt, and an up-to-date one is not.
+2. **The module.** `go get github.com/maccavelli/go-selfupdate-lib@<newest
+   v1.x>`, at `v1.5.0` or later, then `go mod tidy`. mcplib stays required
+   for `llmprovider` and `wizard`.
+3. **`update.go`.** It keeps the updater factory, `newUpdateUpdater`, built
+   on `selfupdate.UserAgent`, `DiscardReporter` and
+   `NonInteractiveConfirmer`. It adds:
+   * `updateOptions`, defaulting to `cli.StdioOptions`;
+   * `buildIdentity = buildinfo.Identity`, the seam.
+4. **`main.go`.**
+   * `update` is `cli.Command(ctx, args[1:], AppTitle, buildIdentity(),
+     newUpdateUpdater, updateOptions())`.
+   * `version` prints `buildIdentity().String()` (D1).
+   * `Version` and `displayVersion` go, and the usage text names the new
+     flags.
+5. **`Makefile`.** `build` and `RELEASE_LDFLAGS` stamp
+   `github.com/maccavelli/go-selfupdate-lib/buildinfo.version` and `.kind`.
+   The `main.Version`, `main.RawVersion` and `main.RawBuildKind` stamps go.
+6. **`scripts/verify-release.sh`** accepts `version vX.Y.Z (release)` with
+   or without a 12-hex revision. It refuses `-dirty`, another version,
+   `(local)`, and the old form without the `v`.
+7. **`.github/workflows/ci.yml`.** `uses:` is
+   `maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml`,
+   pinned to the commit of the go-selfupdate-lib release chosen in step 2.
+   That commit is resolved with `git ls-remote`, peeled, and must carry
+   `publish-selfupdate-release.yml` unchanged from `58411f1`, or have its
+   inputs re-read. The `bridge-release` input goes.
+8. **Tests.**
+   * `update_test.go` and `TestRunUpdate_Flags` (in `main_extra2_test.go`)
+     are removed.
+   * `migration_test.go` is new, with go-selfupdate-lib's
+     `selfupdate/cli/testdata/migration/` fixtures copied to
+     `testdata/migration/` at the chosen release. It holds:
+     * `TestMigrationByteForByte`;
+     * `TestUpdateRefusedBeforeBuild`;
+     * `TestVersionPrintsIdentity`;
+     * `TestMakefileStamps`, which skips without `make`.
+   * A test covers the default `newUpdateUpdater`.
+9. **Proofs** (scratch copy), each of which must fail:
+   * a go-selfupdate-lib copy whose summary reads `up-to-date` fails only
+     that subtest;
+   * a banner written to stdout fails all three;
+   * a Makefile without the `.kind` stamp fails `TestMakefileStamps`;
+   * `verify-release.sh` is checked on six inputs: two it accepts and four
+     it refuses.
+10. Run the checks, then commit.
+
+### Phase 2: providers and the wizard
+
+1. **The module.** `go get github.com/maccavelli/go-llmprovider-sdk@v1.0.0`,
+   then `go mod tidy`.
+2. **Imports and calls,** mapped through go-llmprovider-sdk's
+   `docs/guides/migrating-from-mcplib.md`, in:
+   * `internal/config/config.go` and its test;
+   * `internal/ui/setup.go` and its test;
+   * `main.go`;
+   * `main_test.go`;
+   * `main_oauth_test.go`.
+
+   The configuration keeps string provider IDs and converts at its
+   boundary. The seams `newProvider`, `newProviderWithSource` and
+   `generateWithRetry` keep their names. A `registry =
+   providers.Default()` variable serves descriptors and the wizard.
+3. **Generation.** `generateText` sends the prompt as one user
+   `MessageItem`. It does so through `WithRetry`, with `RetryPolicy{MaxAttempts:
+   retries+1, BaseDelay: delay}`. It gets a test on `llmtest` covering:
+   * a success;
+   * a rate limit retried, then a success;
+   * an auth error not retried.
+4. **D2.** `ResolveAPIKey` reads `ANTHROPIC_API_KEY`, then `CLAUDE_API_KEY`,
+   for Claude. A test covers each, and both set.
+5. **D3.** The configuration gains the Kilo organization. The wizard's
+   result saves it. Generation and listing pass it with
+   `kilo.WithOrganization` and `catalog.WithKiloOrganization`. A test
+   covers each, and an existing configuration file without the field loads
+   unchanged.
+6. **D4.** `catalog.OptionsFromEnv()` is passed where providers and the
+   catalog are built.
+7. **D5, the folded-in P8.**
+   * `ValidateOAuth` calls `auth.ValidateOAuthSession` at load.
+   * The two tests it fails get fixtures holding valid sessions:
+     `TestRunAnalyzer_OAuth…` and `TestValidateActive_OAuthWithoutKeyOK`.
+   * `main_oauth_test.go` isolates the live token store on every OS,
+     Windows' `%AppData%` included.
+8. **Phase 10 step 7.** `orchestrated := false` and `Orchestrated:
+   &orchestrated` are removed.
+9. **Comments.** Citations of mcplib records stay. A comment that states
+   the current dependency is corrected.
+10. **Proofs:** each new test is seen failing on a planted break in a
+    scratch copy.
+11. Run the checks, then commit.
+
+### Phase 3: the supply-chain gate
+
+1. `scripts/go-precheck.py`'s mcplib check becomes a check of
+   `go-llmprovider-sdk` and `go-selfupdate-lib`. Each must be:
+   * required at a release version, not a pseudo-version;
+   * free of any `replace`;
+   * free of any `GOPRIVATE`, `GONOSUMDB` or `GOINSECURE` exemption;
+   * matched by `go.sum`, checked with `go mod download`.
+2. It also refuses a module graph that names
+   `github.com/maccavelli/mcplib`.
+3. **D6.** The `GONOSUMCHECK` arm is removed.
+4. `go.mod` no longer requires mcplib; `go mod tidy -diff` is clean.
+5. **Proofs** (scratch copy), each of which must fail with its own message:
+   * a `replace` of either module;
+   * a pseudo-version;
+   * `go-selfupdate-lib` not required;
+   * mcplib re-imported;
+   * a tampered `go.sum` line;
+   * each exemption variable set.
+
+   The unchanged copy must pass.
+6. Run the checks, then commit.
+
+### Phase 4: documentation
+
+1. **`README.md`:**
+   * the provider count and engine (`:66`);
+   * the Claude key row (`:92`), as D2 states it;
+   * the self-update table and usage block (`:355`–`:375`): the new flags,
+     stderr for progress, the `version` form;
+   * a short "Changes from mcplib" note: retries, error prefix, removed
+     Grok overrides, `LLMPROVIDER_*`.
+2. **`docs/README.md`** indexes 0008 with its status.
+3. **0007** gains an amendment. 0008 supersedes its dependency half (D-a);
+   its L-a and I-a stand.
+4. **Checks:**
+   * every relative link in the changed files resolves, proven on a planted
+     bad link;
+   * `git grep -n mcplib` over `README.md` shows only historical mentions;
+   * markdownlint if the repository configures it;
+   * `git diff --check`.
+5. Commit.
+
+### Phase 5: release and the live check (owner, then agent)
+
+1. **The owner** pushes. CI runs on Linux, macOS and Windows.
+2. **The owner** tags the next minor release. On the tag:
+   * CI builds;
+   * `verify-release.sh` passes;
+   * the reusable workflow publishes.
+3. **The agent** checks each of these, and records the output:
+   * the release assets, and their `SHA256SUMS`;
+   * `update --check` from the previous release finds the new one;
+   * the new binary's `version` prints the D1 form.
+4. **Phase 10 step 8, the live check.** Built from the tag, a
+   ChatGPT-session model listing shows `gpt-6-sol`. The owner runs it with
+   their session, and the agent records the output.
+
+### Phase 6: close-out
+
+1. This PLAN is `complete`, and `docs/README.md` says so.
+2. go-llmprovider-sdk's
+   `docs/decisions/0002-PLAN-migrate-llmprovider-from-mcplib.md` gains a
+   Phase 10 execution entry, with the live check's output. That is a
+   records-only change there.
+
+## Verification
+
+* **V1.** `go list -m all` names no `github.com/maccavelli/mcplib`.
+  `go.mod` requires the two libraries at release versions, and `go 1.27.1`.
+* **V2.** Every check in rule 3 passes at the end of Phases 1, 2 and 3.
+* **V3.** `TestMigrationByteForByte` passes, and fails on each planted
+  break of Phase 1 step 9.
+* **V4.** The precheck refuses each planted input of Phase 3 step 5.
+* **V5.** D2–D5 each have a passing test that fails on a planted break.
+* **V6.** CI is green on Linux, macOS and Windows, on `main` and on the tag.
+  The tag's release passes `verify-release.sh`.
+* **V7.** The live check shows `gpt-6-sol`.
+* **V8.** Nothing committed carries a hostname, an account name or a
+  real-machine path.
+
+## Rollout and Rollback
+
+* **Rollout.** Phases 1–4 are local commits. Phase 5 publishes.
+* **Rollback.**
+  * Before the tag, any phase reverts alone, newest first, because each is
+    green alone.
+  * After the tag, a problem is fixed forward in a patch release. Users on
+    the previous release keep working: their `update` reads the same
+    GitHub releases.
+
+## Execution Record
+
+The trial behind the MADR's measurements was a scratch clone; nothing was
+committed from it.
+
+### Phase 0: accept the records (2026-10-03)
+
+* **Approval.** The owner answered "D1-D7 follow recommendations. proceed",
+  and authorized a commit per phase to `main`, with no push.
+* The MADR is `accepted`, and this PLAN `in-progress`.
+* `docs/README.md` indexes both. Its older `file://` links are 0007's L-a
+  work, out of this PLAN's scope, and are left as they are.
+
+### Deviation D1 (2026-10-03): the toolchain bump lands before Phase 0
+
+* **Found.** The Phase 0 commit was refused by the repository's
+  pre-commit hook.
+  * `.githooks/pre-commit` runs `make verify-staged`, which runs `make
+    tools`.
+  * `scripts/bootstrap-tools.sh:10` pinned `GO_VERSION="go1.26.6"`. The host
+    runs go1.27.1, so the hook stopped with `expected go1.26.6, got
+    go1.27.1`.
+  * This was pre-existing: the MADR's trial saw the same failure at
+    `cfada6e`. No commit can pass the hook on this host until the pin moves.
+* **Decision.** The owner chose "Bump toolchain first". Phase 1 step 1 lands
+  alone, then the Phase 0 records, then the rest of Phase 1.
+* **What the bump needed.**
+  * **`go mod tidy`.** At `go 1.27.1`, `go mod tidy -diff` regrouped
+    `go.mod`'s `require` blocks. It moved `mcplib` into its own block and
+    `x/term` beside `x/sys`. The requirements and versions are unchanged,
+    and `go.sum` is unchanged.
+  * **The tool cache.** `.tools/bin` held golangci-lint v2.13.1,
+    govulncheck v1.7.0 and actionlint v1.7.12, all built with go1.26.6.
+    golangci-lint refused the module: `the Go language version (go1.26)
+    used to build golangci-lint is lower than the targeted Go version
+    (1.27.1)`.
+    * `bootstrap-tools.sh` compares only each tool's own version, so it
+      never rebuilds them.
+    * The three were rebuilt in this host's ignored cache, at the same
+      pinned versions, with `GOBIN=.tools/bin go install`. `go version` then
+      reports go1.27.1 for each.
+    * CI starts from an empty cache, so it is unaffected.
+    * Step 1a proposes the fix in the tree.
+* **Checks on `e735fa3`:**
+
+  | Check | Result |
+  | :--- | :--- |
+  | `make verify` | exit 0: 0 lint issues; `total coverage: 83.5% (minimum 80.0%)`; `No vulnerabilities found.`; build-all |
+  | `go test -race -count=1 ./...` | 5 packages ok |
+  | `CGO_ENABLED=0 go vet` for linux, darwin, windows | 0 each |
+  | `go mod tidy -diff` | 0 |
+  | `python3 scripts/go-precheck.py` | exit 0; mcplib `v1.6.0` resolved from GitHub |
+  | the pre-commit hook | passed |
