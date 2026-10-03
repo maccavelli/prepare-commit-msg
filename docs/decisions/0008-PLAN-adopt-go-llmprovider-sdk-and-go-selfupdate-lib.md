@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: complete
 date: 2026-10-03
 associated-madr: "0008-MADR-adopt-go-llmprovider-sdk-and-go-selfupdate-lib.md"
 ---
@@ -569,3 +569,51 @@ the unchanged copy, then failed on its plant:
   * `TestMigrationByteForByte` passes.
 * **Not changed.** The test's byte-for-byte comparison, and the fixtures'
   contents.
+
+### Phase 5: release and the live check (2026-10-03)
+
+* **The owner** pushed `main` through `fd81a19`, then tagged and pushed
+  `v1.5.0` there (an annotated tag).
+* **CI.** Run `37149541198` on `main` at `fd81a19` passed: "Go (test; build
+  on tag)", and the Linux, macOS and Windows native tests. The publish job
+  skipped, as it does off a tag. Run `37150981357` on the tag passed, and
+  published.
+* **The release** `v1.5.0` is not a draft or a prerelease. It holds the six
+  binaries (`linux`, `darwin` and `windows`, each `amd64` and `arm64`)
+  and `SHA256SUMS`.
+* **Checked by the agent,** on a download into the session's scratch
+  space:
+  * `shasum -a 256 -c SHA256SUMS` reports `OK` for all six;
+  * `prepare-commit-msg-darwin-arm64 version` prints `prepare-commit-msg
+    version v1.5.0 (release) fd81a191f214`, D1's form.
+* **The upgrade path,** reported by the owner. Their installed `v1.4.0`
+  updated to `v1.5.0` with `prepare-commit-msg update`.
+  * The agent's own check from the scratch space could not run. The
+    `v1.4.0` binary refused with `target … is outside allowed roots`, its
+    home-directory rule.
+  * The owner chose to record their update, rather than have the agent
+    stage a copy under `$HOME`.
+* **Phase 10 step 8, the live check,** reported by the owner. Built from
+  `v1.5.0`, a ChatGPT-session model listing in `configure` shows
+  `gpt-6-sol`. The owner: "3 passed with flying colors". The output itself
+  was not pasted.
+
+### Phase 6: close-out (2026-10-03)
+
+* This PLAN is `complete`, and `docs/README.md` says so.
+* go-llmprovider-sdk's
+  `docs/decisions/0002-PLAN-migrate-llmprovider-from-mcplib.md` records
+  Phase 10.
+* **Every Verification item holds:**
+  * V1: no mcplib, both libraries at releases, `go 1.27.1`;
+  * V2: the checks of each phase;
+  * V3–V5: the proofs recorded under Phases 1–3;
+  * V6: CI green on Linux, macOS and Windows, on `main` and on the tag;
+  * V7: the owner's live check;
+  * V8: the identifier scans.
+* **Still open, outside this PLAN:**
+  * step 1a, the `bootstrap-tools.sh` toolchain check, proposed and not
+    approved;
+  * 0007's link and index halves;
+  * the README's "Maintainer Release" section, which names a workflow this
+    repository no longer has.
