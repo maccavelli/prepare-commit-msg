@@ -43,8 +43,8 @@ Define the complete pipeline in a single workflow:
 ## Phase 2: Remove Redundant Workflow Files & Update Docs
 
 ### 1. Remove Legacy Files
-* Remove [`.github/workflows/quality.yml`](../.github/workflows/quality.yml).
-* Remove [`.github/workflows/release.yml`](../.github/workflows/release.yml).
+* Remove [`.github/workflows/quality.yml`](https://github.com/maccavelli/prepare-commit-msg/blob/7b91a1ae38be006ffd0779aefe159bba1d597b59/.github/workflows/quality.yml).
+* Remove [`.github/workflows/release.yml`](https://github.com/maccavelli/prepare-commit-msg/blob/7b91a1ae38be006ffd0779aefe159bba1d597b59/.github/workflows/release.yml).
 
 ### 2. Update Documentation
 * Update [`docs/README.md`](../docs/README.md) to index MADR-0004 and PLAN-0004.

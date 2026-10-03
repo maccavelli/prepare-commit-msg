@@ -12,11 +12,11 @@ decision-makers:
 When a maintainer pushed release tag `v1.1.1`, CI executed unit tests but did not build or publish release binaries. A manual dispatch of the release workflow subsequently failed during action setup in the `Build, Verify, and Attest` job.
 
 Investigation revealed three distinct issues in the current CI/CD configuration:
-1. **Workflow Trigger Disconnect**: [`.github/workflows/release.yml`](../.github/workflows/release.yml) was configured to run exclusively via `workflow_dispatch` (manual dispatch), completely ignoring `push: tags: ['v*']` events.
-2. **Invalid Action Reference**: [`.github/workflows/release.yml`](../.github/workflows/release.yml#L78) referenced a non-existent commit SHA (`1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.1.0`) for `actions/attest-build-provenance`, causing GitHub Actions runner setup to fail immediately (Run [`33329311164`](https://github.com/maccavelli/prepare-commit-msg/actions/runs/33329311164)).
+1. **Workflow Trigger Disconnect**: [`.github/workflows/release.yml`](https://github.com/maccavelli/prepare-commit-msg/blob/7b91a1ae38be006ffd0779aefe159bba1d597b59/.github/workflows/release.yml) was configured to run exclusively via `workflow_dispatch` (manual dispatch), completely ignoring `push: tags: ['v*']` events.
+2. **Invalid Action Reference**: [`.github/workflows/release.yml`](https://github.com/maccavelli/prepare-commit-msg/blob/7b91a1ae38be006ffd0779aefe159bba1d597b59/.github/workflows/release.yml#L78) referenced a non-existent commit SHA (`1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.1.0`) for `actions/attest-build-provenance`, causing GitHub Actions runner setup to fail immediately (Run [`33329311164`](https://github.com/maccavelli/prepare-commit-msg/actions/runs/33329311164)).
 3. **Over-Engineered Staging Scheme**: The workflow attempted multi-step draft creation, verification, and editing (`gh release create --draft` followed by `gh release edit --draft=false`) rather than publishing directly to GitHub Releases upon successful build.
 
-The maintainer directed adopting the established, proven CI/CD architecture from [`magic-cli-remote`](/Users/<user>/gitrepos/go/magic-cli-remote/.github/workflows/ci.yml) as the baseline for `prepare-commit-msg`.
+The maintainer directed adopting the established, proven CI/CD architecture from [`magic-cli-remote`](https://github.com/maccavelli/magic-cli-remote/blob/master/.github/workflows/ci.yml) as the baseline for `prepare-commit-msg`.
 
 ## Decision Drivers
 
@@ -67,7 +67,7 @@ Adopt the `magic-cli-remote` workflow pattern:
        fi
        gh release upload "$TAG" dist/* --clobber
        ```
-4. **Cleanup**: Remove redundant files [`.github/workflows/quality.yml`](../.github/workflows/quality.yml) and [`.github/workflows/release.yml`](../.github/workflows/release.yml).
+4. **Cleanup**: Remove redundant files [`.github/workflows/quality.yml`](https://github.com/maccavelli/prepare-commit-msg/blob/7b91a1ae38be006ffd0779aefe159bba1d597b59/.github/workflows/quality.yml) and [`.github/workflows/release.yml`](https://github.com/maccavelli/prepare-commit-msg/blob/7b91a1ae38be006ffd0779aefe159bba1d597b59/.github/workflows/release.yml).
 
 ## Consequences
 

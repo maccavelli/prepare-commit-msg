@@ -9,14 +9,14 @@
 
 ## Context and Problem Statement
 
-[`prepare-commit-msg`](file:///home/mac/gitrepos/prepare-commit-msg/README.md) is an automated Git hook written in Go that generates conventional commit messages from staged Git diffs using LLM providers (`gemini`, `openai`, `claude`). LLM integration is abstracted via the internal fleet library [`mcplib/llmprovider`](file:///data/cache/go/pkg/mod/github.com/maccavelli/mcplib@v0.2.0/llmprovider).
+[`prepare-commit-msg`](../../README.md) is an automated Git hook written in Go that generates conventional commit messages from staged Git diffs using LLM providers (`gemini`, `openai`, `claude`). LLM integration is abstracted via the internal fleet library [`mcplib/llmprovider`](https://github.com/maccavelli/mcplib/tree/d8cce03a5007dd9f5e88f1630f97a094c25eab77/llmprovider).
 
 An architectural evaluation of the current codebase revealed key areas for modernization:
 
 1. **Inaccurate and Stale Model Catalog:**
-   * The hardcoded static catalog in [`StaticGemini`](file:///data/cache/go/pkg/mod/github.com/maccavelli/mcplib@v0.2.0/llmprovider/models_catalog.go#L28-L34) contains nonexistent/speculative model IDs (e.g., `gemini-3.1-flash-lite`) and includes reasoning-heavy Pro models (`gemini-2.5-pro`).
+   * The hardcoded static catalog in [`StaticGemini`](https://github.com/maccavelli/mcplib/blob/d8cce03a5007dd9f5e88f1630f97a094c25eab77/llmprovider/models_catalog.go#L28-L34) contains nonexistent/speculative model IDs (e.g., `gemini-3.1-flash-lite`) and includes reasoning-heavy Pro models (`gemini-2.5-pro`).
    * It completely omits current frontier fast models (`gemini-3.7-flash`, `gemini-3.6-flash`, and `gemini-3.5-flash-lite`).
-   * Documentation in [`README.md`](file:///home/mac/gitrepos/prepare-commit-msg/README.md#L60-L61) still references deprecated and shut-down models (`gemini-2.0-flash` and `gemini-2.0-flash-lite`, decommissioned in mid-2026).
+   * Documentation in [`README.md`](https://github.com/maccavelli/prepare-commit-msg/blob/9f55d6836b94b8347847d78f02a524e019c8ea1c/README.md#L60-L61) still references deprecated and shut-down models (`gemini-2.0-flash` and `gemini-2.0-flash-lite`, decommissioned in mid-2026).
 
 2. **Commit Message Optimization (Fast Models vs. Reasoning Models):**
    * Commit generation requires fast analysis of unified diffs and concise output with sub-2-second latency.
@@ -149,11 +149,11 @@ When initializing a fresh configuration, template provider entries are populated
 
 | Target Component | File Path | Action |
 | :--- | :--- | :--- |
-| **Catalog & Ranking** | [`mcplib/llmprovider/models_catalog.go`](file:///data/cache/go/pkg/mod/github.com/maccavelli/mcplib@v0.2.0/llmprovider/models_catalog.go) | Update `StaticGemini` to Top 6 fast models; update `RankGeminiModel` to score 3.x Flash and penalize Pro/Reasoning; update `curateFromCatalog` with dynamic backfill. |
-| **Discovery Logic** | [`mcplib/llmprovider/discovery.go`](file:///data/cache/go/pkg/mod/github.com/maccavelli/mcplib@v0.2.0/llmprovider/discovery.go) | Enhance `/v1beta/models` parsing and error handling. |
-| **Config Schema & Defaults** | [`internal/config/config.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/config/config.go) | Purge legacy migration code; ensure `ApplyDefaults` populates modern default models and fallbacks for all providers in the template. |
-| **Configure Wizard** | [`internal/ui/setup.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/ui/setup.go) | Add live API key verification; render annotated model menu with speed badges; auto-suggest fast fallbacks. |
-| **Documentation & CLI Help** | [`README.md`](file:///home/mac/gitrepos/prepare-commit-msg/README.md) & [`main.go`](file:///home/mac/gitrepos/prepare-commit-msg/main.go) | Update documentation, help text, and examples to reference `gemini-3.7-flash`. |
+| **Catalog & Ranking** | [`mcplib/llmprovider/models_catalog.go`](https://github.com/maccavelli/mcplib/blob/d8cce03a5007dd9f5e88f1630f97a094c25eab77/llmprovider/models_catalog.go) | Update `StaticGemini` to Top 6 fast models; update `RankGeminiModel` to score 3.x Flash and penalize Pro/Reasoning; update `curateFromCatalog` with dynamic backfill. |
+| **Discovery Logic** | [`mcplib/llmprovider/discovery.go`](https://github.com/maccavelli/mcplib/blob/d8cce03a5007dd9f5e88f1630f97a094c25eab77/llmprovider/discovery.go) | Enhance `/v1beta/models` parsing and error handling. |
+| **Config Schema & Defaults** | [`internal/config/config.go`](../../internal/config/config.go) | Purge legacy migration code; ensure `ApplyDefaults` populates modern default models and fallbacks for all providers in the template. |
+| **Configure Wizard** | [`internal/ui/setup.go`](../../internal/ui/setup.go) | Add live API key verification; render annotated model menu with speed badges; auto-suggest fast fallbacks. |
+| **Documentation & CLI Help** | [`README.md`](../../README.md) & [`main.go`](../../main.go) | Update documentation, help text, and examples to reference `gemini-3.7-flash`. |
 
 ---
 

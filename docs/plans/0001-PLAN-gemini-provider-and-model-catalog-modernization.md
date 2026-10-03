@@ -1,8 +1,8 @@
 # Implementation Plan: Modernizing Gemini Provider, Model Catalog Integration, and Configure UX
 
-* **Target Repositories:** [`prepare-commit-msg`](file:///home/mac/gitrepos/prepare-commit-msg/README.md) & [`mcplib`](file:///data/cache/go/pkg/mod/github.com/maccavelli/mcplib@v0.2.0)
+* **Target Repositories:** [`prepare-commit-msg`](../../README.md) & [`mcplib`](https://github.com/maccavelli/mcplib/tree/d8cce03a5007dd9f5e88f1630f97a094c25eab77)
 * **Status:** Ready for User Review
-* **Architectural Reference:** [ADR-0001: Modernizing Gemini Provider, Model Catalog Integration, and Configure UX](file:///home/mac/gitrepos/prepare-commit-msg/docs/decisions/0001-gemini-provider-and-model-catalog-modernization.md)
+* **Architectural Reference:** [ADR-0001: Modernizing Gemini Provider, Model Catalog Integration, and Configure UX](../decisions/0001-MADR-gemini-provider-and-model-catalog-modernization.md)
 
 ---
 
@@ -27,7 +27,7 @@ The change resolves four key requirements:
 
 > [!NOTE]
 > **Fleet Architecture & Module Boundary:**
-> `prepare-commit-msg` depends on `github.com/maccavelli/mcplib/llmprovider` (located at `/data/gitrepos/mcplib`). The changes will update both the library (`mcplib`) and the application (`prepare-commit-msg`). We will use a local `replace` directive during development and verification to ensure seamless end-to-end testing across both repositories.
+> `prepare-commit-msg` depends on `github.com/maccavelli/mcplib/llmprovider` (located at `<mcplib checkout>`). The changes will update both the library (`mcplib`) and the application (`prepare-commit-msg`). We will use a local `replace` directive during development and verification to ensure seamless end-to-end testing across both repositories.
 
 ---
 
@@ -35,7 +35,7 @@ The change resolves four key requirements:
 
 ### Component 1: `mcplib/llmprovider` (Provider Library)
 
-#### [MODIFY] [`models_catalog.go`](file:///data/gitrepos/mcplib/llmprovider/models_catalog.go)
+#### [MODIFY] [`models_catalog.go`](https://github.com/maccavelli/mcplib/blob/main/llmprovider/models_catalog.go)
 * Replace `StaticGemini` slice with the **Top 6 current fast models**:
   ```go
   var StaticGemini = []string{
@@ -57,20 +57,20 @@ The change resolves four key requirements:
 * Update `isUsableGeminiTextModel`:
   * Ensure models with `generateContent` and no deny keywords are accepted.
 
-#### [MODIFY] [`models_catalog_test.go`](file:///data/gitrepos/mcplib/llmprovider/models_catalog_test.go)
+#### [MODIFY] [`models_catalog_test.go`](https://github.com/maccavelli/mcplib/blob/main/llmprovider/models_catalog_test.go)
 * Update unit tests to validate:
   * `StaticGemini` contains only active fast models (`gemini-3.7-flash`, `gemini-3.6-flash`, etc.) and zero deprecated `2.0`, `1.5`, or `pro` models.
   * `RankGeminiModel` ranks `gemini-3.7-flash` > `gemini-3.6-flash` > `gemini-3.5-flash` > `gemini-2.5-flash` > `gemini-2.5-pro`.
   * `curateFromCatalog` correctly backfills new dynamically discovered models.
 
-#### [MODIFY] [`gemini.go`](file:///data/gitrepos/mcplib/llmprovider/gemini.go)
+#### [MODIFY] [`gemini.go`](https://github.com/maccavelli/mcplib/blob/main/llmprovider/gemini.go)
 * Keep `thinkingBudget` suppressed (`thinkingBudget: 0` or omitted) during standard `Generate` to prevent reasoning delays.
 
 ---
 
 ### Component 2: `prepare-commit-msg` (CLI Application & Git Hook)
 
-#### [MODIFY] [`internal/config/config.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/config/config.go)
+#### [MODIFY] [`internal/config/config.go`](../../internal/config/config.go)
 * **Clean Greenfield Architecture:** Remove legacy migration paths (`legacyConfigPaths`, `prepare-commit-msg-embedded`).
 * **Pre-populated Template Configuration:** Update `ApplyDefaults` so that when a config is created or initialized, all supported providers (`gemini`, `openai`, `claude`) are populated with their modern recommended primary model and fallback models:
   ```go
@@ -114,11 +114,11 @@ The change resolves four key requirements:
   * `openai`: `gpt-4.1-mini` (fallbacks: `gpt-4.1-nano`, `gpt-4o-mini`)
   * `claude`: `claude-haiku-4-5` (fallbacks: `claude-sonnet-5`, `claude-sonnet-4-6`)
 
-#### [MODIFY] [`internal/config/config_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/config/config_test.go)
+#### [MODIFY] [`internal/config/config_test.go`](../../internal/config/config_test.go)
 * Update tests to reflect clean greenfield schema and remove tests asserting legacy migration paths.
 * Verify default provider template population.
 
-#### [MODIFY] [`internal/ui/setup.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/ui/setup.go)
+#### [MODIFY] [`internal/ui/setup.go`](../../internal/ui/setup.go)
 * Add real-time API key verification:
   * When a key is entered or detected from environment, test it against `llmprovider.ListAvailableModels(ctx, provider, key)` with a 10s timeout.
   * Print status confirmation (`✔ API key verified`).
@@ -133,12 +133,12 @@ The change resolves four key requirements:
 * Update `promptFallbacks`:
   * Recommend the next 3 fast models excluding the selected primary model.
 
-#### [MODIFY] [`internal/ui/setup_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/ui/setup_test.go)
+#### [MODIFY] [`internal/ui/setup_test.go`](../../internal/ui/setup_test.go)
 * Update tests to reflect the 6-model catalog for Gemini.
 * Verify interactive menu choices (`1` through `6` + `7` for "Other").
 * Verify fallback multi-selection with new recommended defaults.
 
-#### [MODIFY] [`README.md`](file:///home/mac/gitrepos/prepare-commit-msg/README.md)
+#### [MODIFY] [`README.md`](../../README.md)
 * Replace deprecated flags in documentation:
   * Update `--model gemini-2.5-flash` ➔ `--model gemini-3.7-flash`
   * Update `--fallback gemini-2.0-flash` ➔ `--fallback gemini-3.6-flash`
@@ -151,24 +151,24 @@ The change resolves four key requirements:
 ### Automated Tests
 1. **`mcplib/llmprovider` Test Suite:**
    ```bash
-   cd /data/gitrepos/mcplib && go test -v -race ./llmprovider/...
+   cd <mcplib checkout> && go test -v -race ./llmprovider/...
    ```
    *Verifies:* `TestIsUsableGeminiTextModel`, `TestCurateFromCatalog_Gemini`, `TestStaticModels_NoShutDownGemini20`, `TestRankGeminiModel_PrefersFlashLite`.
 
 2. **`prepare-commit-msg` Test Suite:**
    ```bash
-   cd /home/mac/gitrepos/prepare-commit-msg && go test -v -race ./...
+   cd <prepare-commit-msg checkout> && go test -v -race ./...
    ```
    *Verifies:* All unit tests across `main`, `internal/ui`, `internal/config`, `internal/git`, `internal/fsutil`.
 
 3. **Fleet Linter & Vet Check:**
    ```bash
-   cd /home/mac/gitrepos/prepare-commit-msg && go vet ./...
+   cd <prepare-commit-msg checkout> && go vet ./...
    ```
 
 4. **Multi-Platform Cross Build Check:**
    ```bash
-   cd /home/mac/gitrepos/prepare-commit-msg && make build
+   cd <prepare-commit-msg checkout> && make build
    ```
 
 ### Manual Verification

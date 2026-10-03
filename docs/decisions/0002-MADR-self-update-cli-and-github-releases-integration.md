@@ -9,7 +9,7 @@
 
 ## Context and Problem Statement
 
-[`prepare-commit-msg`](file:///home/mac/gitrepos/prepare-commit-msg/README.md) is a single-binary Go CLI tool and Git hook that generates conventional commit messages from staged Git diffs. As a standalone binary installed on developer workstations (e.g. in `~/.local/bin`, `/usr/local/bin`, or user-specified paths), users have no automated way to discover, download, and apply new releases without manual intervention.
+[`prepare-commit-msg`](../../README.md) is a single-binary Go CLI tool and Git hook that generates conventional commit messages from staged Git diffs. As a standalone binary installed on developer workstations (e.g. in `~/.local/bin`, `/usr/local/bin`, or user-specified paths), users have no automated way to discover, download, and apply new releases without manual intervention.
 
 Developers currently have to:
 1. Manually check GitHub releases for new versions.
@@ -55,7 +55,7 @@ To streamline maintenance and ensure developer environments stay up-to-date with
 
 1. **Exact Asset Topology Fit:** The repository's release pipeline (`.github/workflows/release.yml`) builds and publishes raw static binaries and a clean `SHA256SUMS` file. It does not package them in `.tar.gz` or `.zip` archives. A native updater handles this flat topology directly in under 300 lines of clean Go code without external archive extraction dependencies.
 2. **Zero Dependency Overhead:** Avoids adding large transitive dependencies (`github.com/ulikunitz/xz`, `github.com/klauspost/compress`) to `go.mod`.
-3. **Robust Cross-Platform Mechanics:** Directly integrates same-filesystem atomic staging and Windows `.old` swapping while matching the codebase's existing filesystem patterns in [`internal/fsutil/atomic.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/fsutil/atomic.go).
+3. **Robust Cross-Platform Mechanics:** Directly integrates same-filesystem atomic staging and Windows `.old` swapping while matching the codebase's existing filesystem patterns in [`internal/fsutil/atomic.go`](../../internal/fsutil/atomic.go).
 4. **Resilient GitHub API Integration:** Supports unauthenticated requests, honors `GITHUB_TOKEN` / `GH_TOKEN` for CI or enterprise rate limits, and uses clean context timeouts.
 
 ---
@@ -161,7 +161,7 @@ flowchart TD
 
 ### 3. CLI Interface and Flag Specification
 
-The command line syntax for `update` will be integrated into [`main.go`](file:///home/mac/gitrepos/prepare-commit-msg/main.go):
+The command line syntax for `update` will be integrated into [`main.go`](../../main.go):
 
 ```
 Usage:
@@ -210,18 +210,18 @@ Run 'prepare-commit-msg update' to apply the update.
 ## Prospective Code Organization & Changes
 
 ### Files to Add:
-1. [`internal/selfupdate/semver.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/semver.go)
-2. [`internal/selfupdate/semver_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/semver_test.go)
-3. [`internal/selfupdate/client.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/client.go)
-4. [`internal/selfupdate/updater.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/updater.go)
-5. [`internal/selfupdate/apply_unix.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/apply_unix.go)
-6. [`internal/selfupdate/apply_windows.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/apply_windows.go)
-7. [`internal/selfupdate/updater_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/updater_test.go)
+1. [`internal/selfupdate/semver.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/semver.go)
+2. [`internal/selfupdate/semver_test.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/semver_test.go)
+3. [`internal/selfupdate/client.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/client.go)
+4. [`internal/selfupdate/updater.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/updater.go)
+5. [`internal/selfupdate/apply_unix.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/apply_unix.go)
+6. [`internal/selfupdate/apply_windows.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/apply_windows.go)
+7. [`internal/selfupdate/updater_test.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/updater_test.go)
 
 ### Files to Modify:
-1. [`main.go`](file:///home/mac/gitrepos/prepare-commit-msg/main.go): Add `update` command branch in `switch args[0]`, implement `runUpdate(args []string) error`, and update `printUsage()`.
-2. [`main_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/main_test.go): Add CLI dispatch test cases for `update`, `update --help`, `update --check`.
-3. [`README.md`](file:///home/mac/gitrepos/prepare-commit-msg/README.md): Document `prepare-commit-msg update` CLI command and flags.
+1. [`main.go`](../../main.go): Add `update` command branch in `switch args[0]`, implement `runUpdate(args []string) error`, and update `printUsage()`.
+2. [`main_test.go`](../../main_test.go): Add CLI dispatch test cases for `update`, `update --help`, `update --check`.
+3. [`README.md`](../../README.md): Document `prepare-commit-msg update` CLI command and flags.
 
 ---
 

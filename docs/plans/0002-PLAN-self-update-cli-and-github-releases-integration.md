@@ -10,15 +10,15 @@ target-milestone: "v4.4.0"
 
 ## Executive Summary & Goal
 
-This implementation plan translates the architectural decisions formulated in [**ADR-0002: Self-Update CLI Subcommand and GitHub Releases Integration**](file:///home/mac/gitrepos/prepare-commit-msg/docs/decisions/0002-MADR-self-update-cli-and-github-releases-integration.md) into concrete, phased, and deterministic engineering tasks.
+This implementation plan translates the architectural decisions formulated in [**ADR-0002: Self-Update CLI Subcommand and GitHub Releases Integration**](../decisions/0002-MADR-self-update-cli-and-github-releases-integration.md) into concrete, phased, and deterministic engineering tasks.
 
-The objective is to implement a robust, cross-platform, zero-dependency self-updater into [`prepare-commit-msg`](file:///home/mac/gitrepos/prepare-commit-msg/README.md) exposed via the `update` CLI subcommand. The updater queries the official GitHub repository releases, streams the correct platform binary asset, verifies its SHA-256 hash against the published `SHA256SUMS` manifest, and atomically replaces the active executable in-place.
+The objective is to implement a robust, cross-platform, zero-dependency self-updater into [`prepare-commit-msg`](../../README.md) exposed via the `update` CLI subcommand. The updater queries the official GitHub repository releases, streams the correct platform binary asset, verifies its SHA-256 hash against the published `SHA256SUMS` manifest, and atomically replaces the active executable in-place.
 
 ---
 
 ## Prerequisites & Dependencies
 
-* **Go Toolchain:** Go $\ge$ 1.24 (as defined in [`go.mod`](file:///home/mac/gitrepos/prepare-commit-msg/go.mod)).
+* **Go Toolchain:** Go $\ge$ 1.24 (as defined in [`go.mod`](../../go.mod)).
 * **Target Architecture Matrix:**
   * Linux x86_64 (`linux-amd64` $\rightarrow$ `prepare-commit-msg-linux-amd64`)
   * macOS ARM64 (`darwin-arm64` $\rightarrow$ `prepare-commit-msg-darwin-arm64`)
@@ -52,17 +52,17 @@ The objective is to implement a robust, cross-platform, zero-dependency self-upd
 
 | File Path | Responsibility |
 | :--- | :--- |
-| [`internal/selfupdate/semver.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/semver.go) | Custom, zero-alloc SemVer parser, validator, and comparison functions (`Compare`, `IsNewer`, `CleanVersion`). |
-| [`internal/selfupdate/semver_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/semver_test.go) | Table-driven unit tests for all SemVer permutations, prefixes (`v`), prerelease identifiers, and edge cases. |
-| [`internal/selfupdate/client.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/client.go) | GitHub Releases REST client (`FetchLatestRelease`, `FetchReleaseByTag`, `FetchChecksums`, `DownloadAsset`). Supports rate-limit token detection (`GITHUB_TOKEN` / `GH_TOKEN`). |
-| [`internal/selfupdate/client_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/client_test.go) | Unit tests mocking GitHub Releases API and `SHA256SUMS` with `net/http/httptest`. |
-| [`internal/selfupdate/apply_unix.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/apply_unix.go) | POSIX-compliant atomic replacement (`//go:build !windows`): same-directory temporary file staging, `0755` permissions, `os.Rename`. |
-| [`internal/selfupdate/apply_windows.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/apply_windows.go) | Windows replacement (`//go:build windows`): `.old` rollover renaming to circumvent active file locking, with automatic rollback. |
-| [`internal/selfupdate/updater.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/updater.go) | High-level orchestrator (`Options`, `UpdateResult`, `Run`, `PlatformAsset`), user feedback reporting, and permission error interception. |
-| [`internal/selfupdate/updater_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/updater_test.go) | End-to-end integration tests simulating binary downloads, valid/invalid checksums, dry-run checks, and elevated permission handling. |
-| [`main.go`](file:///home/mac/gitrepos/prepare-commit-msg/main.go) | Subcommand routing for `update`, flag definitions (`--check`, `--force`, `--version`, `--yes`), usage documentation. |
-| [`main_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/main_test.go) | CLI entrypoint tests validating flag parsing and command routing. |
-| [`README.md`](file:///home/mac/gitrepos/prepare-commit-msg/README.md) | User documentation detailing `prepare-commit-msg update` usage and options. |
+| [`internal/selfupdate/semver.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/semver.go) | Custom, zero-alloc SemVer parser, validator, and comparison functions (`Compare`, `IsNewer`, `CleanVersion`). |
+| [`internal/selfupdate/semver_test.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/semver_test.go) | Table-driven unit tests for all SemVer permutations, prefixes (`v`), prerelease identifiers, and edge cases. |
+| [`internal/selfupdate/client.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/client.go) | GitHub Releases REST client (`FetchLatestRelease`, `FetchReleaseByTag`, `FetchChecksums`, `DownloadAsset`). Supports rate-limit token detection (`GITHUB_TOKEN` / `GH_TOKEN`). |
+| [`internal/selfupdate/client_test.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/client_test.go) | Unit tests mocking GitHub Releases API and `SHA256SUMS` with `net/http/httptest`. |
+| [`internal/selfupdate/apply_unix.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/apply_unix.go) | POSIX-compliant atomic replacement (`//go:build !windows`): same-directory temporary file staging, `0755` permissions, `os.Rename`. |
+| [`internal/selfupdate/apply_windows.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/apply_windows.go) | Windows replacement (`//go:build windows`): `.old` rollover renaming to circumvent active file locking, with automatic rollback. |
+| [`internal/selfupdate/updater.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/updater.go) | High-level orchestrator (`Options`, `UpdateResult`, `Run`, `PlatformAsset`), user feedback reporting, and permission error interception. |
+| [`internal/selfupdate/updater_test.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/updater_test.go) | End-to-end integration tests simulating binary downloads, valid/invalid checksums, dry-run checks, and elevated permission handling. |
+| [`main.go`](../../main.go) | Subcommand routing for `update`, flag definitions (`--check`, `--force`, `--version`, `--yes`), usage documentation. |
+| [`main_test.go`](../../main_test.go) | CLI entrypoint tests validating flag parsing and command routing. |
+| [`README.md`](../../README.md) | User documentation detailing `prepare-commit-msg update` usage and options. |
 
 ---
 
@@ -233,22 +233,22 @@ Ensure full test coverage, static analysis compliance, and documentation synchro
 ## Granular Task Checklist
 
 - [x] **Phase 1: SemVer & GitHub Client**
-  - [x] Create [`internal/selfupdate/semver.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/semver.go)
-  - [x] Create [`internal/selfupdate/semver_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/semver_test.go)
-  - [x] Create [`internal/selfupdate/client.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/client.go)
-  - [x] Create [`internal/selfupdate/client_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/client_test.go)
+  - [x] Create [`internal/selfupdate/semver.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/semver.go)
+  - [x] Create [`internal/selfupdate/semver_test.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/semver_test.go)
+  - [x] Create [`internal/selfupdate/client.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/client.go)
+  - [x] Create [`internal/selfupdate/client_test.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/client_test.go)
 - [x] **Phase 2: Cross-Platform Atomic Binary Replacement**
-  - [x] Create [`internal/selfupdate/apply_unix.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/apply_unix.go)
-  - [x] Create [`internal/selfupdate/apply_windows.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/apply_windows.go)
-  - [x] Create [`internal/selfupdate/apply_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/apply_test.go)
+  - [x] Create [`internal/selfupdate/apply_unix.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/apply_unix.go)
+  - [x] Create [`internal/selfupdate/apply_windows.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/apply_windows.go)
+  - [x] Create [`internal/selfupdate/apply_test.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/apply_test.go)
 - [x] **Phase 3: High-Level Updater Orchestrator**
-  - [x] Create [`internal/selfupdate/updater.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/updater.go)
-  - [x] Create [`internal/selfupdate/updater_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/internal/selfupdate/updater_test.go)
+  - [x] Create [`internal/selfupdate/updater.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/updater.go)
+  - [x] Create [`internal/selfupdate/updater_test.go`](https://github.com/maccavelli/prepare-commit-msg/blob/79cdba965289449c2993d731d16de10f6a78ab85/internal/selfupdate/updater_test.go)
 - [x] **Phase 4: CLI Command & Main Integration**
-  - [x] Update [`main.go`](file:///home/mac/gitrepos/prepare-commit-msg/main.go) with `update` subcommand and flag parsing
-  - [x] Update [`main_test.go`](file:///home/mac/gitrepos/prepare-commit-msg/main_test.go) with `update` command test cases
+  - [x] Update [`main.go`](../../main.go) with `update` subcommand and flag parsing
+  - [x] Update [`main_test.go`](../../main_test.go) with `update` command test cases
 - [x] **Phase 5: Documentation & Quality Verification**
-  - [x] Update [`README.md`](file:///home/mac/gitrepos/prepare-commit-msg/README.md) with `prepare-commit-msg update` documentation
+  - [x] Update [`README.md`](../../README.md) with `prepare-commit-msg update` documentation
   - [x] Run `gofmt -s -w .`
   - [x] Run `go vet ./...`
   - [x] Run `golangci-lint run -c .golangci.yml ./...`

@@ -38,7 +38,7 @@ The following facts were verified on 2026-08-30:
 * CI runs tests, `go vet`, `golangci-lint`, and six cross-compilations on one
   `ubuntu-latest` runner. Cross-compilation confirms that platform-specific
   files compile, but it does not execute the Windows or macOS implementations.
-* [`.github/workflows/release.yml`](../.github/workflows/release.yml) duplicates
+* [`.github/workflows/release.yml`](https://github.com/maccavelli/prepare-commit-msg/blob/7b91a1ae38be006ffd0779aefe159bba1d597b59/.github/workflows/release.yml) duplicates
   the test, vet, and lint sequence instead of calling a shared repository
   contract. Git history shows that the CI linter was pinned in commit `b08a9df`
   and the duplicated release linter required a separate correction in commit
