@@ -30,6 +30,11 @@ install_tool() {
 		govulncheck) output="$($binary -version 2>&1)" ;;
 		actionlint) output="$($binary -version 2>&1)" ;;
 		esac
+		# A tool built by another Go toolchain is rebuilt: golangci-lint
+		# refuses a module whose go directive is newer than its own Go.
+		if [[ "$(go version "$binary" 2>/dev/null)" != *": $GO_VERSION" ]]; then
+			output=""
+		fi
 	fi
 
 	if [[ "$output" != *"$expected"* ]]; then

@@ -437,13 +437,14 @@ make verify         # Run complete quality contract: mod-check, fmt-check, lint,
 
 ### Maintainer Release
 
-Releases are triggered via GitHub Actions manual workflow dispatch:
+A release is a pushed `v*` tag on a commit whose CI has passed on `main`:
 
 ```bash
-gh workflow run release.yml --ref main \
-  -f version=v1.2.3 \
-  -f prerelease=false
+git tag -a v1.2.3 -m "v1.2.3"
+git push origin v1.2.3
 ```
+
+The tag's CI run builds the six binaries and checks them with `make verify-release VERSION=v1.2.3`, which a maintainer can also run locally first. Once the native tests pass on Linux, macOS and Windows, go-selfupdate-lib's reusable workflow publishes the GitHub Release.
 
 Assets include cross-compiled binaries, `SHA256SUMS`, and build-provenance attestations:
 ```bash

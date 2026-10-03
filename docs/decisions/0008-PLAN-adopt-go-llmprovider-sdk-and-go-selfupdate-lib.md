@@ -78,7 +78,7 @@ verification.
    Makefile's `MOD_VERSION` and `scripts/bootstrap-tools.sh`'s
    `GO_VERSION` follow. *(Done first, as its own commit `e735fa3`:
    deviation D1 below.)*
-   * **1a. Proposed 2026-10-03, not approved.** `bootstrap-tools.sh`
+   * **1a. Proposed 2026-10-03; done in Phase 7.** `bootstrap-tools.sh`
      reinstalls a cached tool when the Go toolchain that built it is not
      `GO_VERSION`, read with `go version <binary>`. Proof: a cache built
      with another toolchain is rebuilt, and an up-to-date one is not.
@@ -238,6 +238,26 @@ verification.
    `docs/decisions/0002-PLAN-migrate-llmprovider-from-mcplib.md` gains a
    Phase 10 execution entry, with the live check's output. That is a
    records-only change there.
+
+### Phase 7: the tool cache and the release section *(added 2026-10-03)*
+
+The owner asked, after Phase 6, to "build the script fix" and "update the
+maintainer release section". Both were found during this PLAN's execution
+(deviation D1; Phase 4's "seen and not changed").
+
+1. **Step 1a.** `scripts/bootstrap-tools.sh` treats a cached tool as missing
+   when `go version <binary>` does not end in `: $GO_VERSION`.
+2. **`README.md`, "Maintainer Release".** It describes the tag-driven
+   release that `ci.yml` runs, not the `release.yml` dispatch, which no
+   longer exists.
+3. **Checks:**
+   * `shellcheck` and `bash -n` on the script;
+   * on a scratch copy, a tool cache built with go1.27.1 is left alone;
+   * a tool built with go1.26.6 is rebuilt, and `go version` then reports
+     go1.27.1. The same stale cache, under `HEAD`'s script, is left alone;
+   * the link checker over `README.md`;
+   * `make verify`.
+4. Commit.
 
 ## Verification
 
@@ -617,3 +637,37 @@ the unchanged copy, then failed on its plant:
   * 0007's link and index halves;
   * the README's "Maintainer Release" section, which names a workflow this
     repository no longer has.
+
+  *(2026-10-03: the first and third were done in Phase 7; 0007 runs under
+  its own PLAN.)*
+
+### Phase 7: the tool cache and the release section (2026-10-03)
+
+* **Approval.** The owner: "commit all then proceed to open, optional and
+  build the script fix, link and index work, update the maintainer release
+  section".
+* **`scripts/bootstrap-tools.sh`.** In `install_tool`, a cached binary whose
+  `go version` output does not end in `: $GO_VERSION` is treated as missing,
+  and reinstalled at its pinned version.
+* **`README.md`, "Maintainer Release".** It now says a release is a pushed
+  `v*` tag on a commit that passed CI on `main`. The tag's run builds and
+  checks the assets with `make verify-release`, and go-selfupdate-lib's
+  reusable workflow publishes them after the native tests. The
+  `SHA256SUMS` and attestation checks are unchanged.
+
+**Proof** (scratch copy; `pcm_phase7_proof.py`). The stale binary is
+actionlint v1.7.12, built with the cached go1.26.6 toolchain.
+
+| Case | Result |
+| :--- | :--- |
+| the current cache, all built with go1.27.1 | exit 0, nothing installed |
+| actionlint built with go1.26.6 | exit 0; `installing github.com/rhysd/actionlint/cmd/actionlint@v1.7.12`; now `go1.27.1` |
+| the same stale cache under `HEAD`'s script | nothing installed; still `go1.26.6` |
+
+**Checks:**
+
+| Check | Result |
+| :--- | :--- |
+| `shellcheck`, `bash -n` on the script | 0 each |
+| the link checker (0007's) over every tracked Markdown file | 0 problems |
+| `make verify` | exit 0: nothing reinstalled; 0 lint issues; `total coverage: 84.2% (minimum 80.0%)`; `No vulnerabilities found.` |
