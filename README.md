@@ -1,6 +1,6 @@
 # prepare-commit-msg
 
-An intelligent, zero-friction Git `prepare-commit-msg` hook written in Go. It inspects your **staged** changes and leverages fast LLMs—including Google Gemini, OpenAI, Anthropic Claude, xAI Grok, Kilo Gateway (Kilo Code), OpenCode, Hugging Face, or a local **Ollama** instance—to automatically generate clean, structured [Conventional Commit](https://www.conventionalcommits.org/) messages.
+An intelligent, zero-friction Git `prepare-commit-msg` hook written in Go. It inspects your **staged** changes and leverages fast LLMs—including Google Gemini, OpenAI, Anthropic Claude, xAI Grok, Kilo Gateway (Kilo Code), OpenCode, Hugging Face, Together AI, or a local **Ollama** instance—to automatically generate clean, structured [Conventional Commit](https://www.conventionalcommits.org/) messages.
 
 ---
 
@@ -20,6 +20,7 @@ An intelligent, zero-friction Git `prepare-commit-msg` hook written in Go. It in
   - [Configuration File](#configuration-file)
 - [Daily Workflow & Hook Behavior](#daily-workflow--hook-behavior)
 - [Self-Update](#self-update)
+- [Changes from the mcplib Releases](#changes-from-the-mcplib-releases)
 - [CLI Reference](#cli-reference)
 - [Developer Experience](#developer-experience)
 
@@ -63,7 +64,7 @@ Commit Editor Opens (Pre-populated & ready)
 
 ## Supported Providers & Models
 
-`prepare-commit-msg` supports 9 distinct LLM backends via the shared `mcplib` engine:
+`prepare-commit-msg` supports 10 distinct LLM backends through [go-llmprovider-sdk](https://github.com/maccavelli/go-llmprovider-sdk):
 
 | Provider ID | Provider Name | Type / Endpoint | Default / Curated Models | Notes |
 | :--- | :--- | :--- | :--- | :--- |
@@ -76,6 +77,7 @@ Commit Editor Opens (Pre-populated & ready)
 | **`opencode-zen`** | OpenCode Zen | Gateway<br>`https://opencode.ai/zen/v1` | `gpt-5.4-nano`, `gemini-3.5-flash-lite`, `gpt-5.4-mini`, `claude-haiku-4-5`, `gemini-3.7-flash`, `kimi-k2.6` | Pay-as-you-go gateway; multi-protocol dispatch. |
 | **`opencode-go`** | OpenCode Go | Gateway<br>`https://opencode.ai/zen/go/v1` | `glm-5.3-flash`, `qwen3.8-flash`, `deepseek-v4-flash`, `kimi-k2.6`, `gpt-5.6-luna`, `grok-4.6` | Subscription gateway. |
 | **`huggingface`** | Hugging Face | Router Proxy<br>`https://router.huggingface.co/v1` | `openai/gpt-oss-20b` (recommended), `openai/gpt-oss-120b`, `meta-llama/Llama-3.1-8B-Instruct`, `zai-org/GLM-5.3-Flash` | Routing proxy across 18 partner inference backends. |
+| **`together`** | Together AI | Cloud API<br>`https://api.together.ai/v1` | `deepseek-ai/DeepSeek-V4.1-Flash`, `zai-org/GLM-5.3`, `moonshotai/Kimi-K3`, `MiniMaxAI/MiniMax-M3`, `Qwen/Qwen3.6-Plus`, `openai/gpt-oss-120b` | Pay-as-you-go. |
 
 ---
 
@@ -89,11 +91,12 @@ You can supply credentials and configure behavior using standard environment var
 | :--- | :--- | :--- |
 | **`GEMINI_API_KEY`** | `gemini` | Google AI Studio API key |
 | **`OPENAI_API_KEY`** | `openai` | OpenAI platform API key |
-| **`CLAUDE_API_KEY`** | `claude` | Anthropic Claude API key (`ANTHROPIC_API_KEY` also supported) |
+| **`ANTHROPIC_API_KEY`** | `claude` | Anthropic Claude API key (`CLAUDE_API_KEY` is read when this is unset) |
 | **`XAI_API_KEY`** | `grok` | xAI Grok API key |
 | **`KILO_API_KEY`** | `kilo` | Kilo Gateway (Kilo Code) API key |
 | **`OPENCODE_API_KEY`** | `opencode-zen`, `opencode-go` | OpenCode API key (serves both Zen and Go gateways) |
 | **`HF_TOKEN`** | `huggingface` | Hugging Face user access token |
+| **`TOGETHER_API_KEY`** | `together` | Together AI API key |
 
 > **Note on Local Ollama:** The `ollama` provider requires **no credentials** and ignores API keys.
 
@@ -359,8 +362,36 @@ prepare-commit-msg update [flags]
 | `prepare-commit-msg update --yes` | Non-interactive in-place update. |
 | `prepare-commit-msg update --version v1.2.0 --yes` | Pin or rollback to a specific release version. |
 | `prepare-commit-msg update --force --yes` | Force reinstall / overwrite local or dev builds. |
+| `prepare-commit-msg update --dry-run` | Download and verify the release; install nothing. |
+| `prepare-commit-msg update --json` | Write JSON Lines to stdout, ending with one `{"kind":"result",…}` object. |
+| `prepare-commit-msg update --channel rc` | Follow a prerelease channel. |
+
+Progress and the confirmation prompt go to **stderr**; stdout carries only `--json` output. The exit status is `0` when up to date, declined or installed, `10` when an update is available (with `--check`), and `1` on any error.
 
 > **Security Note:** Self-update only modifies regular binaries located within the user's home directory. System paths (`/usr`, Homebrew Cellar, Nix store) are rejected.
+
+---
+
+## Changes from the mcplib Releases
+
+Releases before the move to go-llmprovider-sdk and go-selfupdate-lib
+([0008-MADR](docs/decisions/0008-MADR-adopt-go-llmprovider-sdk-and-go-selfupdate-lib.md))
+behaved differently in these ways:
+
+- **`update`** writes progress and its prompt to stderr, not stdout, and a
+  failure reads `update failed:` rather than `Update failed:`.
+- **`version`** prints `vX.Y.Z (release) <revision>` rather than
+  `X.Y.Z (release)`. Scripts that parse it must change.
+- **Retries** cover rate limits (not an exhausted quota), an unavailable
+  service, and a failure to connect. Other errors return at once, and a retry
+  is no longer logged.
+- **Error messages** begin `llmprovider:` rather than `llm:`.
+- **Model-metadata overrides** are read from `LLMPROVIDER_*` variables, not
+  `MCPLIB_*`.
+- **Grok's OAuth issuer and client overrides** are no longer read during
+  `configure`.
+- **New:** the `together` provider, Kilo device logins with an organization,
+  and generation on any provider's sign-in.
 
 ---
 
@@ -370,7 +401,7 @@ prepare-commit-msg update [flags]
 Usage:
   prepare-commit-msg configure [flags]                - run setup wizard or non-interactive configure
   prepare-commit-msg update [flags]                   - check for and apply updates from GitHub
-  prepare-commit-msg version                          - show binary version
+  prepare-commit-msg version                          - show binary version, as vX.Y.Z (release) <revision>
   prepare-commit-msg help                             - display help message
   prepare-commit-msg <commit_msg_file> [source] [sha] - run as git prepare-commit-msg hook
 ```
@@ -383,7 +414,7 @@ Brief guide for contributors and local development.
 
 ### Toolchain & Quality Gates
 
-The repository uses pinned developer tools in `.tools/bin` to ensure identical results across local machines and CI.
+The repository uses pinned developer tools in `.tools/bin` to ensure identical results across local machines and CI. Building from source needs Go 1.27.1.
 
 ```bash
 make tools          # Bootstrap pinned tools (golangci-lint, govulncheck, actionlint)

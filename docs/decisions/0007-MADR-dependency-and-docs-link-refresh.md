@@ -209,3 +209,11 @@ Chosen options: **D-a**, **L-a** and **I-a**.
   * bump `go-sdk` in mcplib, so its own tests cover `v1.8.0`;
   * set the 0004 MADR's status, which the owner decides;
   * optionally add the link check to `make verify`.
+
+## Amendment 2026-10-03: the dependency half is superseded
+
+[0008-MADR-adopt-go-llmprovider-sdk-and-go-selfupdate-lib.md](0008-MADR-adopt-go-llmprovider-sdk-and-go-selfupdate-lib.md)
+(D7) removes mcplib and, with it, the MCP go-sdk and the other indirect
+modules this record would refresh. Its dependency decision (D-a) is
+superseded and is not carried out. The link (L-a) and index (I-a) decisions
+stand as proposed. This record stays `proposed` for them.

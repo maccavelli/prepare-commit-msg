@@ -509,3 +509,37 @@ the unchanged copy, then failed on its plant:
 | `CGO_ENABLED=0 go vet` for linux, darwin, windows | 0 each |
 | `go mod tidy -diff` | 0 |
 | `go list -m all \| grep -c mcplib` | 0 |
+
+### Phase 4: documentation (2026-10-03)
+
+* **`README.md`:**
+  * The opening and the provider section name 10 backends, through
+    go-llmprovider-sdk. A `together` row is added, with the descriptor's
+    endpoint and curated models, read from SDK `v1.0.0`.
+  * The credentials table names `ANTHROPIC_API_KEY`, with `CLAUDE_API_KEY`
+    read when it is unset (D2). `TOGETHER_API_KEY` is added.
+  * The self-update table adds `--dry-run`, `--json` and `--channel`, and
+    states the streams and exit codes. They are checked against `update
+    --help` from this tree.
+  * The CLI reference gives the `version` form (D1). The toolchain
+    paragraph says building from source needs Go 1.27.1.
+  * A new section, "Changes from the mcplib Releases", is listed in the
+    contents.
+* **0007** gains an amendment. Its dependency half (D-a) is superseded by
+  0008 (D7). L-a and I-a stand.
+* **`docs/README.md`** already indexes 0008 (Phase 0). The PLAN stays "In
+  Progress" until Phase 6.
+* **Seen and not changed, out of scope:**
+  * "Maintainer Release" names a `release.yml` dispatch this repository no
+    longer has;
+  * `docs/README.md` still has the `file://` links that 0007's L-a covers.
+
+**Checks:**
+
+| Check | Result |
+| :--- | :--- |
+| relative links, anchors included, in `README.md` and 0007-MADR | 21 checked, 0 broken; a planted `[broken](missing.md)` in a copy fails |
+| `git grep mcplib -- README.md` | only the new section's heading and its contents entry; a planted stray mention in a copy is found |
+| markdownlint | not configured in this repository, so not run |
+| identifier scan | none found |
+| `git diff --check` | clean |
