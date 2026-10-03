@@ -543,3 +543,29 @@ the unchanged copy, then failed on its plant:
 | markdownlint | not configured in this repository, so not run |
 | identifier scan | none found |
 | `git diff --check` | clean |
+
+### Deviation D4 (2026-10-03): the fixtures keep LF on Windows
+
+* **Found.** The owner pushed Phases 0–4. CI run `37147110607` on
+  `bb1d408` passed on Linux and macOS, and failed in "Native Tests
+  (Windows)".
+  * All three `TestMigrationByteForByte` subtests failed at
+    `migration_test.go:153` (`… differs`), with "got" and "want" that print
+    the same.
+  * The repository had no `.gitattributes`. The Windows checkout converts
+    text files to CRLF, so `testdata/migration/up-to-date.code` arrived as
+    `0\r\n` against the test's `0\n`.
+  * It came in with Phase 1 (`d946753`), which added the fixtures. Phase 1
+    ran on macOS only, as recorded there.
+* **Reproduced.** A scratch clone with `core.autocrlf=true` gives `0 \r \n`
+  in `od -c`, and fails the same test.
+* **Decision.** The owner chose "Add .gitattributes". `.gitattributes` marks
+  `testdata/migration/**` `-text`, as go-selfupdate-lib does for its own
+  byte-exact fixtures.
+* **Proof.** A scratch clone with this attribute committed was cloned again
+  with `core.autocrlf=true`.
+  * The fixture reads `0 \n`.
+  * Other files are still converted: `main.go` holds 467 carriage returns.
+  * `TestMigrationByteForByte` passes.
+* **Not changed.** The test's byte-for-byte comparison, and the fixtures'
+  contents.

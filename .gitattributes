@@ -1,0 +1,4 @@
+# Byte-exact fixtures: migration_test.go compares the update command's output
+# with these byte for byte, so no checkout may convert their line endings
+# (docs/decisions/0008-PLAN-adopt-go-llmprovider-sdk-and-go-selfupdate-lib.md, D4).
+testdata/migration/** -text
