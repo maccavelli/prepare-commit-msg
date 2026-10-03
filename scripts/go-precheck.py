@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Check the exact staged snapshot before Go changes are committed.
 
-Every run verifies that github.com/maccavelli/mcplib resolves from GitHub
-(through the module proxy and checksum database) at the version go.mod pins:
-no replace directive, no go.work redirect, no pseudo-version, no checksum
-bypass, and module-cache bytes that match go.sum. Local mcplib sources on the
-host are never consulted.
+Every run verifies that github.com/maccavelli/go-llmprovider-sdk and
+github.com/maccavelli/go-selfupdate-lib resolve from GitHub (through the
+module proxy and checksum database) at the versions go.mod pins: no replace
+directive, no go.work redirect, no pseudo-version, no checksum bypass, and
+module-cache bytes that match go.sum. Local sources on the host are never
+consulted. github.com/maccavelli/mcplib must not appear in the module graph.
 
 When Go sources or module files are staged (or passed as arguments), the
 snapshot must also pass gofmt, golangci-lint (fmt and run) and govulncheck.
@@ -24,7 +25,11 @@ import sys
 import tempfile
 from pathlib import Path
 
-MCPLIB = "github.com/maccavelli/mcplib"
+REQUIRED_MODULES = (
+    "github.com/maccavelli/go-llmprovider-sdk",
+    "github.com/maccavelli/go-selfupdate-lib",
+)
+FORBIDDEN_MODULES = ("github.com/maccavelli/mcplib",)
 LINT_CONFIG = ".golangci.yml"
 MODULE_FILES = {"go.mod", "go.sum"}
 PSEUDO_VERSION = re.compile(r"(^|[-.])(0\.)?\d{14}-[0-9a-f]{12}(\+incompatible)?$")
@@ -58,8 +63,8 @@ def go_json(args, cwd, env):
 
 def go_environment():
     env = dict(os.environ)
-    # A go.work file or an inherited -mod=mod could silently swap in the local
-    # mcplib checkout or rewrite go.mod; the snapshot must build as committed.
+    # A go.work file or an inherited -mod=mod could silently swap in a local
+    # checkout or rewrite go.mod; the snapshot must build as committed.
     env["GOWORK"] = "off"
     env["GOFLAGS"] = "-mod=readonly"
     return env
@@ -108,71 +113,83 @@ def matches_module_patterns(patterns, module):
     return False
 
 
-def gosum_hash(snapshot, suffix):
+def gosum_hash(snapshot, module, suffix):
     gosum = snapshot / "go.sum"
     lines = gosum.read_text(encoding="utf-8").splitlines() if gosum.is_file() else []
     for line in lines:
         fields = line.split()
-        if len(fields) == 3 and fields[0] == MCPLIB and fields[1] == suffix:
+        if len(fields) == 3 and fields[0] == module and fields[1] == suffix:
             return fields[2]
     return None
 
 
-def check_mcplib(snapshot, env):
-    modfile = go_json(["mod", "edit", "-json"], snapshot, env)
-    required = [r for r in modfile.get("Require") or [] if r["Path"] == MCPLIB]
+def check_module(snapshot, env, modfile, settings, module):
+    required = [r for r in modfile.get("Require") or [] if r["Path"] == module]
     if not required:
-        raise PrecheckError(f"go.mod does not require {MCPLIB}")
+        raise PrecheckError(f"go.mod does not require {module}")
     version = required[0]["Version"]
     if PSEUDO_VERSION.search(version):
-        raise PrecheckError(f"{MCPLIB} {version} is a pseudo-version; pin a released tag")
+        raise PrecheckError(f"{module} {version} is a pseudo-version; pin a released tag")
 
     for replace in modfile.get("Replace") or []:
-        if replace["Old"]["Path"] == MCPLIB:
+        if replace["Old"]["Path"] == module:
             new = replace["New"]
             target = f"{new['Path']} {new.get('Version', '')}".strip()
             raise PrecheckError(
-                f"go.mod replaces {MCPLIB} with {target}; the dependency must resolve from GitHub"
+                f"go.mod replaces {module} with {target}; the dependency must resolve from GitHub"
             )
 
+    for key in ("GOPRIVATE", "GONOSUMDB", "GOINSECURE"):
+        if matches_module_patterns(settings[key], module):
+            raise PrecheckError(f"{key}={settings[key]} exempts {module} from checksum verification")
+
+    zip_hash = gosum_hash(snapshot, module, version)
+    mod_hash = gosum_hash(snapshot, module, f"{version}/go.mod")
+    if not zip_hash or not mod_hash:
+        raise PrecheckError(f"go.sum is missing {module} {version} checksums")
+
+    downloaded = go_json(["mod", "download", "-json", module], snapshot, env)
+    if downloaded.get("Error"):
+        raise PrecheckError(f"downloading {module}: {downloaded['Error']}")
+    if downloaded.get("Version") != version or downloaded.get("Sum") != zip_hash:
+        raise PrecheckError(
+            f"{module} download {downloaded.get('Version')} {downloaded.get('Sum')} "
+            f"does not match go.sum {version} {zip_hash}"
+        )
+
+    resolved = go_json(["list", "-m", "-json", module], snapshot, env)
+    cache = os.path.normcase(os.path.realpath(settings["GOMODCACHE"]))
+    source = os.path.normcase(os.path.realpath(resolved.get("Dir", "")))
+    if resolved.get("Replace") or resolved.get("Version") != version:
+        raise PrecheckError(f"{module} does not resolve to {version} without replacement")
+    if os.path.commonpath([cache, source]) != cache:
+        raise PrecheckError(f"{module} resolves to {resolved.get('Dir')}, outside the module cache")
+    return version, zip_hash
+
+
+def check_dependencies(snapshot, env):
+    modfile = go_json(["mod", "edit", "-json"], snapshot, env)
     settings = go_json(
-        ["env", "-json", "GOPRIVATE", "GONOSUMDB", "GONOSUMCHECK", "GOINSECURE",
+        ["env", "-json", "GOPRIVATE", "GONOSUMDB", "GOINSECURE",
          "GOSUMDB", "GOPROXY", "GOMODCACHE"],
         snapshot, env,
     )
     if settings["GOSUMDB"] == "off":
-        raise PrecheckError("GOSUMDB=off disables checksum verification for mcplib")
+        raise PrecheckError("GOSUMDB=off disables checksum verification")
     if settings["GOPROXY"] == "off":
-        raise PrecheckError("GOPROXY=off prevents resolving mcplib from GitHub")
-    for key in ("GOPRIVATE", "GONOSUMDB", "GONOSUMCHECK", "GOINSECURE"):
-        if matches_module_patterns(settings[key], MCPLIB):
-            raise PrecheckError(f"{key}={settings[key]} exempts {MCPLIB} from checksum verification")
+        raise PrecheckError("GOPROXY=off prevents resolving dependencies from GitHub")
 
-    zip_hash = gosum_hash(snapshot, version)
-    mod_hash = gosum_hash(snapshot, f"{version}/go.mod")
-    if not zip_hash or not mod_hash:
-        raise PrecheckError(f"go.sum is missing {MCPLIB} {version} checksums")
+    pinned = [(module, *check_module(snapshot, env, modfile, settings, module)) for module in REQUIRED_MODULES]
 
-    downloaded = go_json(["mod", "download", "-json", MCPLIB], snapshot, env)
-    if downloaded.get("Error"):
-        raise PrecheckError(f"downloading {MCPLIB}: {downloaded['Error']}")
-    if downloaded.get("Version") != version or downloaded.get("Sum") != zip_hash:
-        raise PrecheckError(
-            f"{MCPLIB} download {downloaded.get('Version')} {downloaded.get('Sum')} "
-            f"does not match go.sum {version} {zip_hash}"
-        )
-
-    resolved = go_json(["list", "-m", "-json", MCPLIB], snapshot, env)
-    cache = os.path.normcase(os.path.realpath(settings["GOMODCACHE"]))
-    source = os.path.normcase(os.path.realpath(resolved.get("Dir", "")))
-    if resolved.get("Replace") or resolved.get("Version") != version:
-        raise PrecheckError(f"{MCPLIB} does not resolve to {version} without replacement")
-    if os.path.commonpath([cache, source]) != cache:
-        raise PrecheckError(f"{MCPLIB} resolves to {resolved.get('Dir')}, outside the module cache")
+    graph = run(["go", "list", "-m", "all"], cwd=snapshot, env=env, capture=True).split()
+    for module in FORBIDDEN_MODULES:
+        if module in graph:
+            raise PrecheckError(f"the module graph names {module}; it must not be a dependency")
 
     run(["go", "mod", "verify"], cwd=snapshot, env=env)
     run(["go", "mod", "tidy", "-diff"], cwd=snapshot, env=env)
-    print(f"go-precheck: {MCPLIB} {version} resolved from GitHub ({zip_hash})", flush=True)
+    for module, version, zip_hash in pinned:
+        print(f"go-precheck: {module} {version} resolved from GitHub ({zip_hash})", flush=True)
 
 
 def pinned_tools(root):
@@ -235,7 +252,7 @@ def main(argv):
     with tempfile.TemporaryDirectory(prefix="prepare-commit-msg-staged-", ignore_cleanup_errors=True) as temp:
         snapshot = Path(temp) / root.name
         snapshot_index(root, snapshot)
-        check_mcplib(snapshot, env)
+        check_dependencies(snapshot, env)
         if not targets:
             return 0
         check_sources(root, snapshot, env, targets)

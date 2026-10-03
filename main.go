@@ -17,13 +17,17 @@ import (
 	"github.com/maccavelli/prepare-commit-msg/internal/git"
 	"github.com/maccavelli/prepare-commit-msg/internal/ui"
 
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/auth"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/catalog"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/providers"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/providers/kilo"
 	"github.com/maccavelli/go-selfupdate-lib/selfupdate/cli"
-	"github.com/maccavelli/mcplib/llmprovider"
 )
 
-var generateWithRetry = llmprovider.GenerateWithRetry
-var newProvider = llmprovider.NewProvider
-var newProviderWithSource = llmprovider.NewProviderWithSource
+var generateWithRetry = generateText
+var newProvider = newKeyProvider
+var newProviderWithSource = newSourceProvider
 var osGetenv = os.Getenv
 
 const (
@@ -298,12 +302,14 @@ func runAnalyzer(file string, conf *config.Config, info *git.Info) error {
 }
 
 func newActiveProvider(conf *config.Config, pc config.ProviderConfig, model string) (llmprovider.Provider, error) {
+	id := llmprovider.ProviderID(conf.ActiveProvider)
+	opts := providerOptions(id, pc)
 	if config.IsOAuth(pc) {
 		store, err := config.NewOAuthStore()
 		if err != nil {
 			return nil, err
 		}
-		session, err := store.Load(context.Background(), conf.ActiveProvider)
+		session, err := store.Load(context.Background(), id)
 		if err != nil {
 			return nil, fmt.Errorf("load OAuth session for provider %q: %w", conf.ActiveProvider, err)
 		}
@@ -311,19 +317,50 @@ func newActiveProvider(conf *config.Config, pc config.ProviderConfig, model stri
 			return nil, fmt.Errorf("no OAuth session for provider %q; run 'prepare-commit-msg configure'", conf.ActiveProvider)
 		}
 		session.Store = store
-		return newProviderWithSource(conf.ActiveProvider, session, model)
+		return newProviderWithSource(id, session, model, opts...)
 	}
 	if config.IsVendorCLI(pc) {
 		// The CLI's auth file is read on every request and never refreshed here,
 		// so the CLI keeps its refresh token (mcplib MADR 0012 §5.1).
-		source := &llmprovider.VendorCLISession{Provider: conf.ActiveProvider, Path: pc.VendorAuthPath}
-		return newProviderWithSource(conf.ActiveProvider, source, model)
+		source := &auth.VendorCLISession{Provider: id, Path: pc.VendorAuthPath}
+		return newProviderWithSource(id, source, model, opts...)
 	}
 	apiKey := config.ResolveAPIKey(pc, conf.ActiveProvider, true, osGetenv)
 	if err := config.ValidateActive(conf.ActiveProvider, pc, apiKey); err != nil {
 		return nil, err
 	}
-	return newProvider(conf.ActiveProvider, apiKey, model)
+	return newProvider(id, apiKey, model, opts...)
+}
+
+// providerOptions are the options a provider's saved configuration adds: the
+// Kilo organization a device login chose.
+func providerOptions(id llmprovider.ProviderID, pc config.ProviderConfig) []llmprovider.Option {
+	if id == llmprovider.ProviderKilo && strings.TrimSpace(pc.Organization) != "" {
+		return []llmprovider.Option{kilo.WithOrganization(strings.TrimSpace(pc.Organization))}
+	}
+	return nil
+}
+
+// newKeyProvider builds provider id on an API key.
+func newKeyProvider(id llmprovider.ProviderID, apiKey, model string, opts ...llmprovider.Option) (llmprovider.Provider, error) {
+	return newSourceProvider(id, llmprovider.NewStaticToken(apiKey), model, opts...)
+}
+
+// newSourceProvider builds provider id on a credential source. The model
+// metadata variables apply only because they are passed here.
+func newSourceProvider(id llmprovider.ProviderID, src llmprovider.TokenSource, model string, opts ...llmprovider.Option) (llmprovider.Provider, error) {
+	all := append([]llmprovider.Option{llmprovider.WithTokenSource(src), llmprovider.WithModel(model)}, catalog.OptionsFromEnv()...)
+	return providers.New(id, append(all, opts...)...)
+}
+
+// generateText runs prompt on p as one user message. A failed attempt is
+// retried up to retries times, waiting delay before the first retry and
+// doubling after; WithRetry retries only what can succeed later.
+func generateText(ctx context.Context, p llmprovider.Provider, prompt string, retries int, delay time.Duration) (string, error) {
+	policy := llmprovider.RetryPolicy{MaxAttempts: max(retries, 0) + 1, BaseDelay: delay}
+	return llmprovider.GenerateText(ctx, llmprovider.WithRetry(p, policy), &llmprovider.Request{
+		Input: []llmprovider.Item{llmprovider.MessageItem{Role: llmprovider.RoleUser, Text: prompt}},
+	})
 }
 
 // cleanLLMOutput strips conversational filler and markdown fences.

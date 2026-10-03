@@ -311,6 +311,36 @@ outcome above stands as written, and this record is `accepted`.
 * **D7.** Supersede 0007's dependency half (recommended), or withdraw 0007
   entirely?
 
+## Amendments
+
+### A1 (2026-10-03): D3's listing half has no call site here
+
+D3 says model listing passes the Kilo organization with
+`catalog.WithKiloOrganization`. In this repository, listing happens in two
+places, and neither needs it:
+
+* **the SDK's wizard,** which applies `catalog.WithKiloOrganization` to the
+  organization its own Kilo login chose (go-llmprovider-sdk `v1.0.0`,
+  `wizard/configure.go:332`);
+* **`discoverModels`,** which lists for an API key. An API key carries no
+  organization.
+
+Generation is the only place this repository passes the organization, with
+`kilo.WithOrganization`. The decision is unchanged.
+
+### A2 (2026-10-03): Phases 2 and 3 land together
+
+The Decision Drivers say each step lands green, "possible because each part
+was shown to pass alone". The trial ran the providers part with
+`selfupdate` still on mcplib. In the PLAN's order, self-update comes first,
+so the providers phase removes mcplib's last import, and `go mod tidy`
+drops it. The repository's precheck, run by the pre-commit hook on the
+staged snapshot, then refuses with `go.mod does not require
+github.com/maccavelli/mcplib`. Only Phase 3's precheck accepts that tree.
+
+The owner chose to merge Phases 2 and 3 into one commit (PLAN deviation
+D3). Every other phase still lands alone. The decision is unchanged.
+
 ## More Information
 
 * go-llmprovider-sdk

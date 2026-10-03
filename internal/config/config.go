@@ -8,7 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/maccavelli/mcplib/llmprovider"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/auth"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/catalog"
 )
 
 // Operational defaults applied whenever a config is loaded or created.
@@ -23,10 +25,10 @@ const (
 
 // SupportedProviders is the canonical ordered list of LLM providers.
 var SupportedProviders = []string{
-	llmprovider.ProviderGemini,
-	llmprovider.ProviderOpenAI,
-	llmprovider.ProviderClaude,
-	llmprovider.ProviderGrok,
+	string(llmprovider.ProviderGemini),
+	string(llmprovider.ProviderOpenAI),
+	string(llmprovider.ProviderClaude),
+	string(llmprovider.ProviderGrok),
 }
 
 // Config holds the application configuration including the active LLM provider,
@@ -45,7 +47,7 @@ type Config struct {
 }
 
 // AuthKindVendorCLI selects a vendor CLI's own login (Codex or Grok), read in
-// place through llmprovider.VendorCLISession (mcplib MADR 0012 §5.1).
+// place through auth.VendorCLISession (mcplib MADR 0012 §5.1).
 const AuthKindVendorCLI = "vendor_cli"
 
 // ProviderConfig stores credentials and model selection for a single LLM provider.
@@ -60,6 +62,9 @@ type ProviderConfig struct {
 	APIKey         string   `json:"api_key"`
 	Model          string   `json:"model"`
 	FallbackModels []string `json:"fallback_models,omitempty"`
+	// Organization is the Kilo organization a device login chose. Generation
+	// sends it; empty is the personal account.
+	Organization string `json:"organization,omitempty"`
 }
 
 var (
@@ -93,17 +98,17 @@ func OAuthDir() (string, error) {
 }
 
 // NewOAuthStore creates the file-backed store for provider OAuth sessions.
-func NewOAuthStore() (*llmprovider.FileTokenStore, error) {
+func NewOAuthStore() (*auth.FileTokenStore, error) {
 	dir, err := OAuthDir()
 	if err != nil {
 		return nil, err
 	}
-	return llmprovider.NewFileTokenStore(dir)
+	return auth.NewFileTokenStore(dir)
 }
 
 // DefaultModelForProvider returns the recommended primary model for a given provider.
 func DefaultModelForProvider(provider string) string {
-	models := llmprovider.StaticModels(provider)
+	models := catalog.Static(llmprovider.ProviderID(provider))
 	if len(models) > 0 {
 		return models[0]
 	}
@@ -112,7 +117,7 @@ func DefaultModelForProvider(provider string) string {
 
 // DefaultFallbacksForProvider returns the recommended fallback models for a given provider.
 func DefaultFallbacksForProvider(provider string, primary string) []string {
-	models := llmprovider.StaticModels(provider)
+	models := catalog.Static(llmprovider.ProviderID(provider))
 	var out []string
 	for _, m := range models {
 		if m == primary {
@@ -133,7 +138,7 @@ func ApplyDefaults(c *Config) {
 		c.Providers = make(map[string]ProviderConfig)
 	}
 	if c.ActiveProvider == "" {
-		c.ActiveProvider = llmprovider.ProviderGemini
+		c.ActiveProvider = string(llmprovider.ProviderGemini)
 	}
 	for provider, pc := range c.Providers {
 		switch {
@@ -254,6 +259,27 @@ func (c *Config) GetActive() (ProviderConfig, error) {
 	return pc, nil
 }
 
+// ClaudeKeyFallback is the variable earlier releases read for Claude. It is
+// still read when ANTHROPIC_API_KEY is unset, so an existing setup keeps
+// working.
+const ClaudeKeyFallback = "CLAUDE_API_KEY"
+
+// LookupEnv returns getenv, or os.Getenv when it is nil, with
+// ClaudeKeyFallback read for ANTHROPIC_API_KEY when that is unset.
+func LookupEnv(getenv func(string) string) func(string) string {
+	if getenv == nil {
+		getenv = os.Getenv
+	}
+	anthropic := llmprovider.ProviderEnvVars()[llmprovider.ProviderClaude]
+	return func(name string) string {
+		value := getenv(name)
+		if name == anthropic && strings.TrimSpace(value) == "" {
+			return getenv(ClaudeKeyFallback)
+		}
+		return value
+	}
+}
+
 // ResolveAPIKey returns the provider API key from config, or from the matching
 // environment variable when the config key is empty. useEnv controls env lookup.
 func ResolveAPIKey(pc ProviderConfig, provider string, useEnv bool, getenv func(string) string) string {
@@ -263,11 +289,8 @@ func ResolveAPIKey(pc ProviderConfig, provider string, useEnv bool, getenv func(
 	if !useEnv {
 		return ""
 	}
-	if getenv == nil {
-		getenv = os.Getenv
-	}
-	if envName, ok := llmprovider.ProviderEnvVars[provider]; ok {
-		return strings.TrimSpace(getenv(envName))
+	if envName, ok := llmprovider.ProviderEnvVars()[llmprovider.ProviderID(provider)]; ok {
+		return strings.TrimSpace(LookupEnv(getenv)(envName))
 	}
 	return ""
 }
@@ -280,7 +303,7 @@ func ValidateActive(provider string, pc ProviderConfig, apiKey string) error {
 	}
 	if strings.TrimSpace(apiKey) == "" {
 		envHint := ""
-		if v, ok := llmprovider.ProviderEnvVars[provider]; ok {
+		if v, ok := llmprovider.ProviderEnvVars()[llmprovider.ProviderID(provider)]; ok {
 			envHint = fmt.Sprintf(" or set %s", v)
 		}
 		return fmt.Errorf("no API key for provider %q; run 'prepare-commit-msg configure'%s", provider, envHint)
@@ -321,7 +344,7 @@ func ValidateOAuth(
 	ctx context.Context,
 	provider string,
 	pc ProviderConfig,
-	store llmprovider.TokenStore,
+	store auth.TokenStore,
 ) error {
 	if strings.TrimSpace(provider) == "" {
 		return fmt.Errorf("no active provider configured; please run 'prepare-commit-msg configure'")
@@ -332,12 +355,15 @@ func ValidateOAuth(
 	if store == nil {
 		return fmt.Errorf("no OAuth session for provider %q; run 'prepare-commit-msg configure'", provider)
 	}
-	session, err := store.Load(ctx, provider)
+	session, err := store.Load(ctx, llmprovider.ProviderID(provider))
 	if err != nil {
 		return fmt.Errorf("load OAuth session for provider %q: %w", provider, err)
 	}
 	if session == nil {
 		return fmt.Errorf("no OAuth session for provider %q; run 'prepare-commit-msg configure'", provider)
+	}
+	if err := auth.ValidateOAuthSession(session); err != nil {
+		return fmt.Errorf("OAuth session for provider %q is not usable: %w; run 'prepare-commit-msg configure'", provider, err)
 	}
 	return nil
 }

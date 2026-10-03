@@ -373,3 +373,139 @@ committed from it.
 | `python3 scripts/go-precheck.py` | exit 0 |
 | actionlint v1.7.12 on `ci.yml`; `shellcheck` and `bash -n` on `verify-release.sh` | 0 each |
 | `gofmt -l .` | empty |
+
+### Phase 2: providers and the wizard (2026-10-03)
+
+* **From the trial.** The trial's provider changes were the source, in:
+  * `main.go` and `main_test.go`;
+  * `main_oauth_test.go`;
+  * `internal/config/config.go` and its test;
+  * `internal/ui/setup.go` and its test.
+
+  Each file was first checked to be identical to the trial's self-update
+  tree, which is this repository's Phase 1. `go-llmprovider-sdk` `v1.0.0` is
+  required.
+* **mcplib left the module graph in this phase.** Phase 1 removed its
+  `selfupdate` import, and Phase 2 its last imports, so `go mod tidy`
+  dropped the requirement. `go list -m all` names no mcplib. The precheck
+  still downloads mcplib `v1.6.0` by name and passes. Phase 3 replaces that
+  check.
+* **D2.** `config.LookupEnv` reads `CLAUDE_API_KEY` when `ANTHROPIC_API_KEY`
+  is unset. `ResolveAPIKey` and the wizard's `LookupEnv` use it.
+* **D3.** `ProviderConfig.Organization` (`omitempty`) holds the
+  organization.
+  * The wizard's result saves it, and configure passes it back to the
+    wizard as the existing value.
+  * The non-interactive API-key path clears it.
+  * `providerOptions` adds `kilo.WithOrganization` for Kilo only. Listing
+    needs nothing here (MADR amendment A1).
+* **D4.** `catalog.OptionsFromEnv()` is passed where providers, the
+  catalog and the wizard are built.
+* **D5, the folded-in P8:**
+  * `ValidateOAuth` calls `auth.ValidateOAuthSession`, and wraps its error
+    with the configure hint;
+  * `isolateHome`, the ui `isolate` and the new `isolateUserDirs` in
+    `main_oauth_test.go` set `HOME`, `USERPROFILE`, `XDG_CONFIG_HOME`,
+    `APPDATA`, `AppData` and `LOCALAPPDATA`;
+  * `TestValidateActive_OAuthWithoutKeyOK` holds a refreshable session;
+  * the analyzer OAuth test holds an access-only ChatGPT session with its
+    own fixture token, and fails if the live session file ever holds it.
+* **Step 7.** `Orchestrated` is gone. Step 9: the drift-guard comment in
+  `setup_test.go` names go-llmprovider-sdk. The three citations of mcplib
+  MADR 0012 stay.
+* **New tests:**
+  * `TestGenerateText`, on `llmtest.Fake`: success; a rate limit retried;
+    an authentication failure not retried.
+  * `TestNewActiveProvider_KiloOrganization`.
+  * `TestResolveAPIKey_ClaudeFallback`.
+  * `TestProviderConfig_Organization`.
+  * `TestValidateOAuth_RejectsChatGPTAccessFixture`.
+  * `TestRedirectUserConfig_APPDATARequired`.
+  * `TestIsolateHome_RedirectsWindowsUserConfigDir`, which runs on Windows
+    only, so it skips on this macOS host. CI's Windows job runs it.
+
+**Proofs** (scratch copies; `pcm_phase2_proofs.py`). Each test passed on
+the unchanged copy, then failed on its plant:
+
+| Planted | Failed |
+| :--- | :--- |
+| no Claude fallback | `TestResolveAPIKey_ClaudeFallback/claude_only` |
+| the organization never passed | `TestNewActiveProvider_KiloOrganization` |
+| an empty organization written (no `omitempty`) | `TestProviderConfig_Organization` |
+| no session validation | `TestValidateOAuth_RejectsChatGPTAccessFixture` |
+| the helper without `APPDATA` | `TestRedirectUserConfig_APPDATARequired` |
+| `MaxAttempts: 1` | `TestGenerateText/rate_limit_retried` |
+| the prompt sent as the assistant | `TestGenerateText/success` |
+
+**Not proven here, and why:**
+
+* **The live-session canary in the analyzer test.** Planting a failure
+  would mean letting the test write the live profile, which is what it
+  guards against. The isolation it relies on is proven by the `APPDATA`
+  plant.
+* **The Windows `UserConfigDir` test.** It skips on macOS. It runs, and
+  must pass, in CI's `windows-2025` job.
+
+**Checks:**
+
+| Check | Result |
+| :--- | :--- |
+| `make verify` | exit 0: 0 lint issues; `total coverage: 84.2% (minimum 80.0%)`; `No vulnerabilities found.`; build-all |
+| `go test -race -count=1 ./...` | 5 packages ok |
+| `CGO_ENABLED=0 go vet` for linux, darwin, windows | 0 each |
+| `go mod tidy -diff` | 0 |
+| `python3 scripts/go-precheck.py` | exit 0 |
+| `go list -m all \| grep -c mcplib` | 0 |
+| `gofmt -l .` | empty |
+
+### Deviation D3 (2026-10-03): Phases 2 and 3 are one commit
+
+* **Found.** The Phase 2 commit was refused by the pre-commit hook. `make
+  verify-staged` runs `scripts/go-precheck.py` on the staged snapshot, and
+  that stopped with `go-precheck: go.mod does not require
+  github.com/maccavelli/mcplib`.
+  * The earlier precheck run, without staged files, had passed. It looked
+    at the working tree.
+  * Phase 2 drops mcplib from `go.mod` (see Phase 2 above). The precheck
+    that accepts this tree is Phase 3's.
+* **Decision.** The owner chose "Merge Phases 2 and 3". Phase 3 ran at
+  once, and both are committed together. MADR amendment A2 records it.
+  Nothing else in either phase changed.
+
+### Phase 3: the supply-chain gate (2026-10-03)
+
+* **`scripts/go-precheck.py`.** The trial's rewrite was the source, and the
+  file was first checked to be identical to `cfada6e`'s.
+  * `check_dependencies` runs `check_module` for go-llmprovider-sdk and
+    go-selfupdate-lib. Each must be required at a released version, not
+    replaced, not exempted, matched by `go.sum`, and downloaded to the
+    module cache.
+  * It then refuses a module graph that names mcplib.
+* **D6.** The `GONOSUMCHECK` arm is removed from the `go env` query and from
+  the exemption loop. No mention is left.
+* **`go.mod`** no longer requires mcplib, which happened in Phase 2.
+
+**Proofs** (copies of the repository, staged index included;
+`pcm_phase3_proofs.py`):
+
+| Case | Result |
+| :--- | :--- |
+| control (unchanged) | exit 0 |
+| `replace` go-llmprovider-sdk with a local copy | exit 1: `go.mod replaces … the dependency must resolve from GitHub` |
+| `replace` go-selfupdate-lib with `v1.4.1` | exit 1, the same |
+| go-llmprovider-sdk at a pseudo-version | exit 1: `… is a pseudo-version; pin a released tag` |
+| go-selfupdate-lib not required | exit 1: `go.mod does not require github.com/maccavelli/go-selfupdate-lib` |
+| mcplib imported again | exit 1: `the module graph names github.com/maccavelli/mcplib; it must not be a dependency` |
+| go-selfupdate-lib's `go.sum` hash tampered | exit 1: `command failed (exit 1): go mod download -json …` |
+| `GOPRIVATE`, `GONOSUMDB`, `GOINSECURE` each set to cover the modules | exit 1 each: `… exempts … from checksum verification` |
+
+**Checks on the Phase 2 and 3 tree:**
+
+| Check | Result |
+| :--- | :--- |
+| `make verify` | exit 0: 0 lint issues; `total coverage: 84.2% (minimum 80.0%)`; `No vulnerabilities found.` |
+| `make verify-staged` | exit 0; both modules `resolved from GitHub` |
+| `go test -race -count=1 ./...` | 5 packages ok |
+| `CGO_ENABLED=0 go vet` for linux, darwin, windows | 0 each |
+| `go mod tidy -diff` | 0 |
+| `go list -m all \| grep -c mcplib` | 0 |

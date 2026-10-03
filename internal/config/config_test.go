@@ -8,9 +8,11 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
-	"github.com/maccavelli/mcplib/llmprovider"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/auth"
 )
 
 func isolateHome(t *testing.T) string {
@@ -19,10 +21,99 @@ func isolateHome(t *testing.T) string {
 	t.Setenv("HOME", tmp)
 	t.Setenv("USERPROFILE", tmp)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmp, ".config"))
-	// Windows UserConfigDir uses AppData.
-	t.Setenv("AppData", filepath.Join(tmp, "AppData", "Roaming"))
+	// Windows UserConfigDir uses AppData. APPDATA names the same variable
+	// there, and both are set so no test writes the live profile (P8, C8).
+	roaming := filepath.Join(tmp, "AppData", "Roaming")
+	t.Setenv("APPDATA", roaming)
+	t.Setenv("AppData", roaming)
+	t.Setenv("LOCALAPPDATA", filepath.Join(tmp, "AppData", "Local"))
 	// macOS UserConfigDir uses HOME/Library/Application Support — HOME is set.
 	return tmp
+}
+
+// TestIsolateHome_RedirectsWindowsUserConfigDir: on Windows, isolateHome
+// moves os.UserConfigDir under the test's temporary directory.
+func TestIsolateHome_RedirectsWindowsUserConfigDir(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows only")
+	}
+	before, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmp := isolateHome(t)
+	after, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after == before || !strings.HasPrefix(after, tmp) {
+		t.Fatalf("UserConfigDir = %q (was %q), want it under %q", after, before, tmp)
+	}
+}
+
+// TestValidateOAuth_RejectsChatGPTAccessFixture: a stub session is refused.
+func TestValidateOAuth_RejectsChatGPTAccessFixture(t *testing.T) {
+	store, err := auth.NewFileTokenStore(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	session := &auth.OAuthSession{Provider: llmprovider.ProviderOpenAI, Access: "chatgpt-access", Issuer: auth.DefaultOpenAIIssuer}
+	if err := store.Save(context.Background(), llmprovider.ProviderOpenAI, session); err != nil {
+		t.Fatal(err)
+	}
+	pc := ProviderConfig{AuthKind: "oauth", Model: "gpt-5.4"}
+	err = ValidateOAuth(context.Background(), string(llmprovider.ProviderOpenAI), pc, store)
+	if err == nil || !strings.Contains(err.Error(), "chatgpt-access") || !strings.Contains(err.Error(), "configure") {
+		t.Fatalf("ValidateOAuth() = %v, want the fixture refused with a configure hint", err)
+	}
+}
+
+// TestResolveAPIKey_ClaudeFallback: CLAUDE_API_KEY is read only when
+// ANTHROPIC_API_KEY is unset (MADR 0008 D2).
+func TestResolveAPIKey_ClaudeFallback(t *testing.T) {
+	for _, tc := range []struct {
+		name, anthropic, claude, want string
+	}{
+		{"anthropic only", "a-key", "", "a-key"},
+		{"claude only", "", "c-key", "c-key"},
+		{"both", "a-key", "c-key", "a-key"},
+		{"neither", "", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			env := map[string]string{"ANTHROPIC_API_KEY": tc.anthropic, ClaudeKeyFallback: tc.claude}
+			got := ResolveAPIKey(ProviderConfig{}, string(llmprovider.ProviderClaude), true, func(k string) string { return env[k] })
+			if got != tc.want {
+				t.Fatalf("ResolveAPIKey() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+	env := map[string]string{"OPENAI_API_KEY": "", ClaudeKeyFallback: "c-key"}
+	if got := ResolveAPIKey(ProviderConfig{}, string(llmprovider.ProviderOpenAI), true, func(k string) string { return env[k] }); got != "" {
+		t.Fatalf("OpenAI read the Claude fallback: %q", got)
+	}
+}
+
+// TestProviderConfig_Organization: the Kilo organization round-trips, and a
+// configuration written before it existed loads unchanged.
+func TestProviderConfig_Organization(t *testing.T) {
+	var old ProviderConfig
+	if err := json.Unmarshal([]byte(`{"api_key":"k","model":"m"}`), &old); err != nil {
+		t.Fatal(err)
+	}
+	if old.Organization != "" || old.APIKey != "k" || old.Model != "m" {
+		t.Fatalf("old configuration loaded as %+v", old)
+	}
+	if b, err := json.Marshal(old); err != nil || bytes.Contains(b, []byte("organization")) {
+		t.Fatalf("an empty organization is written: %s, %v", b, err)
+	}
+	b, err := json.Marshal(ProviderConfig{AuthKind: "oauth", Model: "m", Organization: "org-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var back ProviderConfig
+	if err := json.Unmarshal(b, &back); err != nil || back.Organization != "org-1" {
+		t.Fatalf("round trip = %+v, %v", back, err)
+	}
 }
 
 func TestConfig_SaveAndLoad(t *testing.T) {
@@ -63,9 +154,9 @@ func TestConfig_SaveAndLoad(t *testing.T) {
 func TestSave_OAuthKindDoesNotWriteTokens(t *testing.T) {
 	isolateHome(t)
 	conf := &Config{
-		ActiveProvider: llmprovider.ProviderOpenAI,
+		ActiveProvider: string(llmprovider.ProviderOpenAI),
 		Providers: map[string]ProviderConfig{
-			llmprovider.ProviderOpenAI: {AuthKind: "oauth", Model: "gpt-5.4"},
+			string(llmprovider.ProviderOpenAI): {AuthKind: "oauth", Model: "gpt-5.4"},
 		},
 	}
 	if err := conf.Save(); err != nil {
@@ -89,9 +180,9 @@ func TestSave_OAuthKindDoesNotWriteTokens(t *testing.T) {
 func TestSave_NonOAuthAuthKindIsOmitted(t *testing.T) {
 	isolateHome(t)
 	conf := &Config{
-		ActiveProvider: llmprovider.ProviderOpenAI,
+		ActiveProvider: string(llmprovider.ProviderOpenAI),
 		Providers: map[string]ProviderConfig{
-			llmprovider.ProviderOpenAI: {AuthKind: "api_key", APIKey: "static-key", Model: "gpt-4.1-mini"},
+			string(llmprovider.ProviderOpenAI): {AuthKind: "api_key", APIKey: "static-key", Model: "gpt-4.1-mini"},
 		},
 	}
 	if err := conf.Save(); err != nil {
@@ -197,7 +288,7 @@ func TestConfig_TemplateDefaults(t *testing.T) {
 func TestApplyDefaults_IncludesGrok(t *testing.T) {
 	conf := &Config{}
 	ApplyDefaults(conf)
-	if _, ok := conf.Providers[llmprovider.ProviderGrok]; !ok {
+	if _, ok := conf.Providers[string(llmprovider.ProviderGrok)]; !ok {
 		t.Fatal("ApplyDefaults() omitted Grok")
 	}
 }
@@ -296,14 +387,18 @@ func TestValidateActive(t *testing.T) {
 }
 
 func TestValidateActive_OAuthWithoutKeyOK(t *testing.T) {
-	store, err := llmprovider.NewFileTokenStore(t.TempDir())
+	store, err := auth.NewFileTokenStore(t.TempDir())
 	if err != nil {
 		t.Fatalf("NewFileTokenStore() error = %v", err)
 	}
-	session := &llmprovider.OAuthSession{
+	// A refreshable session, as the SDK's validator requires (P8).
+	session := &auth.OAuthSession{
 		Provider: llmprovider.ProviderOpenAI,
 		Access:   "access-token",
-		Issuer:   llmprovider.DefaultOpenAIIssuer,
+		Refresh:  "refresh-token",
+		Issuer:   auth.DefaultOpenAIIssuer,
+		ClientID: auth.DefaultOpenAIClientID,
+		TokenURL: auth.DefaultOpenAIIssuer + "/oauth/token",
 	}
 	if err := store.Save(context.Background(), llmprovider.ProviderOpenAI, session); err != nil {
 		t.Fatalf("Save() error = %v", err)
@@ -312,18 +407,18 @@ func TestValidateActive_OAuthWithoutKeyOK(t *testing.T) {
 	if !IsOAuth(pc) {
 		t.Fatal("IsOAuth() = false for case-insensitive OAuth auth kind")
 	}
-	if err := ValidateOAuth(context.Background(), llmprovider.ProviderOpenAI, pc, store); err != nil {
+	if err := ValidateOAuth(context.Background(), string(llmprovider.ProviderOpenAI), pc, store); err != nil {
 		t.Fatalf("ValidateOAuth() error = %v", err)
 	}
 }
 
 func TestValidateActive_OAuthMissingSessionErrors(t *testing.T) {
-	store, err := llmprovider.NewFileTokenStore(t.TempDir())
+	store, err := auth.NewFileTokenStore(t.TempDir())
 	if err != nil {
 		t.Fatalf("NewFileTokenStore() error = %v", err)
 	}
 	pc := ProviderConfig{AuthKind: "oauth", Model: "gpt-5.4"}
-	err = ValidateOAuth(context.Background(), llmprovider.ProviderOpenAI, pc, store)
+	err = ValidateOAuth(context.Background(), string(llmprovider.ProviderOpenAI), pc, store)
 	want := `no OAuth session for provider "openai"; run 'prepare-commit-msg configure'`
 	if err == nil || err.Error() != want {
 		t.Fatalf("ValidateOAuth() error = %v, want %q", err, want)

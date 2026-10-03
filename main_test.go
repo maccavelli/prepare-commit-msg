@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maccavelli/mcplib/llmprovider"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider"
 	"github.com/maccavelli/prepare-commit-msg/internal/config"
 	"github.com/maccavelli/prepare-commit-msg/internal/git"
 )

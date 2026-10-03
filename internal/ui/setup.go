@@ -11,16 +11,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/maccavelli/mcplib/llmprovider"
-	"github.com/maccavelli/mcplib/wizard"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/catalog"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/providers"
+	"github.com/maccavelli/go-llmprovider-sdk/wizard"
 	"github.com/maccavelli/prepare-commit-msg/internal/config"
 )
 
 const (
-	providerGemini = llmprovider.ProviderGemini
-	providerOpenAI = llmprovider.ProviderOpenAI
-	providerClaude = llmprovider.ProviderClaude
-	providerGrok   = llmprovider.ProviderGrok
+	providerGemini = string(llmprovider.ProviderGemini)
+	providerOpenAI = string(llmprovider.ProviderOpenAI)
+	providerClaude = string(llmprovider.ProviderClaude)
+	providerGrok   = string(llmprovider.ProviderGrok)
 
 	// DiscoveryTimeout bounds model list API calls during configure.
 	DiscoveryTimeout = 45 * time.Second
@@ -28,7 +30,10 @@ const (
 
 var osGetenv = os.Getenv
 
-// listingClient carries configure's live model listing. Nil uses mcplib's
+// registry is the provider set configure offers and accepts.
+var registry = providers.Default()
+
+// listingClient carries configure's live model listing. Nil uses the SDK's
 // default client; tests set one that never reaches the network.
 var listingClient *http.Client
 
@@ -72,7 +77,7 @@ func readLine(reader *bufio.Reader) (string, error) {
 }
 
 func providerEnvVar(provider string) string {
-	if v, ok := llmprovider.ProviderEnvVars[provider]; ok {
+	if v, ok := llmprovider.ProviderEnvVars()[llmprovider.ProviderID(provider)]; ok {
 		return v
 	}
 	return ""
@@ -142,22 +147,22 @@ func promptOperational(reader *bufio.Reader, conf *config.Config, opts SetupOpti
 func discoverModels(ctx context.Context, provider, apiKey string) []string {
 	dCtx, cancel := context.WithTimeout(ctx, DiscoveryTimeout)
 	defer cancel()
-	var opts []llmprovider.ProviderOption
+	opts := catalog.OptionsFromEnv()
 	if listingClient != nil {
 		opts = append(opts, llmprovider.WithHTTPClient(listingClient))
 	}
-	models, err := llmprovider.ListAvailableModels(dCtx, provider, apiKey, opts...)
+	cat, err := catalog.List(dCtx, llmprovider.ProviderID(provider), llmprovider.NewStaticToken(apiKey), opts...)
 	if err != nil {
 		return nil
 	}
-	return models
+	return cat.Recommended
 }
 
-// defaultModels returns the curated catalog mcplib ships for a provider. It is
+// defaultModels returns the curated catalog the SDK ships for a provider. It is
 // a thin wrapper so this file has one name for the concept; the catalog itself
 // is no longer duplicated here.
 func defaultModels(provider string) []string {
-	return llmprovider.StaticModels(provider)
+	return catalog.Static(llmprovider.ProviderID(provider))
 }
 
 // recommendedFallbacks picks the models to try after the primary, preserving
@@ -187,18 +192,17 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 	if defProvider == "" {
 		defProvider = conf.ActiveProvider
 	}
-	existing := wizard.Result{Provider: defProvider}
+	existing := wizard.Result{Provider: llmprovider.ProviderID(defProvider)}
 	if pc, ok := conf.Providers[defProvider]; ok {
 		existing.Model = pc.Model
+		existing.Organization = pc.Organization
 		if config.IsOAuth(pc) {
-			session, loadErr := store.Load(ctx, defProvider)
+			session, loadErr := store.Load(ctx, llmprovider.ProviderID(defProvider))
 			if loadErr != nil {
 				return fmt.Errorf("load existing OAuth session: %w", loadErr)
 			}
 			if session != nil {
 				existing.Kind = wizard.CredOAuth
-				existing.AccessToken = session.Access
-				existing.RefreshToken = session.Refresh
 				existing.TokenExpiry = session.Expiry
 				existing.Issuer = session.Issuer
 				existing.ClientID = session.ClientID
@@ -216,44 +220,45 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 	}
 
 	// Provider menu, key precedence, model discovery and fallback selection all
-	// live in mcplib now, so a provider added there appears here with no change
+	// live in go-llmprovider-sdk now, so a provider added there appears here with no change
 	// to this file. TestSetup_OffersEveryDescriptor guards that.
-	orchestrated := false
 	res, err := wizard.ConfigureLLM(ctx, &wizard.TextPrompter{In: in, Out: os.Stdout}, wizard.Options{
-		Existing:      existing,
-		AllowEnv:      !opts.NoEnv,
-		LookupEnv:     osGetenv,
-		Discover:      true,
-		DiscoverLimit: DiscoveryTimeout,
-		HTTPClient:    listingClient,
-		NeedFallbacks: true,
-		TokenStore:    store,
-		OpenURL:       openBrowser,
-		Orchestrated:  &orchestrated,
+		Existing:        existing,
+		AllowEnv:        !opts.NoEnv,
+		LookupEnv:       config.LookupEnv(osGetenv),
+		Discover:        true,
+		DiscoverLimit:   DiscoveryTimeout,
+		HTTPClient:      listingClient,
+		Registry:        registry,
+		ProviderOptions: catalog.OptionsFromEnv(),
+		NeedFallbacks:   true,
+		TokenStore:      store,
+		OpenURL:         openBrowser,
 	})
 	if err != nil {
 		return err
 	}
 
-	pc, ok := conf.Providers[res.Provider]
+	pc, ok := conf.Providers[string(res.Provider)]
 	if !ok {
 		pc = config.ProviderConfig{}
 	}
 	pc.Model = res.Model
 	pc.FallbackModels = res.Fallbacks
+	pc.Organization = res.Organization
 	pc.VendorAuthPath = ""
 	switch res.Kind {
 	case wizard.CredOAuth:
 		pc.AuthKind = string(wizard.CredOAuth)
 		pc.APIKey = ""
-		if err := config.ValidateOAuth(ctx, res.Provider, pc, store); err != nil {
+		if err := config.ValidateOAuth(ctx, string(res.Provider), pc, store); err != nil {
 			return err
 		}
 	case wizard.CredVendorCLI:
 		pc.AuthKind = config.AuthKindVendorCLI
 		pc.APIKey = ""
 		pc.VendorAuthPath = res.VendorAuthPath
-		if err := config.ValidateVendorCLI(res.Provider, pc); err != nil {
+		if err := config.ValidateVendorCLI(string(res.Provider), pc); err != nil {
 			return err
 		}
 		// A session an older release copied from the CLI shares the CLI's
@@ -264,7 +269,7 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 	default:
 		pc.AuthKind = ""
 		pc.APIKey = res.APIKey
-		d, _ := llmprovider.DescriptorFor(res.Provider)
+		d, _ := registry.Descriptor(res.Provider)
 		if d.RequiresAPIKey && strings.TrimSpace(pc.APIKey) == "" {
 			return fmt.Errorf("API key is required")
 		}
@@ -277,8 +282,8 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 		return err
 	}
 
-	conf.ActiveProvider = res.Provider
-	conf.Providers[res.Provider] = pc
+	conf.ActiveProvider = string(res.Provider)
+	conf.Providers[string(res.Provider)] = pc
 
 	if err := conf.Save(); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
@@ -304,10 +309,11 @@ func runSetupNonInteractive(ctx context.Context, conf *config.Config, opts Setup
 	if provider == "" {
 		provider = providerGemini
 	}
-	if _, ok := llmprovider.DescriptorFor(provider); !ok {
-		known := make([]string, 0, len(llmprovider.Descriptors()))
-		for _, d := range llmprovider.Descriptors() {
-			known = append(known, d.ID)
+	if _, ok := registry.Descriptor(llmprovider.ProviderID(provider)); !ok {
+		descriptors := registry.Descriptors()
+		known := make([]string, 0, len(descriptors))
+		for _, d := range descriptors {
+			known = append(known, string(d.ID))
 		}
 		return fmt.Errorf("unsupported provider %q (known: %s)", provider, strings.Join(known, ", "))
 	}
@@ -328,6 +334,7 @@ func runSetupNonInteractive(ctx context.Context, conf *config.Config, opts Setup
 	pc.APIKey = apiKey
 	pc.AuthKind = ""
 	pc.VendorAuthPath = ""
+	pc.Organization = ""
 
 	model := strings.TrimSpace(opts.Model)
 	if model == "" {

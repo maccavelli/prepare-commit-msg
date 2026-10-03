@@ -13,7 +13,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/maccavelli/mcplib/llmprovider"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/auth"
 
 	"github.com/maccavelli/prepare-commit-msg/internal/config"
 )
@@ -37,7 +38,10 @@ func isolate(t *testing.T) *offlineTransport {
 	t.Setenv("HOME", tmp)
 	t.Setenv("USERPROFILE", tmp)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmp, ".config"))
-	t.Setenv("AppData", filepath.Join(tmp, "AppData", "Roaming"))
+	roaming := filepath.Join(tmp, "AppData", "Roaming")
+	t.Setenv("APPDATA", roaming)
+	t.Setenv("AppData", roaming)
+	t.Setenv("LOCALAPPDATA", filepath.Join(tmp, "AppData", "Local"))
 	return offline
 }
 
@@ -163,7 +167,7 @@ func TestRunSetupInteractive_CoverageBranches(t *testing.T) {
 		if err != nil {
 			t.Fatalf("NewOAuthStore() error = %v", err)
 		}
-		if err := store.Save(context.Background(), llmprovider.ProviderOpenAI, &llmprovider.OAuthSession{
+		if err := store.Save(context.Background(), llmprovider.ProviderOpenAI, &auth.OAuthSession{
 			Provider: llmprovider.ProviderOpenAI,
 			Access:   "stale-access",
 		}); err != nil {
@@ -178,7 +182,7 @@ func TestRunSetupInteractive_CoverageBranches(t *testing.T) {
 		if conf.ActiveProvider != "openai" {
 			t.Errorf("Expected openai")
 		}
-		pc := conf.Providers[llmprovider.ProviderOpenAI]
+		pc := conf.Providers[string(llmprovider.ProviderOpenAI)]
 		if pc.AuthKind != "" || pc.APIKey != "test-key" {
 			t.Errorf("OpenAI auth kind/key = %q/%q", pc.AuthKind, pc.APIKey)
 		}
@@ -186,7 +190,7 @@ func TestRunSetupInteractive_CoverageBranches(t *testing.T) {
 		if err != nil {
 			t.Fatalf("OAuthDir() error = %v", err)
 		}
-		if _, err := os.Stat(filepath.Join(oauthDir, llmprovider.ProviderOpenAI+".json")); !os.IsNotExist(err) {
+		if _, err := os.Stat(filepath.Join(oauthDir, string(llmprovider.ProviderOpenAI)+".json")); !os.IsNotExist(err) {
 			t.Fatalf("OpenAI OAuth session exists after API-key setup: %v", err)
 		}
 	})
@@ -250,7 +254,7 @@ func TestRunSetupInteractive_GrokCLILoginReadsThrough(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewOAuthStore() error = %v", err)
 	}
-	stale := &llmprovider.OAuthSession{Provider: llmprovider.ProviderGrok, Access: "copied-by-an-older-release"}
+	stale := &auth.OAuthSession{Provider: llmprovider.ProviderGrok, Access: "copied-by-an-older-release"}
 	if err := store.Save(context.Background(), llmprovider.ProviderGrok, stale); err != nil {
 		t.Fatalf("save stale session: %v", err)
 	}
@@ -261,11 +265,11 @@ func TestRunSetupInteractive_GrokCLILoginReadsThrough(t *testing.T) {
 	if err := runSetupInteractive(context.Background(), conf, SetupOptions{}, strings.NewReader(input)); err != nil {
 		t.Fatalf("runSetupInteractive() error = %v", err)
 	}
-	pc := conf.Providers[llmprovider.ProviderGrok]
+	pc := conf.Providers[string(llmprovider.ProviderGrok)]
 	if pc.AuthKind != "vendor_cli" || pc.APIKey != "" {
 		t.Fatalf("Grok auth kind/key = %q/%q, want vendor_cli and no key", pc.AuthKind, pc.APIKey)
 	}
-	assertSavedVendorPath(t, llmprovider.ProviderGrok, authPath)
+	assertSavedVendorPath(t, string(llmprovider.ProviderGrok), authPath)
 	if session, loadErr := store.Load(context.Background(), llmprovider.ProviderGrok); loadErr != nil || session != nil {
 		t.Fatalf("stored Grok session = %+v, %v; want none", session, loadErr)
 	}
@@ -293,11 +297,11 @@ func TestRunSetupInteractive_CodexCLILoginReadsThrough(t *testing.T) {
 	if err := runSetupInteractive(context.Background(), conf, SetupOptions{}, strings.NewReader(input)); err != nil {
 		t.Fatalf("runSetupInteractive() error = %v", err)
 	}
-	pc := conf.Providers[llmprovider.ProviderOpenAI]
+	pc := conf.Providers[string(llmprovider.ProviderOpenAI)]
 	if pc.AuthKind != "vendor_cli" || pc.APIKey != "" {
 		t.Fatalf("OpenAI auth kind/key = %q/%q, want vendor_cli and no key", pc.AuthKind, pc.APIKey)
 	}
-	assertSavedVendorPath(t, llmprovider.ProviderOpenAI, authPath)
+	assertSavedVendorPath(t, string(llmprovider.ProviderOpenAI), authPath)
 	assertConfigOmitsOAuthTokens(t)
 }
 
@@ -348,9 +352,9 @@ func TestRunSetupNonInteractive(t *testing.T) {
 
 	conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
 	config.ApplyDefaults(conf)
-	openAIPC := conf.Providers[llmprovider.ProviderOpenAI]
+	openAIPC := conf.Providers[string(llmprovider.ProviderOpenAI)]
 	openAIPC.AuthKind = "oauth"
-	conf.Providers[llmprovider.ProviderOpenAI] = openAIPC
+	conf.Providers[string(llmprovider.ProviderOpenAI)] = openAIPC
 
 	oldEnv := osGetenv
 	defer func() { osGetenv = oldEnv }()
@@ -495,29 +499,30 @@ func TestRunSetupWithOptionsNonInteractiveErrors(t *testing.T) {
 
 // TestSetup_OffersEveryDescriptor is the drift guard. Grok shipped in mcplib
 // MADR 0001 and this wizard never offered it, because the provider menu was a
-// hard-coded list of three. The menu now comes from llmprovider.Descriptors(),
-// and this test fails the build if that ever stops being true — so a provider
-// added to mcplib cannot silently go unreachable here again.
+// hard-coded list of three. The menu now comes from the SDK registry's
+// Descriptors(), and this test fails the build if that ever stops being true —
+// so a provider added to go-llmprovider-sdk cannot silently go unreachable here
+// again.
 func TestSetup_OffersEveryDescriptor(t *testing.T) {
-	descriptors := llmprovider.Descriptors()
+	descriptors := registry.Descriptors()
 	if len(descriptors) == 0 {
-		t.Fatal("llmprovider.Descriptors() is empty")
+		t.Fatal("registry.Descriptors() is empty")
 	}
 
 	// Every descriptor must be a provider this app can validate and configure.
 	for _, d := range descriptors {
-		if _, ok := llmprovider.DescriptorFor(d.ID); !ok {
+		if _, ok := registry.Descriptor(d.ID); !ok {
 			t.Errorf("descriptor %q does not resolve", d.ID)
 		}
 	}
 
 	// The providers this wizard once hard-coded must still be present, and the
 	// set must now be strictly larger than that original three.
-	for _, id := range []string{
+	for _, id := range []llmprovider.ProviderID{
 		llmprovider.ProviderGemini, llmprovider.ProviderOpenAI, llmprovider.ProviderClaude,
 		llmprovider.ProviderGrok, // the one that was missing for a full release
 	} {
-		if _, ok := llmprovider.DescriptorFor(id); !ok {
+		if _, ok := registry.Descriptor(id); !ok {
 			t.Errorf("provider %q must be offerable", id)
 		}
 	}
