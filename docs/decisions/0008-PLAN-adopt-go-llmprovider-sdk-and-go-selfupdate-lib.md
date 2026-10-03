@@ -317,3 +317,59 @@ committed from it.
   | `go mod tidy -diff` | 0 |
   | `python3 scripts/go-precheck.py` | exit 0; mcplib `v1.6.0` resolved from GitHub |
   | the pre-commit hook | passed |
+
+### Phase 1: Go 1.27.1 and self-update (2026-10-03)
+
+* **Step 1** landed first, as `e735fa3` (deviation D1).
+* **Steps 2–8.** The trial's self-update tree was the source. Each file it
+  replaced was first checked to be identical to `cfada6e` in this tree.
+  * `go-selfupdate-lib` `v1.5.0` is required, its newest release. mcplib
+    `v1.6.0` stays for `llmprovider` and `wizard`.
+  * `update.go` holds `defaultNewUpdateUpdater`, `buildIdentity`,
+    `newUpdateUpdater` and `updateOptions`.
+  * In `main.go`, `update` is one `cli.Command` call, and `version` prints
+    `buildIdentity()`. The usage text appends `cli.HelpText`.
+  * The `Makefile` stamps `buildinfo.version` and, for releases,
+    `buildinfo.kind`.
+  * `verify-release.sh` takes D1's form.
+  * `ci.yml`'s `uses:` is go-selfupdate-lib's workflow at `6deaa52`
+    (`v1.5.0`). That file is identical to `58411f1`'s, whose inputs the
+    trial read. `bridge-release` is gone.
+  * `update_test.go` and `TestRunUpdate_Flags` are removed.
+  * `migration_test.go` and the nine fixtures under `testdata/migration/`
+    are added. Beyond the trial, it adds `TestDefaultNewUpdateUpdater`.
+
+**Deviation D2 (2026-10-03): the test now sees the process's stdout.**
+
+* **Found.** Step 9's banner proof printed a line with `fmt.Println` before
+  `cli.Command`. The tests still passed. `runMain` captured only the update
+  command's own stdout stream, so a stray write to the process's stdout,
+  which would corrupt `--json` output, went unseen.
+* **Fix, within this phase.** `runMain` also captures the process's
+  stdout, through a pipe it restores in `t.Cleanup`. It returns both, the
+  process output first. `TestVersionPrintsIdentity` uses that capture,
+  instead of a pipe of its own. No assertion was loosened.
+
+**Proofs** (scratch copies; `pcm_phase1_proofs.py`):
+
+| Planted | Result |
+| :--- | :--- |
+| none (control) | exit 0 |
+| go-selfupdate-lib `v1.5.0` copy, through `replace`, summary `up-to-date` | exit 1: `TestMigrationByteForByte/up-to-date` only |
+| `fmt.Println("banner")` before `cli.Command` | exit 1: all three byte-for-byte subtests and `TestUpdateRefusedBeforeBuild` |
+| the `Makefile` without the `buildinfo.kind` stamp | exit 1: `TestMakefileStamps` |
+| the factory with an empty repository name | exit 1: `TestDefaultNewUpdateUpdater` |
+| `verify-release.sh`, six versions | the two forms with and without a revision accepted; `-dirty`, `v1.2.4`, `(local)` and the form without `v` refused |
+| the same script with a catch-all `*) ;;` first | exit 1 |
+
+**Checks:**
+
+| Check | Result |
+| :--- | :--- |
+| `make verify` | exit 0: 0 lint issues; `total coverage: 83.5% (minimum 80.0%)`; `No vulnerabilities found.`; build-all |
+| `go test -race -count=1 ./...` | 5 packages ok |
+| `CGO_ENABLED=0 go vet` for linux, darwin, windows | 0 each |
+| `go mod tidy -diff` | 0 |
+| `python3 scripts/go-precheck.py` | exit 0 |
+| actionlint v1.7.12 on `ci.yml`; `shellcheck` and `bash -n` on `verify-release.sh` | 0 each |
+| `gofmt -l .` | empty |

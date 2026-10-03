@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -159,11 +158,4 @@ func TestMain_RunUpdate_Help(t *testing.T) {
 	}()
 
 	main()
-}
-
-func TestRunUpdate_Flags(t *testing.T) {
-	_, err := runUpdate(context.Background(), []string{"--invalid-flag-12345"})
-	if err == nil {
-		t.Errorf("expected error on invalid flag")
-	}
 }

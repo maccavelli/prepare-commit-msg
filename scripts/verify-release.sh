@@ -110,8 +110,11 @@ SUFFIX=""
 NATIVE_BINARY="$DIST_DIR/prepare-commit-msg-$GOOS-$GOARCH$SUFFIX"
 if [ -x "$NATIVE_BINARY" ]; then
 	NATIVE_VERSION="$($NATIVE_BINARY version)"
-	[ "$NATIVE_VERSION" = "prepare-commit-msg version ${VERSION#v} (release)" ] || {
+	case "$NATIVE_VERSION" in
+	"prepare-commit-msg version $VERSION (release)" | "prepare-commit-msg version $VERSION (release) "[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) ;;
+	*)
 		echo "embedded version mismatch: $NATIVE_VERSION" >&2
 		exit 1
-	}
+		;;
+	esac
 fi

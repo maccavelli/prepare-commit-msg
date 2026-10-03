@@ -7,10 +7,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/signal"
 	"slices"
 	"strings"
-	"syscall"
 	"time"
 	"unicode/utf8"
 
@@ -19,17 +17,14 @@ import (
 	"github.com/maccavelli/prepare-commit-msg/internal/git"
 	"github.com/maccavelli/prepare-commit-msg/internal/ui"
 
+	"github.com/maccavelli/go-selfupdate-lib/selfupdate/cli"
 	"github.com/maccavelli/mcplib/llmprovider"
-	"github.com/maccavelli/mcplib/selfupdate"
 )
 
 var generateWithRetry = llmprovider.GenerateWithRetry
 var newProvider = llmprovider.NewProvider
 var newProviderWithSource = llmprovider.NewProviderWithSource
 var osGetenv = os.Getenv
-
-// Version is overwritten by build flags during the compilation process.
-var Version = localVersionIdentity
 
 const (
 	// AppTitle is the name of the application used in help text and version output.
@@ -60,11 +55,7 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  --retry-delay-seconds int base retry delay (default %d)\n", config.DefaultRetryDelaySeconds)
 	fmt.Fprintf(os.Stderr, "  --no-env                  do not read API keys from the environment\n")
 	fmt.Fprintf(os.Stderr, "  --yes                     non-interactive configure (no prompts)\n")
-	fmt.Fprintf(os.Stderr, "\nUpdate flags:\n")
-	fmt.Fprintf(os.Stderr, "  --check                   check if update is available without applying\n")
-	fmt.Fprintf(os.Stderr, "  --force                   reinstall or force overwrite current binary\n")
-	fmt.Fprintf(os.Stderr, "  --version string          target specific release tag (e.g. v4.4.0)\n")
-	fmt.Fprintf(os.Stderr, "  --yes, -y                 non-interactive update\n")
+	fmt.Fprintf(os.Stderr, "\nUpdate %s", cli.HelpText)
 }
 
 var osExit = os.Exit
@@ -87,7 +78,7 @@ func main() {
 
 	switch args[0] {
 	case "version", "--version", "-V":
-		fmt.Printf("%s version %s (%s)\n", AppTitle, strings.TrimPrefix(displayVersion(), "v"), RawBuildKind)
+		fmt.Printf("%s version %s\n", AppTitle, buildIdentity())
 		return
 	case "help", "--help", "-h":
 		printUsage()
@@ -99,27 +90,12 @@ func main() {
 		}
 		return
 	case "update":
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		defer stop()
-		ctx, cancel := context.WithTimeout(ctx, updateTimeout)
-		defer cancel()
-		res, err := runUpdate(ctx, args[1:])
-		if err != nil && !errors.Is(err, selfupdate.ErrUpdateAvailable) {
-			fmt.Fprintf(os.Stderr, "Update failed: %v\n", err)
-		}
-		osExit(selfupdate.ExitCode(res, err))
+		osExit(cli.Command(context.Background(), args[1:], AppTitle, buildIdentity(), newUpdateUpdater, updateOptions()))
 		return
 	}
 
 	// Git hook logic
 	runHook(args)
-}
-
-func displayVersion() string {
-	if RawVersion != "" && RawVersion != localVersionIdentity {
-		return RawVersion
-	}
-	return Version
 }
 
 func runConfigure(args []string) error {

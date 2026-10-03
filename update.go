@@ -1,58 +1,36 @@
 package main
 
 import (
-	"context"
-	"errors"
-	"flag"
-	"fmt"
 	"net/http"
-	"os"
 	"time"
 
-	"github.com/maccavelli/mcplib/selfupdate"
+	"github.com/maccavelli/go-selfupdate-lib/buildinfo"
+	"github.com/maccavelli/go-selfupdate-lib/selfupdate"
+	"github.com/maccavelli/go-selfupdate-lib/selfupdate/cli"
 )
 
 const (
-	localVersionIdentity = "dev"
-	releaseBuildKind     = "release"
-	archAMD64            = "amd64"
-	archARM64            = "arm64"
+	archAMD64 = "amd64"
+	archARM64 = "arm64"
 )
 
-// RawVersion is the running identity stamped by release builds. Local source
-// builds keep the default and are never ordered as a release.
-var RawVersion = localVersionIdentity
-
-// RawBuildKind is a linker-stamped string. Only the exact value "release"
-// maps to selfupdate.ReleaseBuild. The Go linker is not used on a bool.
-var RawBuildKind = "local"
-
+// updateTimeout bounds each GitHub request. cli.Run bounds the whole run.
 const updateTimeout = 15 * time.Minute
 
-func currentBuildKind() selfupdate.BuildKind {
-	if RawBuildKind == releaseBuildKind {
-		return selfupdate.ReleaseBuild
-	}
-	return selfupdate.LocalBuild
-}
+// buildIdentity is the running binary's identity; tests replace it.
+var buildIdentity = buildinfo.Identity
 
-func currentVersion() string {
-	if RawVersion != "" && RawVersion != localVersionIdentity {
-		return RawVersion
-	}
-	if Version != "" && Version != localVersionIdentity {
-		return Version
-	}
-	return RawVersion
-}
-
+// newUpdateUpdater builds the updater; tests replace it.
 var newUpdateUpdater = defaultNewUpdateUpdater
+
+// updateOptions are the update command's streams; tests replace them.
+var updateOptions = cli.StdioOptions
 
 func defaultNewUpdateUpdater() (*selfupdate.Updater, error) {
 	src, err := selfupdate.NewGitHubSource(selfupdate.GitHubOptions{
 		Repository: selfupdate.Repository{Owner: "maccavelli", Name: "prepare-commit-msg"},
 		Client:     &http.Client{Timeout: updateTimeout},
-		UserAgent:  AppTitle + "/" + currentVersion(),
+		UserAgent:  selfupdate.UserAgent(AppTitle, buildIdentity().Current()),
 		Limits:     selfupdate.DefaultLimits(),
 	})
 	if err != nil {
@@ -73,59 +51,14 @@ func defaultNewUpdateUpdater() (*selfupdate.Updater, error) {
 	if err != nil {
 		return nil, err
 	}
+	// cli.Run supplies the reporter and the confirmer, on the right streams.
 	return selfupdate.New(selfupdate.Config{
 		Source:    src,
 		Versions:  selfupdate.NewStrictVersionPolicy(),
 		Assets:    selector,
 		Installer: installer,
-		Reporter:  selfupdate.NewTextReporter(os.Stdout),
-		Confirmer: selfupdate.NewTerminalConfirmer(os.Stdin, os.Stdout),
+		Reporter:  selfupdate.DiscardReporter(),
+		Confirmer: selfupdate.NonInteractiveConfirmer(),
 		Limits:    selfupdate.DefaultLimits(),
 	})
-}
-
-func runUpdate(ctx context.Context, args []string) (selfupdate.Result, error) {
-	if err := ctx.Err(); err != nil {
-		return selfupdate.Result{}, err
-	}
-	fs := flag.NewFlagSet("update", flag.ContinueOnError)
-	fs.SetOutput(os.Stderr)
-
-	check := fs.Bool("check", false, "check for updates without applying")
-	force := fs.Bool("force", false, "reinstall current version or force overwrite")
-	targetVersion := fs.String("version", "", "target specific version tag (e.g. v1.2.0)")
-	yes := fs.Bool("yes", false, "non-interactive update")
-	fs.BoolVar(yes, "y", false, "non-interactive update (shorthand)")
-
-	if err := fs.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return selfupdate.Result{}, nil
-		}
-		return selfupdate.Result{}, err
-	}
-	if fs.NArg() > 0 {
-		return selfupdate.Result{}, fmt.Errorf("positional arguments are not accepted")
-	}
-	if *check && *yes {
-		return selfupdate.Result{}, fmt.Errorf("--check and --yes are contradictory")
-	}
-	if *check && *force {
-		return selfupdate.Result{}, fmt.Errorf("--check and --force are contradictory")
-	}
-
-	u, err := newUpdateUpdater()
-	if err != nil {
-		return selfupdate.Result{}, err
-	}
-
-	req := selfupdate.Request{
-		Product:        AppTitle,
-		CurrentVersion: currentVersion(),
-		CurrentBuild:   currentBuildKind(),
-		TargetVersion:  *targetVersion,
-		CheckOnly:      *check,
-		Force:          *force,
-		Yes:            *yes,
-	}
-	return u.Run(ctx, req)
 }

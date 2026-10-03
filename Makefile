@@ -20,13 +20,13 @@ all: help build-all
 
 build: ## Compiles the Go application for the local OS/Arch
 	@mkdir -p $(DIST_DIR)
-	@CGO_ENABLED=0 go build -trimpath -tags netgo -ldflags "-extldflags '-static' -s -w -X main.Version=$(VERSION)" -o $(DIST_DIR)/$(BINARY_NAME)-$(shell go env GOOS)-$(shell go env GOARCH)$(if $(filter windows,$(shell go env GOOS)),.exe,) .
+	@CGO_ENABLED=0 go build -trimpath -tags netgo -ldflags "-extldflags '-static' -s -w -X github.com/maccavelli/go-selfupdate-lib/buildinfo.version=$(VERSION)" -o $(DIST_DIR)/$(BINARY_NAME)-$(shell go env GOOS)-$(shell go env GOARCH)$(if $(filter windows,$(shell go env GOOS)),.exe,) .
 
 build-all: linux-amd64 linux-arm64 darwin-arm64 darwin-amd64 windows-amd64 windows-arm64 ## Compiles for all 6 target platforms (Linux, macOS, Windows on AMD64 and ARM64)
 
 linux: linux-amd64 ## Alias for linux-amd64
 
-RELEASE_LDFLAGS := -s -w -X main.Version=$(VERSION) -X main.RawVersion=$(VERSION) -X main.RawBuildKind=release
+RELEASE_LDFLAGS := -s -w -X github.com/maccavelli/go-selfupdate-lib/buildinfo.version=$(VERSION) -X github.com/maccavelli/go-selfupdate-lib/buildinfo.kind=release
 
 linux-amd64: ## Compiles for Linux x86_64 (AMD64)
 	@mkdir -p $(DIST_DIR)

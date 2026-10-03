@@ -2,7 +2,10 @@ module github.com/maccavelli/prepare-commit-msg
 
 go 1.27.1
 
-require github.com/maccavelli/mcplib v1.6.0
+require (
+	github.com/maccavelli/go-selfupdate-lib v1.5.0
+	github.com/maccavelli/mcplib v1.6.0
+)
 
 require (
 	github.com/google/jsonschema-go v0.4.3 // indirect
