@@ -1,6 +1,6 @@
 ---
-status: proposed
-date: 2026-09-28
+status: in-progress
+date: 2026-10-03
 associated-madr: "0007-MADR-dependency-and-docs-link-refresh.md"
 decision-makers: Project Owner
 ---
@@ -140,11 +140,41 @@ Two scratch scripts, kept outside the repository:
 
 ## 9. Deviation log
 
-None yet.
+**2026-10-03 — R1 dropped; scoped files moved since `2bd6dab`.**
+
+* **R1 (D-a) does not run.** It is superseded by
+  [0008-MADR-adopt-go-llmprovider-sdk-and-go-selfupdate-lib.md](0008-MADR-adopt-go-llmprovider-sdk-and-go-selfupdate-lib.md)
+  D7: mcplib, the MCP go-sdk and the modules this plan would refresh are
+  gone. The MADR's amendment of this date records it. Acceptance criterion 1
+  no longer applies.
+* **§0's precondition does not hold as written.** `main` is a descendant of
+  `2bd6dab`, at `9eacbb6`, but 0008 changed one scoped file, `docs/README.md`,
+  by adding the 0008 entries. R3 keeps those entries, and its index check
+  covers 0001–0008.
+* **The counts were re-measured first,** with a new checker that follows
+  §Tools. The original scratch scripts were not kept. On `9eacbb6` it found
+  73 problems in the same 8 files:
+  * 65 `file://` links: 57 into this checkout, 5 into the module cache and
+    3 into the mcplib checkout;
+  * 1 absolute path;
+  * 7 missing files.
+
+  Of the 57:
+  * 31 name a file that exists, and one more is the `README.md#L60-L61`
+    anchor;
+  * 24 name `internal/selfupdate/`;
+  * 1 names the old 0001 filename.
+
+  That matches the MADR exactly. Only `README.md#L60-L61` carries a line
+  anchor, and R2 pins it. So 0008's edits to `main.go`, `README.md` and
+  the rest move no anchored line.
+* **The owner's ask** covers R0, R2, R3 and R5. R4, the push, stays the
+  owner's.
 
 ## 10. Execution record
 
-Not started.
+**R0 (2026-10-03).** The MADR is `accepted` for L-a and I-a, and this plan
+is `in-progress`. The records are committed alone.
 
 ## Appendix A — Proof record (2026-09-28)
 

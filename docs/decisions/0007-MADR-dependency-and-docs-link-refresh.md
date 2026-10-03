@@ -1,6 +1,6 @@
 ---
-status: proposed
-date: 2026-09-28
+status: accepted
+date: 2026-10-03
 decision-makers: Project Owner
 consulted: none
 informed: none
@@ -216,4 +216,7 @@ Chosen options: **D-a**, **L-a** and **I-a**.
 (D7) removes mcplib and, with it, the MCP go-sdk and the other indirect
 modules this record would refresh. Its dependency decision (D-a) is
 superseded and is not carried out. The link (L-a) and index (I-a) decisions
-stand as proposed. This record stays `proposed` for them.
+stand as proposed.
+
+**Accepted 2026-10-03** for L-a and I-a. The owner asked to "proceed to …
+link and index work". D-a stays superseded.
