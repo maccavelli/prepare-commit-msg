@@ -176,6 +176,47 @@ Two scratch scripts, kept outside the repository:
 **R0 (2026-10-03).** The MADR is `accepted` for L-a and I-a, and this plan
 is `in-progress`. The records are committed alone.
 
+**R1.** Not run (§9).
+
+**R2 (2026-10-03), `1d66ea2`.** The rewriter applied §R2's table. Each rule
+asserted its count:
+
+| Rule | Count |
+| --- | --- |
+| this checkout, a file that exists, made relative | 31 |
+| `README.md#L60-L61`, pinned to `9f55d68` | 1 |
+| `internal/selfupdate/*`, pinned to `79cdba9` | 24 |
+| the old 0001 MADR filename | 1 |
+| mcplib `v0.2.0` from the module cache, pinned to `d8cce03` (`tree/` for the root and `llmprovider`) | 5 |
+| the mcplib checkout, `mcplib/blob/main` | 3 |
+| `magic-cli-remote`, `blob/master` | 1 |
+| `release.yml` and `quality.yml`, pinned to `7b91a1a` | 7 |
+| plain-text machine paths in the 0001 PLAN | 5 |
+
+* **The diff.** `8 files changed, 74 insertions(+), 74 deletions(-)`, as
+  planned. A second script paired each changed line with its original. All
+  74 differ only in a link target, or in one of the five plain-text paths.
+* **The checker** found 0 problems after the rewrite. On a copy with an
+  injected `decisions/0099-MADR-does-not-exist.md` link, it exited 1 with
+  `docs/README.md:57: missing: …`.
+* **The 22 new GitHub URLs** all resolve through the contents API.
+* **Machine paths.** A `git grep` for `](file:`, the three rewritten
+  prefixes and the local home directory finds nothing in tracked Markdown.
+
+**R3 (2026-10-03), `12e2a71`.**
+
+* The 0004 MADR is "Proposed", and the 0002 PLAN "Completed".
+* The 0005 MADR and PLAN are added as "Proposed".
+* The 0007 MADR is added as "Accepted", and its PLAN as "In Progress".
+
+`1 file changed, 18 insertions(+), 2 deletions(-)`. The index lists
+0001–0008, MADR and PLAN, 16 entries. Each status mirrors its record's front
+matter or, for the four records without front matter, its body. The 0004
+PLAN states no status, and keeps its line. The checker reports 0 problems.
+
+**R4** is the owner's push. This plan becomes `complete`, and its index line
+"Completed", once CI has passed after that push.
+
 ## Appendix A — Proof record (2026-09-28)
 
 Run on scratch archives of `2bd6dab`, never in the repository.
