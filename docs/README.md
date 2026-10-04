@@ -63,7 +63,7 @@ This directory contains design documents, architectural decision records (MADR),
   * **Topic:** Phases S0–S8: fix `main`, adopt the candidate, release v1.4.0, canary on macOS and Windows, promote mcplib v1.6.0.
 
 * [0007-PLAN: Implement the Dependency and Documentation Link Refresh](decisions/0007-PLAN-dependency-and-docs-link-refresh.md)
-  * **Status:** In Progress
+  * **Status:** Completed
   * **Topic:** Phases R0–R5: links rewritten to relative paths and pinned GitHub URLs, and the index made to mirror front matter. R1 is superseded.
 
 * [0008-PLAN: Implement dropping mcplib](decisions/0008-PLAN-adopt-go-llmprovider-sdk-and-go-selfupdate-lib.md)

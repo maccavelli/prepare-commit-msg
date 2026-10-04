@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: complete
 date: 2026-10-03
 associated-madr: "0007-MADR-dependency-and-docs-link-refresh.md"
 decision-makers: Project Owner
@@ -214,8 +214,15 @@ asserted its count:
 matter or, for the four records without front matter, its body. The 0004
 PLAN states no status, and keeps its line. The checker reports 0 problems.
 
-**R4** is the owner's push. This plan becomes `complete`, and its index line
-"Completed", once CI has passed after that push.
+**R4 (2026-10-03).** The owner pushed `main` through `f697b67`. CI run
+`37156593492` passed: "Go (test; build on tag)", and the Linux, macOS and
+Windows native tests. "Publish GitHub Release" skipped, as it does off a tag.
+No release was cut. The latest is still `v1.5.0`, at `fd81a19`, because
+these commits change documentation and a developer-tool script only.
+
+**R5 (2026-10-03).** Every acceptance criterion in §7 holds, except the
+first. That one, the dependency upgrades, was superseded (§9). This plan is
+`complete`, and its index line says "Completed".
 
 ## Appendix A — Proof record (2026-09-28)
 
