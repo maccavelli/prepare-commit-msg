@@ -334,3 +334,48 @@ itself was unchanged.
 | `gofmt -l` on the five changed Go files | empty |
 | `make verify-staged` on the staged phase | exit 0: `go-llmprovider-sdk v1.0.0 resolved from GitHub`; `0 issues.`; `No vulnerabilities found.` |
 | identifier scan of the staged diff | none found |
+
+* The owner committed Phase 1 as `fd97e10`.
+
+### Phase 2: the bump (2026-10-06)
+
+* **Approval.** The owner: "proceed", after committing `fd97e10`.
+* **Step 1.** `go get github.com/maccavelli/go-llmprovider-sdk@v1.2.1` and
+  `go mod tidy`.
+  * `go.mod`: the SDK's line only, `v1.0.0` → `v1.2.1`.
+  * `go.sum`: the SDK's two lines only. The new `h1:` is
+    `zwxJDG+92SXnrbHjZO5CFLRuxnSlK6XpDKGo5qz9rto=`, and the `/go.mod`
+    hash is unchanged.
+  * `go list -m all` differs from before only in the SDK's version.
+* **Step 2.** `TestGenerateText_ResponsesRefusal` in `provider_test.go`. It
+  builds the real OpenAI provider against an `httptest` server whose 200
+  answer is one message holding only a `refusal` part. It wants `errRefused`,
+  no text, and the refusal quoted in the error.
+
+**Proofs** (a scratch copy; `pcm_proofs.py phase2`). The tree itself was
+unchanged.
+
+| Planted | Result |
+| :--- | :--- |
+| none (control) | exit 0 |
+| D1's `FinishContentFilter` check removed | exit 1: `provider_test.go:39: generateText() = "I'm sorry, but I can't help with that request.", <nil>; want errRefused and no text` |
+| D3's fallback removed | exit 1: `setup_test.go:178: discoverModels(kilo) = [], want the curated catalog [...]` |
+
+Both are the regressions the MADR measured. Each is now held by a test
+that fails without its fix at `v1.2.1`.
+
+**Step 4.** `make build`, then `go version -m` on the darwin/arm64 binary:
+`dep github.com/maccavelli/go-llmprovider-sdk v1.2.1 h1:zwxJDG+…`, and
+`go-selfupdate-lib v1.5.0`.
+
+**Checks:**
+
+| Check | Result |
+| :--- | :--- |
+| `make verify` | exit 0: `0 issues.`; `total coverage: 84.6% (minimum 80.0%)`; `No vulnerabilities found.`; build-all |
+| `go test -race -count=1 ./...` | 5 packages ok |
+| `CGO_ENABLED=0 go vet` for linux, darwin, windows | 0 each |
+| `go mod tidy -diff` | 0 |
+| `gofmt -l provider_test.go` | empty |
+| `make verify-staged` on the staged phase | exit 0: `all modules verified`; `go-llmprovider-sdk v1.2.1 resolved from GitHub (h1:zwxJDG+…)`; `0 issues.`; `No vulnerabilities found.` |
+| identifier scan of the staged diff | none found |

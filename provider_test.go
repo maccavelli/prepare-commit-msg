@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -10,8 +12,36 @@ import (
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider"
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/auth"
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/llmtest"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/providers"
 	"github.com/maccavelli/prepare-commit-msg/internal/config"
 )
+
+// TestGenerateText_ResponsesRefusal: a real OpenAI provider whose Responses
+// answer is only a refusal part gives errRefused, not the refusal as text.
+// From SDK v1.2.0 the refusal is kept as the answer's text with the
+// content_filter finish (go-llmprovider-sdk 0021-MADR W4), so only D1's check
+// keeps it out of the commit message (0009-MADR D1).
+func TestGenerateText_ResponsesRefusal(t *testing.T) {
+	const refusal = "I'm sorry, but I can't help with that request."
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"resp_1","status":"completed","model":"gpt-4.1-mini","output":[` +
+			`{"type":"message","role":"assistant","content":[{"type":"refusal","refusal":"` + refusal + `"}]}]}`))
+	}))
+	t.Cleanup(srv.Close)
+	p, err := providers.New(llmprovider.ProviderOpenAI, llmprovider.WithTokenSource(llmprovider.NewStaticToken("test-key")),
+		llmprovider.WithModel("gpt-4.1-mini"), llmprovider.WithBaseURL(srv.URL), llmprovider.WithoutModelMetadata())
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := generateText(context.Background(), p, "write a commit message", 0, time.Millisecond)
+	if !errors.Is(err, errRefused) || got != "" {
+		t.Fatalf("generateText() = %q, %v; want errRefused and no text", got, err)
+	}
+	if !strings.Contains(err.Error(), refusal) {
+		t.Fatalf("error %q does not quote the refusal", err)
+	}
+}
 
 // TestGenerateText covers generateText over the SDK's scriptable fake: the
 // prompt goes as one user message, a rate limit is retried, and an

@@ -3,7 +3,7 @@ module github.com/maccavelli/prepare-commit-msg
 go 1.27.1
 
 require (
-	github.com/maccavelli/go-llmprovider-sdk v1.0.0
+	github.com/maccavelli/go-llmprovider-sdk v1.2.1
 	github.com/maccavelli/go-selfupdate-lib v1.5.0
 )
 
