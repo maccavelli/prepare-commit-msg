@@ -36,6 +36,10 @@ This directory contains design documents, architectural decision records (MADR),
   * **Status:** Accepted
   * **Topic:** Providers and the wizard from go-llmprovider-sdk, self-update and build stamps from go-selfupdate-lib, the supply-chain gate, and what a user notices.
 
+* [0009-MADR: Move to go-llmprovider-sdk v1.2.1, and Keep Refusals, Entitlement Errors and `configure --yes` Working](decisions/0009-MADR-adopt-go-llmprovider-sdk-v1-2-1.md)
+  * **Status:** Accepted
+  * **Topic:** The SDK bump from v1.0.0, what it changes for the hook, refusals and "not permitted" moving to the next model, the curated fallback for `configure --yes`, and a README table checked against the SDK.
+
 ## Implementation Plans
 
 * [0001-PLAN: Gemini Provider Modernization Implementation Plan](plans/0001-PLAN-gemini-provider-and-model-catalog-modernization.md)
@@ -69,3 +73,7 @@ This directory contains design documents, architectural decision records (MADR),
 * [0008-PLAN: Implement dropping mcplib](decisions/0008-PLAN-adopt-go-llmprovider-sdk-and-go-selfupdate-lib.md)
   * **Status:** Completed
   * **Topic:** Phases 0–6: self-update, providers, the supply-chain gate, docs, the release and live check, and close-out.
+
+* [0009-PLAN: Implement the Move to go-llmprovider-sdk v1.2.1](decisions/0009-PLAN-adopt-go-llmprovider-sdk-v1-2-1.md)
+  * **Status:** In Progress
+  * **Topic:** Phases 0–5: the adaptations on v1.0.0, the bump, the README and its test, release v1.6.0 with the live check, and close-out.
