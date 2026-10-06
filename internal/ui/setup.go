@@ -155,6 +155,12 @@ func discoverModels(ctx context.Context, provider, apiKey string) []string {
 	if err != nil {
 		return nil
 	}
+	// A live listing that curates to nothing keeps Recommended empty, so the
+	// wizard can open its search; this path has no search, so it takes the
+	// curated catalog, as the SDK itself did before v1.2.0 (0009-MADR D3).
+	if len(cat.Recommended) == 0 {
+		return defaultModels(provider)
+	}
 	return cat.Recommended
 }
 

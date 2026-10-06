@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -342,5 +343,96 @@ func TestRunAnalyzer_EnvKeyFallback(t *testing.T) {
 	info := &git.Info{Files: []string{"a.go"}, Additions: 1}
 	if err := runAnalyzer(msgPath, conf, info); err != nil {
 		t.Fatalf("expected env key to satisfy preflight: %v", err)
+	}
+}
+
+// captureStderr runs fn with the process's stderr sent to a pipe, and returns
+// what fn wrote there.
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	prev := os.Stderr
+	os.Stderr = w
+	t.Cleanup(func() { os.Stderr = prev })
+	out := make(chan []byte)
+	go func() {
+		b, _ := io.ReadAll(r)
+		out <- b
+	}()
+	fn()
+	os.Stderr = prev
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return string(<-out)
+}
+
+// TestRunAnalyzer_FailureKinds pins which failures of the primary model let
+// the fallback run. A refusal and "not permitted" do (0009-MADR D1, D2); an
+// authentication failure stops the run before the fallback is asked.
+func TestRunAnalyzer_FailureKinds(t *testing.T) {
+	oldHook := generateWithRetry
+	t.Cleanup(func() { generateWithRetry = oldHook })
+
+	conf := &config.Config{
+		ActiveProvider: "openai",
+		Providers: map[string]config.ProviderConfig{
+			"openai": {APIKey: "test", Model: "primary", FallbackModels: []string{"fallback"}},
+		},
+		TimeoutSeconds: 5,
+	}
+	config.ApplyDefaults(conf)
+	info := &git.Info{Files: []string{"a.go"}, Additions: 1}
+
+	for _, tc := range []struct {
+		name         string
+		primaryErr   error
+		wantFallback bool
+		wantStderr   string
+	}{
+		{"refusal", fmt.Errorf("%w: I'm sorry, but I can't help with that request.", errRefused), true,
+			"model primary failed: model refused the request"},
+		{"not permitted", &llmprovider.APIError{Provider: "opencode-go", Status: 403, Kind: llmprovider.ErrNotPermitted}, true,
+			"model primary failed: llmprovider: not permitted"},
+		{"authentication failure", &llmprovider.APIError{Provider: "openai", Status: 401, Kind: llmprovider.ErrAuthFailure}, false, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			msgPath := filepath.Join(t.TempDir(), "COMMIT_EDITMSG")
+			if err := os.WriteFile(msgPath, []byte(""), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			calls := 0
+			generateWithRetry = func(context.Context, llmprovider.Provider, string, int, time.Duration) (string, error) {
+				calls++
+				if calls == 1 {
+					return "", tc.primaryErr
+				}
+				return "feat: fallback answered", nil
+			}
+			var err error
+			stderr := captureStderr(t, func() { err = runAnalyzer(msgPath, conf, info) })
+			got, readErr := os.ReadFile(msgPath)
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			if !tc.wantFallback {
+				if err == nil || !strings.Contains(err.Error(), "authentication failed for openai") || calls != 1 {
+					t.Fatalf("err = %v after %d calls; want the run stopped with authentication failed after 1", err, calls)
+				}
+				if len(got) != 0 {
+					t.Fatalf("message written after an authentication failure:\n%s", got)
+				}
+				return
+			}
+			if err != nil || calls != 2 || !strings.Contains(string(got), "feat: fallback answered") {
+				t.Fatalf("err = %v after %d calls, message %q; want the fallback's message after 2", err, calls, got)
+			}
+			if !strings.Contains(stderr, tc.wantStderr) {
+				t.Fatalf("stderr %q does not report %q", stderr, tc.wantStderr)
+			}
+		})
 	}
 }

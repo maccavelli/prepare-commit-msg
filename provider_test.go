@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,7 +15,8 @@ import (
 
 // TestGenerateText covers generateText over the SDK's scriptable fake: the
 // prompt goes as one user message, a rate limit is retried, and an
-// authentication failure is not.
+// authentication failure is not. A refused answer is an error, never text
+// (0009-MADR D1).
 func TestGenerateText(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		fake := llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).ReplyText("feat: add x")
@@ -45,6 +47,47 @@ func TestGenerateText(t *testing.T) {
 		_, err := generateText(context.Background(), fake, "p", 3, time.Millisecond)
 		if !errors.Is(err, llmprovider.ErrAuthFailure) || len(fake.Requests()) != 1 {
 			t.Fatalf("generateText() error %v after %d requests, want ErrAuthFailure after 1", err, len(fake.Requests()))
+		}
+	})
+	answer := func(text string, finish llmprovider.FinishReason) *llmprovider.Response {
+		return &llmprovider.Response{
+			Output:       []llmprovider.Item{llmprovider.MessageItem{Role: llmprovider.RoleAssistant, Text: text}},
+			FinishReason: finish,
+		}
+	}
+	t.Run("refusal is an error", func(t *testing.T) {
+		fake := llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).
+			Reply(answer("I'm sorry, but I can't help with that request.\nSecond line.", llmprovider.FinishContentFilter))
+		got, err := generateText(context.Background(), fake, "p", 3, time.Millisecond)
+		if !errors.Is(err, errRefused) || got != "" || len(fake.Requests()) != 1 {
+			t.Fatalf("generateText() = %q, %v after %d requests; want errRefused after 1", got, err, len(fake.Requests()))
+		}
+		if !strings.Contains(err.Error(), "can't help with that request.") || strings.Contains(err.Error(), "Second line") {
+			t.Fatalf("error %q should quote the refusal's first line only", err)
+		}
+	})
+	t.Run("long refusal is cut", func(t *testing.T) {
+		fake := llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).
+			Reply(answer(strings.Repeat("x", 500), llmprovider.FinishContentFilter))
+		_, err := generateText(context.Background(), fake, "p", 0, time.Millisecond)
+		if !errors.Is(err, errRefused) || strings.Count(err.Error(), "x") != refusalNoteRunes {
+			t.Fatalf("error %q should quote %d runes of the refusal", err, refusalNoteRunes)
+		}
+	})
+	t.Run("stop keeps its text", func(t *testing.T) {
+		fake := llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).
+			Reply(answer("feat: add y", llmprovider.FinishStop))
+		got, err := generateText(context.Background(), fake, "p", 0, time.Millisecond)
+		if err != nil || got != "feat: add y" {
+			t.Fatalf("generateText() = %q, %v", got, err)
+		}
+	})
+	t.Run("no response is incomplete", func(t *testing.T) {
+		fake := llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).
+			Handle(func(context.Context, *llmprovider.Request) (*llmprovider.Response, error) { return nil, nil })
+		_, err := generateText(context.Background(), fake, "p", 0, time.Millisecond)
+		if !errors.Is(err, llmprovider.ErrIncomplete) {
+			t.Fatalf("generateText() error %v, want ErrIncomplete", err)
 		}
 	})
 }

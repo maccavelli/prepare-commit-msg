@@ -269,3 +269,68 @@ throwaway modules; nothing was committed from it.
 * The MADR is `accepted`, and this PLAN `in-progress`.
 * `docs/README.md` indexes both, in its list form, with those statuses.
 * Both records and the index are staged for the owner's commit (rule 1).
+* The owner committed them as `854a78d`.
+
+### Phase 1: the adaptations, on SDK `v1.0.0` (2026-10-06)
+
+* **Approval.** The owner: "proceed", after committing `854a78d`.
+* **D1, `main.go`.**
+  * `generateText` calls `Generate` through `WithRetry`. A nil response
+    with no error is `ErrIncomplete`, as in the SDK's `GenerateText`.
+  * A `FinishContentFilter` response returns the new sentinel
+    `errRefused`, quoting the refusal's first line, cut to
+    `refusalNoteRunes` (120). Otherwise it returns `OutputText()`.
+* **D2, the run loop.** It stops when the error matches `ErrAuthFailure`
+  and not `ErrNotPermitted`. The comment says why every 403 matches both.
+* **D3, `internal/ui/setup.go`.** `discoverModels` returns
+  `defaultModels(provider)` when a successful listing recommends nothing.
+* **Tests:**
+  * `TestGenerateText` gains four subtests:
+    * "refusal is an error";
+    * "long refusal is cut";
+    * "stop keeps its text";
+    * "no response is incomplete".
+  * `TestRunAnalyzer_FailureKinds` in `main_test.go`. It has the refusal,
+    "not permitted" (403) and authentication failure (401) cases. Its
+    helper `captureStderr` checks what the loop reports for a model whose
+    fallback ran.
+  * `TestDiscoverModels_EmptyRecommendationFallsBack` in
+    `internal/ui/setup_test.go`. It uses a `redirectTransport` to an
+    `httptest` server serving the SDK's C13 Kilo tier fixture, with
+    `LLMPROVIDER_DISABLE_MODELS_METADATA=1` so that nothing else is
+    fetched.
+* **Beyond step 4's list:** two subtests, "long refusal is cut" and "no
+  response is incomplete". They cover the two new branches D1 adds. Each
+  has a plant below.
+* **Step 5's first proof, corrected.** The step expected the D1 plant to
+  fail "the loop's refusal case" too. That case cannot see `generateText`:
+  it returns `errRefused` through the `generateWithRetry` seam. So the D1
+  plant fails `TestGenerateText` only. The loop's refusal case gets its own
+  plant: a loop that stops on a refusal. No decision, assertion or scope
+  changed.
+
+**Proofs** (a scratch copy of the tree; `pcm_proofs.py phase1`). The tree
+itself was unchanged.
+
+| Planted | Result |
+| :--- | :--- |
+| none (control) | exit 0 |
+| D1's `FinishContentFilter` check removed | exit 1: `TestGenerateText/refusal_is_an_error`, `…/long_refusal_is_cut` |
+| the refusal not cut | exit 1: `TestGenerateText/long_refusal_is_cut` |
+| the nil-response check removed | exit 1: `TestGenerateText/no_response_is_incomplete` |
+| the loop returns on `errRefused` | exit 1: `TestRunAnalyzer_FailureKinds/refusal` |
+| D2's `!errors.Is(…, ErrNotPermitted)` removed | exit 1: `TestRunAnalyzer_FailureKinds/not_permitted` |
+| the authentication stop removed | exit 1: `TestRunAnalyzer_FailureKinds/authentication_failure` |
+| D3's fallback removed | exit 0, as step 4 expects at `v1.0.0`: the SDK substitutes the static catalog itself. Phase 2 proves it. |
+
+**Checks:**
+
+| Check | Result |
+| :--- | :--- |
+| `make verify` | exit 0: `0 issues.`; `total coverage: 84.3% (minimum 80.0%)`; `No vulnerabilities found.`; build-all |
+| `go test -race -count=1 ./...` | 5 packages ok |
+| `CGO_ENABLED=0 go vet` for linux, darwin, windows | 0 each |
+| `go mod tidy -diff` | 0 |
+| `gofmt -l` on the five changed Go files | empty |
+| `make verify-staged` on the staged phase | exit 0: `go-llmprovider-sdk v1.0.0 resolved from GitHub`; `0 issues.`; `No vulnerabilities found.` |
+| identifier scan of the staged diff | none found |

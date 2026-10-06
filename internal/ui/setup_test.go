@@ -6,15 +6,20 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
 
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider"
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/auth"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/catalog"
 
 	"github.com/maccavelli/prepare-commit-msg/internal/config"
 )
@@ -120,6 +125,57 @@ func TestDiscoverModels_UsesInjectedClient(t *testing.T) {
 	discoverModels(context.Background(), providerGemini, "test-key")
 	if offline.requests.Load() == 0 {
 		t.Fatal("discoverModels listed models without the injected client")
+	}
+}
+
+// redirectTransport sends every request to one test server, keeping its path.
+type redirectTransport struct {
+	to       *url.URL
+	requests atomic.Int32
+}
+
+func (r *redirectTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	r.requests.Add(1)
+	req = req.Clone(req.Context())
+	req.URL.Scheme, req.URL.Host = r.to.Scheme, r.to.Host
+	return http.DefaultTransport.RoundTrip(req)
+}
+
+// kiloTier is one Kilo listing entry for a kilo-auto tier, in the shape of
+// go-llmprovider-sdk's own catalog test fixture (kiloRankEntry).
+func kiloTier(id string) string {
+	return fmt.Sprintf(`{"id":%q,"name":%q,"created":0,"context_length":262144,`+
+		`"architecture":{"input_modalities":["text"],"output_modalities":["text"]},`+
+		`"pricing":{"prompt":"-1","completion":"-1"},"supported_parameters":["tools","reasoning"],`+
+		`"mayTrainOnYourPrompts":false}`, id, id)
+}
+
+// TestDiscoverModels_EmptyRecommendationFallsBack: a live listing that curates
+// to nothing, the SDK's 0021-MADR C13 case of a Kilo listing of only kilo-auto
+// tiers, gives the curated catalog, so configure --yes still has a model
+// (0009-MADR D3).
+func TestDiscoverModels_EmptyRecommendationFallsBack(t *testing.T) {
+	isolate(t)
+	t.Setenv("LLMPROVIDER_DISABLE_MODELS_METADATA", "1")
+	body := `{"data":[` + kiloTier("kilo-auto/small") + "," + kiloTier("kilo-auto/balanced") + `]}`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(srv.Close)
+	to, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	redirect := &redirectTransport{to: to}
+	listingClient = &http.Client{Transport: redirect}
+
+	got := discoverModels(context.Background(), string(llmprovider.ProviderKilo), "test-key")
+	if redirect.requests.Load() == 0 {
+		t.Fatal("discoverModels did not list through the injected client")
+	}
+	if want := catalog.Static(llmprovider.ProviderKilo); len(want) == 0 || !slices.Equal(got, want) {
+		t.Fatalf("discoverModels(kilo) = %q, want the curated catalog %q", got, want)
 	}
 }
 

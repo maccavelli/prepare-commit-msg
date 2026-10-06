@@ -279,7 +279,9 @@ func runAnalyzer(file string, conf *config.Config, info *git.Info) error {
 		raw, err := generateWithRetry(ctx, provider, prompt, conf.RetryCount, time.Duration(conf.RetryDelaySeconds)*time.Second)
 		if err != nil {
 			// Non-retryable auth: do not burn through all fallbacks with the same key.
-			if errors.Is(err, llmprovider.ErrAuthFailure) {
+			// Every 403 also matches ErrAuthFailure; one that is "not permitted" is
+			// this model's entitlement, so the next model is tried (0009-MADR D2).
+			if errors.Is(err, llmprovider.ErrAuthFailure) && !errors.Is(err, llmprovider.ErrNotPermitted) {
 				return fmt.Errorf("authentication failed for %s: %w", conf.ActiveProvider, err)
 			}
 			lastErr = fmt.Errorf("model %s failed: %w", m, err)
@@ -353,14 +355,43 @@ func newSourceProvider(id llmprovider.ProviderID, src llmprovider.TokenSource, m
 	return providers.New(id, append(all, opts...)...)
 }
 
+// errRefused marks an answer the model refused to give, so the run loop
+// tries the next model instead of writing the refusal (0009-MADR D1).
+var errRefused = errors.New("model refused the request")
+
+// refusalNoteRunes bounds how much of a refusal an error quotes.
+const refusalNoteRunes = 120
+
 // generateText runs prompt on p as one user message. A failed attempt is
 // retried up to retries times, waiting delay before the first retry and
-// doubling after; WithRetry retries only what can succeed later.
+// doubling after; WithRetry retries only what can succeed later. It calls
+// Generate, not GenerateText, because only the response's finish reason
+// tells a refusal from a commit message (0009-MADR D1).
 func generateText(ctx context.Context, p llmprovider.Provider, prompt string, retries int, delay time.Duration) (string, error) {
 	policy := llmprovider.RetryPolicy{MaxAttempts: max(retries, 0) + 1, BaseDelay: delay}
-	return llmprovider.GenerateText(ctx, llmprovider.WithRetry(p, policy), &llmprovider.Request{
+	retrying := llmprovider.WithRetry(p, policy)
+	resp, err := retrying.Generate(ctx, &llmprovider.Request{
 		Input: []llmprovider.Item{llmprovider.MessageItem{Role: llmprovider.RoleUser, Text: prompt}},
 	})
+	if err != nil {
+		return "", err
+	}
+	if resp == nil {
+		return "", fmt.Errorf("%w: %s returned no response", llmprovider.ErrIncomplete, retrying.ID())
+	}
+	if resp.FinishReason == llmprovider.FinishContentFilter {
+		return "", fmt.Errorf("%w: %s", errRefused, refusalNote(resp.OutputText()))
+	}
+	return resp.OutputText(), nil
+}
+
+// refusalNote is the first line of a refusal, cut to refusalNoteRunes.
+func refusalNote(text string) string {
+	line, _, _ := strings.Cut(strings.TrimSpace(normalizeNewlines(text)), "\n")
+	if r := []rune(line); len(r) > refusalNoteRunes {
+		return string(r[:refusalNoteRunes]) + "…"
+	}
+	return line
 }
 
 // cleanLLMOutput strips conversational filler and markdown fences.
