@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: complete
 date: 2026-10-06
 associated-madr: "0009-MADR-adopt-go-llmprovider-sdk-v1-2-1.md"
 ---
@@ -440,3 +440,69 @@ exactly the drift that the MADR's "The README is out of date" found.
 | markdownlint | not configured in this repository, so not run (as in 0008) |
 | `make verify-staged` on the staged phase | exit 0: `go-llmprovider-sdk v1.2.1 resolved from GitHub`; `0 issues.`; `No vulnerabilities found.` |
 | identifier scan of the staged diff | none found |
+
+* The owner committed Phase 3 as `4ac7135`.
+
+### Phase 4: release and the live check (2026-10-06)
+
+* **The owner** pushed `main` through `4ac7135`, then tagged and pushed
+  `v1.6.0` there (an annotated tag).
+* **CI:**
+  * run `37545990151` on `main` passed: "Go (test; build on tag)" and the
+    Linux, macOS and Windows native tests. The publish job was skipped, as it
+    is off a tag;
+  * run `37548439733` on the tag passed the same jobs and "Publish GitHub
+    Release / publish".
+* **The release** `v1.6.0` is not a draft or a prerelease, and was published
+  at 2026-10-06T23:48:18Z. It holds the six binaries (`linux`, `darwin` and
+  `windows`, each `amd64` and `arm64`) and `SHA256SUMS`.
+* **Checked by the agent,** on a download into the session's scratch space:
+  * `shasum -a 256 -c SHA256SUMS`: `OK` for all six;
+  * `prepare-commit-msg-darwin-arm64 version`: `prepare-commit-msg version
+    v1.6.0 (release) 4ac7135ef21a`;
+  * `go version -m` on that binary: `mod github.com/maccavelli/prepare-commit-msg
+    v1.6.0`, `dep github.com/maccavelli/go-llmprovider-sdk v1.2.1
+    h1:zwxJDG+…`, `go-selfupdate-lib v1.5.0`, `vcs.revision=4ac7135…`,
+    `vcs.modified=false`.
+* **Step 4, the installed hook.** The owner ran `prepare-commit-msg update`.
+  The agent read the installed binary, which was `v1.5.0` on SDK `v1.0.0`
+  before this record was written:
+  * `version`: `prepare-commit-msg version v1.6.0 (release) 4ac7135ef21a`;
+  * `go version -m`: `mod … prepare-commit-msg v1.6.0`, `dep
+    github.com/maccavelli/go-llmprovider-sdk v1.2.1 h1:zwxJDG+…`,
+    `vcs.modified=false`.
+* **Step 5, the live check.** The owner: "updated and committed, hook wrote
+  the message". The commit is `b57abe9` in this repository. The installed
+  `v1.6.0` hook wrote its message, `test: add hello test fixture`, with a
+  body naming the file it added. That file, `testfile.txt`, is now on `main`
+  (see "Not done" below).
+
+### Phase 5: close-out (2026-10-06)
+
+* This PLAN is `complete`, the MADR `accepted`, and `docs/README.md` says
+  so.
+* **Every Verification item holds:**
+  * V1: `go-llmprovider-sdk v1.2.1`, the rest of the module graph unchanged
+    (Phase 2);
+  * V2: the checks of Phases 1, 2 and 3;
+  * V3: each D1–D4 test, and its plant (Phases 1, 2 and 3);
+  * V4: `TestGenerateText_ResponsesRefusal` (Phase 2);
+  * V5: CI green on Linux, macOS and Windows, on `main` and on the tag, and
+    the tag's release published (Phase 4);
+  * V6: the installed hook on `go-llmprovider-sdk v1.2.1`, and the owner's
+    live commit got a message (Phase 4);
+  * V7: the identifier scans of each staged phase.
+* **Not done, and why:**
+  * **`testfile.txt`.** The live check's commit `b57abe9` added it to
+    `main`, and it was pushed. Removing it is a change to the tree this PLAN
+    does not cover, so it waits for the owner.
+  * **The MADR's "not decided here" items:**
+    * go-selfupdate-lib `v1.5.0` → `v1.9.0`;
+    * acting on `FinishLength`;
+    * gobble-cli's SDK pin.
+
+    Each needs a record of its own.
+  * **The live check covered one provider,** the owner's configured one. The
+    refusal, "not permitted" and `configure --yes` paths are held by the
+    tests above, not by a live run. A real refusal or 403 cannot be made to
+    happen on demand.

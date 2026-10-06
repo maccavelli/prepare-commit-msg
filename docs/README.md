@@ -75,5 +75,5 @@ This directory contains design documents, architectural decision records (MADR),
   * **Topic:** Phases 0–6: self-update, providers, the supply-chain gate, docs, the release and live check, and close-out.
 
 * [0009-PLAN: Implement the Move to go-llmprovider-sdk v1.2.1](decisions/0009-PLAN-adopt-go-llmprovider-sdk-v1-2-1.md)
-  * **Status:** In Progress
+  * **Status:** Completed
   * **Topic:** Phases 0–5: the adaptations on v1.0.0, the bump, the README and its test, release v1.6.0 with the live check, and close-out.
