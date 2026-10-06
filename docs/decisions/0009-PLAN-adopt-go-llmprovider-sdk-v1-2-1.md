@@ -379,3 +379,64 @@ that fails without its fix at `v1.2.1`.
 | `gofmt -l provider_test.go` | empty |
 | `make verify-staged` on the staged phase | exit 0: `all modules verified`; `go-llmprovider-sdk v1.2.1 resolved from GitHub (h1:zwxJDG+…)`; `0 issues.`; `No vulnerabilities found.` |
 | identifier scan of the staged diff | none found |
+
+* The owner committed Phase 2 as `ba357c0`.
+
+### Phase 3: documentation (2026-10-06)
+
+* **Approval.** The owner: "committed, proceed".
+* **Step 1, the provider table.**
+  * Each provider with a curated catalog now lists `catalog.Static` at
+    `v1.2.1`, in its order, with the first model marked "(recommended)".
+  * Six rows changed: `gemini` gained `gemini-2.5-flash-lite`, and `grok`,
+    `kilo`, `opencode-zen`, `opencode-go` and `huggingface` were replaced.
+  * `openai`, `claude` and `together` already matched; `opencode-zen`,
+    `opencode-go` and `together` gained the "(recommended)" mark.
+  * Ollama's row and every other column are unchanged. That includes
+    Kilo's note on "free models & managed tiers", which describes the
+    gateway, not the list.
+* **Step 2, the wizard steps.** "all 9" became "all 10". Step 3 says a saved
+  sign-in is offered first, and step 5 that saved fallbacks are
+  preselected.
+* **Step 3, the new section.** "Changes with go-llmprovider-sdk v1.2.1",
+  after "Changes from the mcplib Releases", with its contents entry. It
+  covers:
+  * D1–D3;
+  * the Gemini key;
+  * the retry changes;
+  * the wizard changes;
+  * the OAuth directory rules on Unix and Windows.
+* **Step 4, `readme_test.go`.** `TestReadmeCuratedModels` reads the
+  provider rows and extracts the backquoted ids from the curated column.
+  * For every provider in `ProviderEnvVars()` with a non-empty
+    `catalog.Static`, it wants a row, holding exactly that list.
+  * It fails if no provider was checked.
+
+**Proofs** (a scratch copy; `pcm_proofs.py phase3`). The tree itself was
+unchanged.
+
+| Planted | Result |
+| :--- | :--- |
+| none (control) | exit 0 |
+| `gemini-2.5-flash-lite` removed from `gemini`'s row | exit 1: `README.md lists gemini's curated models as [… "gemini-2.5-flash"]; the SDK's catalog is [… "gemini-2.5-flash-lite"]` |
+| `grok-4.6` and `grok-4.5` swapped | exit 1: `README.md lists grok's curated models as ["grok-4.5" "grok-4.6" …]` |
+| `together`'s row deleted | exit 1: `README.md has no provider row for together` |
+| `HEAD`'s provider table restored | exit 1, naming six providers: `grok`, `opencode-go`, `gemini`, `opencode-zen`, `huggingface`, `kilo` |
+
+The last plant is the README as it was before this phase. The test names
+exactly the drift that the MADR's "The README is out of date" found.
+
+**Checks:**
+
+| Check | Result |
+| :--- | :--- |
+| `make verify` | exit 0: `0 issues.`; `total coverage: 84.6% (minimum 80.0%)`; `No vulnerabilities found.`; build-all |
+| `go test -race -count=1 ./...` | 5 packages ok |
+| `CGO_ENABLED=0 go vet` for linux, darwin, windows | 0 each |
+| `go mod tidy -diff` | 0 |
+| `gofmt -l readme_test.go` | empty |
+| relative links and anchors in `README.md` (`pcm_mdlinks.py`) | 20 checked, 0 broken, the new section's anchor included; a copy with a planted missing file and a planted missing anchor: 2 broken, exit 1 |
+| `git diff --check` | clean |
+| markdownlint | not configured in this repository, so not run (as in 0008) |
+| `make verify-staged` on the staged phase | exit 0: `go-llmprovider-sdk v1.2.1 resolved from GitHub`; `0 issues.`; `No vulnerabilities found.` |
+| identifier scan of the staged diff | none found |

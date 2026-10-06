@@ -21,6 +21,7 @@ An intelligent, zero-friction Git `prepare-commit-msg` hook written in Go. It in
 - [Daily Workflow & Hook Behavior](#daily-workflow--hook-behavior)
 - [Self-Update](#self-update)
 - [Changes from the mcplib Releases](#changes-from-the-mcplib-releases)
+- [Changes with go-llmprovider-sdk v1.2.1](#changes-with-go-llmprovider-sdk-v121)
 - [CLI Reference](#cli-reference)
 - [Developer Experience](#developer-experience)
 
@@ -68,16 +69,16 @@ Commit Editor Opens (Pre-populated & ready)
 
 | Provider ID | Provider Name | Type / Endpoint | Default / Curated Models | Notes |
 | :--- | :--- | :--- | :--- | :--- |
-| **`gemini`** | Google Gemini | Cloud API | `gemini-3.7-flash` (recommended), `gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-2.5-flash` | Frontier coding intelligence, sub-second latency. |
+| **`gemini`** | Google Gemini | Cloud API | `gemini-3.7-flash` (recommended), `gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-2.5-flash`, `gemini-2.5-flash-lite` | Frontier coding intelligence, sub-second latency. |
 | **`openai`** | OpenAI | Cloud API | `gpt-4.1-mini` (recommended), `gpt-4.1-nano`, `gpt-4o-mini`, `gpt-4.1`, `gpt-4o`, `o4-mini` | Responses API with structured output. |
 | **`claude`** | Anthropic Claude | Cloud API | `claude-haiku-4-5` (recommended), `claude-sonnet-5`, `claude-sonnet-4-6`, `claude-opus-4-8` | Messages API with low latency. |
-| **`grok`** | xAI Grok | Cloud API | `grok-3-mini-fast` (recommended), `grok-3-mini`, `grok-4`, `grok-4.6`, `grok-4-fast-reasoning` | High-speed xAI Responses API. |
-| **`kilo`** | Kilo Gateway | Developer Gateway<br>`https://api.kilo.ai/api/gateway` | `kilo-auto/free` (recommended), `kilo-auto/small`, `kilo-auto/efficient`, `kilo-auto/balanced`, `meta-llama/llama-3.1-8b-instruct` | API behind the **Kilo Code** agent; free models & managed tiers. |
+| **`grok`** | xAI Grok | Cloud API | `grok-4.6` (recommended), `grok-4.5`, `grok-3-mini-fast`, `grok-3-mini`, `grok-4`, `grok-4-fast-reasoning` | High-speed xAI Responses API. |
+| **`kilo`** | Kilo Gateway | Developer Gateway<br>`https://api.kilo.ai/api/gateway` | `deepseek/deepseek-v4.1-flash` (recommended), `z-ai/glm-5.3-flash`, `google/gemini-3.8-flash`, `google/gemini-3.6-flash`, `meta/muse-spark-1.2`, `thinkingmachines/inkling` | API behind the **Kilo Code** agent; free models & managed tiers. |
 | **`ollama`** | Ollama | **Local / Offline**<br>`http://localhost:11434` | Dynamically discovered from local installation (e.g. `qwen2.5-coder`, `llama3.2`, `mistral`) | **Runs 100% locally on your machine.** No API key required. |
-| **`opencode-zen`** | OpenCode Zen | Gateway<br>`https://opencode.ai/zen/v1` | `gpt-5.4-nano`, `gemini-3.5-flash-lite`, `gpt-5.4-mini`, `claude-haiku-4-5`, `gemini-3.7-flash`, `kimi-k2.6` | Pay-as-you-go gateway; multi-protocol dispatch. |
-| **`opencode-go`** | OpenCode Go | Gateway<br>`https://opencode.ai/zen/go/v1` | `glm-5.3-flash`, `qwen3.8-flash`, `deepseek-v4-flash`, `kimi-k2.6`, `gpt-5.6-luna`, `grok-4.6` | Subscription gateway. |
-| **`huggingface`** | Hugging Face | Router Proxy<br>`https://router.huggingface.co/v1` | `openai/gpt-oss-20b` (recommended), `openai/gpt-oss-120b`, `meta-llama/Llama-3.1-8B-Instruct`, `zai-org/GLM-5.3-Flash` | Routing proxy across 18 partner inference backends. |
-| **`together`** | Together AI | Cloud API<br>`https://api.together.ai/v1` | `deepseek-ai/DeepSeek-V4.1-Flash`, `zai-org/GLM-5.3`, `moonshotai/Kimi-K3`, `MiniMaxAI/MiniMax-M3`, `Qwen/Qwen3.6-Plus`, `openai/gpt-oss-120b` | Pay-as-you-go. |
+| **`opencode-zen`** | OpenCode Zen | Gateway<br>`https://opencode.ai/zen/v1` | `deepseek-v4.1-flash` (recommended), `qwen3.8-flash`, `glm-5.3-flash`, `deepseek-v4-flash`, `gemini-3.5-flash-lite`, `gemini-3.8-flash` | Pay-as-you-go gateway; multi-protocol dispatch. |
+| **`opencode-go`** | OpenCode Go | Gateway<br>`https://opencode.ai/zen/go/v1` | `mimo-v2.6-flash` (recommended), `qwen3.8-flash`, `glm-5.3-flash`, `gpt-6-luna`, `mimo-v2.6-pro`, `hy3` | Subscription gateway. |
+| **`huggingface`** | Hugging Face | Router Proxy<br>`https://router.huggingface.co/v1` | `deepseek-ai/DeepSeek-V4-Flash-0731` (recommended), `zai-org/GLM-5.3-Flash`, `deepseek-ai/DeepSeek-V4.1-Flash`, `thinkingmachines/Inkling-Small`, `stepfun-ai/Step-3.7-Flash`, `stepfun-ai/Step-3.5-Flash` | Routing proxy across 18 partner inference backends. |
+| **`together`** | Together AI | Cloud API<br>`https://api.together.ai/v1` | `deepseek-ai/DeepSeek-V4.1-Flash` (recommended), `zai-org/GLM-5.3`, `moonshotai/Kimi-K3`, `MiniMaxAI/MiniMax-M3`, `Qwen/Qwen3.6-Plus`, `openai/gpt-oss-120b` | Pay-as-you-go. |
 
 ---
 
@@ -188,11 +189,13 @@ prepare-commit-msg configure
 ```
 
 The wizard guides you through:
-1. Provider selection across all 9 supported cloud, gateway, and local backends.
+1. Provider selection across all 10 supported cloud, gateway, and local backends.
 2. Endpoint resolution (for Ollama or custom gateway endpoints).
-3. API Key detection from environment or prompt entry.
+3. API Key detection from environment or prompt entry; a saved sign-in is
+   offered first.
 4. Live model discovery from the provider API.
-5. Fallback model multi-selection (up to 3 fallbacks).
+5. Fallback model multi-selection (up to 3 fallbacks), with your saved
+   fallbacks preselected.
 6. Operational settings (timeout, max diff size, retry count, retry delay).
 
 For OpenAI and Grok, the interactive wizard can also use ChatGPT or Grok
@@ -392,6 +395,34 @@ behaved differently in these ways:
   `configure`.
 - **New:** the `together` provider, Kilo device logins with an organization,
   and generation on any provider's sign-in.
+
+---
+
+## Changes with go-llmprovider-sdk v1.2.1
+
+Release `v1.6.0` moves from go-llmprovider-sdk `v1.0.0` to `v1.2.1`
+([0009-MADR](docs/decisions/0009-MADR-adopt-go-llmprovider-sdk-v1-2-1.md)).
+What you may notice:
+
+- **A refused answer is never the message.** When a model refuses, the hook
+  says so and tries the next model.
+- **"Not permitted" tries the next model.** A model your account may not use,
+  such as an OpenCode or Kilo HTTP 403, no longer ends the run. A rejected key
+  or sign-in still does, without trying the fallbacks.
+- **A rejected Gemini key stops at once,** instead of failing every fallback
+  model.
+- **Retries.** An OpenAI or Claude HTTP 409 is retried. A reply cut off after
+  it began is retried once. A whole but empty reply is not sent again. No
+  retry waits past the run's timeout.
+- **`configure --yes`** falls back to the curated models when the live listing
+  recommends none.
+- **The interactive wizard** offers a saved sign-in first and preselects your
+  saved fallbacks. It checks a typed endpoint URL, and asks before plain
+  `http` to a remote host. It checks a pasted OpenAI credential, and masked
+  entry handles pasting, Escape and Ctrl-C.
+- **The OAuth directory** must be a real directory you own on Linux and
+  macOS, and loses any group or other write permission. On Windows it is
+  restricted to your account.
 
 ---
 
