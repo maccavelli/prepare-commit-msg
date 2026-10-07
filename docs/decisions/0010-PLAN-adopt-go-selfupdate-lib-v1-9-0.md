@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: complete
 date: 2026-10-06
 associated-madr: "0010-MADR-adopt-go-selfupdate-lib-v1-9-0.md"
 ---
@@ -270,3 +270,90 @@ at both versions.
 | `TestReadmeCuratedModels`, `TestUpdateCheckJSONSchema` | ok |
 | `git diff --check` | clean |
 | markdownlint | not configured here (0008, 0009) |
+
+* The owner committed Phase 2 as `141ad9b`.
+
+### Phase 3: release and the live check (2026-10-06)
+
+* **The owner** pushed `main` through `141ad9b`, then tagged and pushed
+  `v1.7.0` there (an annotated tag): "tagged v1.7.0 ci green".
+* **CI:**
+  * run `37560973833` on `main` passed: "Go (test; build on tag)" and the
+    Linux, macOS and Windows native tests. The publish job was skipped, as
+    it is off a tag;
+  * run `37561418841` on the tag passed the same jobs and "Publish GitHub
+    Release / publish". That publish ran through the `v1.5.0` workflow
+    (D2).
+* **The release** `v1.7.0` is not a draft or a prerelease, is immutable,
+  and is the repository's latest release. It was published at
+  2026-10-07T02:20:23Z, with the six binaries and `SHA256SUMS`.
+* **Checked by the agent,** on a download into the session's scratch space:
+  * `shasum -a 256 -c SHA256SUMS`: `OK` for all six;
+  * `prepare-commit-msg-darwin-arm64 version`: `prepare-commit-msg version
+    v1.7.0 (release) 141ad9b59590`;
+  * `go version -m` on that binary: `mod … prepare-commit-msg v1.7.0`,
+    `dep github.com/maccavelli/go-selfupdate-lib v1.9.0 h1:kP7ISSs+…`,
+    `dep github.com/maccavelli/go-llmprovider-sdk v1.2.1 h1:zwxJDG+…`,
+    `vcs.revision=141ad9b…`, `vcs.modified=false`.
+* **Step 4, the installed hook.** The owner ran `prepare-commit-msg update`.
+  The installed `v1.6.0`, with go-selfupdate-lib `v1.5.0`'s updater,
+  installed `v1.7.0`. The agent then read the installed binary:
+  * `version`: `prepare-commit-msg version v1.7.0 (release) 141ad9b59590`;
+  * `go version -m`: `mod … prepare-commit-msg v1.7.0`, `dep
+    github.com/maccavelli/go-selfupdate-lib v1.9.0 h1:kP7ISSs+…`,
+    `vcs.modified=false`.
+* **`update --check` on the installed `v1.7.0`,** which is go-selfupdate-lib
+  `v1.9.0`'s updater, as the owner pasted it:
+
+  ```text
+  selfupdate: resolving-target product=prepare-commit-msg current=v1.7.0
+  selfupdate: fetching-release product=prepare-commit-msg current=v1.7.0
+  selfupdate: selected product=prepare-commit-msg current=v1.7.0 target=v1.7.0 asset=prepare-commit-msg-darwin-arm64
+  prepare-commit-msg: up to date (v1.7.0)
+  ```
+
+  It is the same shape as the `up-to-date` migration fixture. The exit
+  status was not pasted. "Up to date" is exit 0 by the README and by that
+  fixture.
+* **Step 5, the live check.** The owner: "the hook wrote the message just
+  fine".
+  * **Not as step 5 asked.** The step asked for a commit in a throwaway
+    repository. The commit is `c3e1a5b` in this repository, `chore(testfile):
+    add greeting line`, with a body. It appends a line to `testfile.txt`,
+    the file 0009's live check added.
+  * It shows what the step needed: the installed `v1.7.0` hook wrote the
+    message.
+  * When this record was written, `c3e1a5b` was local, one commit ahead of
+    `origin/main`, and not yet pushed. It is the owner's commit; the agent
+    did not change it.
+
+### Phase 4: close-out (2026-10-06)
+
+* This PLAN is `complete`, the MADR `accepted`, and `docs/README.md` says
+  so.
+* **Every Verification item holds:**
+  * V1: `go-selfupdate-lib v1.9.0`, the rest of the module graph unchanged
+    (Phase 1);
+  * V2: the checks of Phases 1 and 2;
+  * V3: `TestUpdateCheckJSONSchema` and its two plants, and
+    `TestMigrationByteForByte` with the fixtures unchanged (Phase 1);
+  * V4: `ci.yml`'s `uses:` line unchanged, with D2's comment (Phase 1);
+  * V5: CI green on Linux, macOS and Windows, on `main` and on the tag, and
+    the tag's release published (Phase 3);
+  * V6: the installed hook on `go-selfupdate-lib v1.9.0`, its `update
+    --check` up to date, and the owner's live commit with a message (Phase
+    3);
+  * V7: the identifier scans of each staged phase.
+* **Not done, and why:**
+  * **D2's follow-up, moving the publish pin** from `6deaa52` (`v1.5.0`) to
+    `39b1294` (`v1.9.0`) or later. It waits for a release published through
+    `v1.9.0`'s workflow: go-selfupdate-lib's 0013-PLAN B6 step 3, or another
+    repository's release. It then gets its own change, which re-reads the
+    workflow's inputs.
+  * **`testfile.txt`.** 0009's check added it, and `c3e1a5b` appends to it.
+    Removing it is a change to the tree this PLAN does not cover, so it
+    waits for the owner.
+  * **The MADR's "not decided here" items:**
+    * adopting the release spec and build workflow, after go-selfupdate-lib
+      `v1.10.0`;
+    * gobble-cli's go-selfupdate-lib pin at `v1.7.0`.

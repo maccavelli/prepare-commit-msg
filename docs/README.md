@@ -83,5 +83,5 @@ This directory contains design documents, architectural decision records (MADR),
   * **Topic:** Phases 0–5: the adaptations on v1.0.0, the bump, the README and its test, release v1.6.0 with the live check, and close-out.
 
 * [0010-PLAN: Implement the Move to go-selfupdate-lib v1.9.0](decisions/0010-PLAN-adopt-go-selfupdate-lib-v1-9-0.md)
-  * **Status:** In Progress
+  * **Status:** Completed
   * **Topic:** Phases 0–4: the bump, the pin comment and the schema test, the README, release v1.7.0 with the live check, and close-out.
