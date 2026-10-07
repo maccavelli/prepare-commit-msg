@@ -112,6 +112,11 @@ jobs:
       contents: write
       id-token: write
       attestations: write
+    # The publish workflow stays at v1.5.0's commit while go.mod requires
+    # go-selfupdate-lib v1.9.0: the module is proven by this repository's
+    # tests, the workflow only by a published release, and v1.9.0's has not
+    # published one yet. It moves in its own change once one has
+    # (docs/decisions/0010-MADR-adopt-go-selfupdate-lib-v1-9-0.md D2).
     uses: maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml@6deaa524cfb28aad90bea97a6d9162e5b4257204 # v1.5.0
     with:
       artifact-name: prepare-commit-msg-${{ needs.go.outputs.version || github.sha }}

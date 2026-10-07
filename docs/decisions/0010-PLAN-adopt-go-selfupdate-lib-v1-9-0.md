@@ -195,3 +195,52 @@ was committed from it.
 * The MADR is `accepted`, and this PLAN `in-progress`.
 * `docs/README.md` indexes both, in its list form, with those statuses.
 * Both records and the index are staged for the owner's commit (rule 1).
+* The owner committed them as `f2a9a83`.
+
+### Phase 1: the bump, the pin comment and the schema test (2026-10-06)
+
+* **Approval.** The owner: "proceed", after committing `f2a9a83`.
+* **Step 1, D1.** `go get github.com/maccavelli/go-selfupdate-lib@v1.9.0`
+  and `go mod tidy`.
+  * `go.mod`: the library's line only, `v1.5.0` → `v1.9.0`.
+  * `go.sum`: its two lines only. The new `h1:` is
+    `kP7ISSs+UAVaZeJ4hnk2Vk3bAzpbb0o4UbdUfEKa4LE=`, and the `/go.mod` hash
+    is unchanged.
+  * `go list -m all` differs from before only in the library's version.
+  * `update.go`, `main.go` and the `Makefile` are unchanged. No opt-in
+    feature is used.
+* **Step 2, D2.** In `.github/workflows/ci.yml`, five comment lines above
+  the `uses:` line say why the publish workflow stays at `v1.5.0`'s commit,
+  and cite the MADR's D2. The `uses:` line itself is unchanged: the diff is
+  comment lines only.
+* **Step 3, D3.** `TestUpdateCheckJSONSchema` in `migration_test.go`. It
+  runs `update --check --json` through `runMain` with the up-to-date
+  fixture source, decodes stdout's last line, and wants kind `result` with
+  `schema_version` equal to `wantResultSchema` (2).
+* **Step 4.** `testdata/migration/` is unchanged, and
+  `TestMigrationByteForByte` passes.
+
+**Proofs** (a scratch copy; `psl_proofs.py`). The tree itself was
+unchanged.
+
+| Planted | Result |
+| :--- | :--- |
+| none (control) | exit 0 |
+| `go.mod` and `go.sum` held at `HEAD`'s (`v1.5.0`) | exit 1: `migration_test.go:186: last stdout line is kind "result", schema_version 1; want result, 2` |
+| `wantResultSchema` changed to 3 | exit 1: `… schema_version 2; want result, 3` |
+
+The `v1.5.0` copy also ran `TestMigrationByteForByte`, and it passed. That
+is the MADR's measurement again: the text `--check` contract is the same
+at both versions.
+
+**Checks:**
+
+| Check | Result |
+| :--- | :--- |
+| `make verify` | exit 0: `0 issues.`; `total coverage: 84.6% (minimum 80.0%)`; `No vulnerabilities found.`; workflow lint (actionlint) over `ci.yml`; build-all |
+| `go test -race -count=1 ./...` | 5 packages ok |
+| `CGO_ENABLED=0 go vet` for linux, darwin, windows | 0 each |
+| `go mod tidy -diff` | 0 |
+| `gofmt -l migration_test.go` | empty |
+| `make verify-staged` on the staged phase | exit 0: `all modules verified`; `go-selfupdate-lib v1.9.0 resolved from GitHub (h1:kP7ISSs+…)`; `0 issues.`; `No vulnerabilities found.` |
+| identifier scan of the staged diff | none found |

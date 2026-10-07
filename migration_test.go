@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -154,6 +155,36 @@ func TestMigrationByteForByte(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// wantResultSchema is the update result's schema version from
+// go-selfupdate-lib v1.6.0 on, which README.md's "Self-Update" states
+// (0010-MADR D3, D4).
+const wantResultSchema = 2
+
+// TestUpdateCheckJSONSchema: `update --check --json` ends with one result
+// object, whose schema version is the one the README documents. A library
+// release that changes it fails here first (0010-MADR D3).
+func TestUpdateCheckJSONSchema(t *testing.T) {
+	fake := selfupdatetest.NewFakeSource("v1.0.0", fixtureRelease("v1.0.0"), fixtureRelease("v1.1.0"))
+	stdout, stderr, code := runMain(t, []string{"update", "--check", "--json"}, releaseID, fixtureUpdater(t, fake))
+	if code != 0 {
+		t.Fatalf("update --check --json: exit %d, stderr %q", code, stderr)
+	}
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	var last struct {
+		Kind   string `json:"kind"`
+		Result struct {
+			SchemaVersion int `json:"schema_version"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal([]byte(lines[len(lines)-1]), &last); err != nil {
+		t.Fatalf("last stdout line %q: %v", lines[len(lines)-1], err)
+	}
+	if last.Kind != "result" || last.Result.SchemaVersion != wantResultSchema {
+		t.Fatalf("last stdout line is kind %q, schema_version %d; want result, %d\n%s",
+			last.Kind, last.Result.SchemaVersion, wantResultSchema, stdout)
 	}
 }
 

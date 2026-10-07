@@ -4,7 +4,7 @@ go 1.27.1
 
 require (
 	github.com/maccavelli/go-llmprovider-sdk v1.2.1
-	github.com/maccavelli/go-selfupdate-lib v1.5.0
+	github.com/maccavelli/go-selfupdate-lib v1.9.0
 )
 
 require (
