@@ -244,3 +244,29 @@ at both versions.
 | `gofmt -l migration_test.go` | empty |
 | `make verify-staged` on the staged phase | exit 0: `all modules verified`; `go-selfupdate-lib v1.9.0 resolved from GitHub (h1:kP7ISSs+…)`; `0 issues.`; `No vulnerabilities found.` |
 | identifier scan of the staged diff | none found |
+
+* The owner committed Phase 1 as `565beb0`.
+
+### Phase 2: documentation (2026-10-06)
+
+* **Approval.** The owner: "proceed", after committing `565beb0`.
+* **Step 1, `README.md`, "Self-Update".**
+  * The `--json` row says the result object carries
+    `"schema_version":2`.
+  * The exit-status sentence says that `1` is for an error before the new
+    binary is in place. An error after that, such as failing to release the
+    update lock, is a `warning:` line on stderr, and the run still exits
+    `0`. That is the library's `golden/warning.*` case: `warning: unlock
+    failed`, exit 0.
+  * Nothing else in the README changed: two lines, two insertions and two
+    deletions.
+
+**Checks:**
+
+| Check | Result |
+| :--- | :--- |
+| relative links and anchors in `README.md` (`pcm_mdlinks.py`) | 20 checked, 0 broken |
+| the same checker on a copy of `README.md` with a planted missing file and a planted missing anchor | exit 1, both reported. The copy held only the README, so the two `docs/decisions/` links were reported missing too. |
+| `TestReadmeCuratedModels`, `TestUpdateCheckJSONSchema` | ok |
+| `git diff --check` | clean |
+| markdownlint | not configured here (0008, 0009) |

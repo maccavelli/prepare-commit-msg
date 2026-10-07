@@ -366,10 +366,10 @@ prepare-commit-msg update [flags]
 | `prepare-commit-msg update --version v1.2.0 --yes` | Pin or rollback to a specific release version. |
 | `prepare-commit-msg update --force --yes` | Force reinstall / overwrite local or dev builds. |
 | `prepare-commit-msg update --dry-run` | Download and verify the release; install nothing. |
-| `prepare-commit-msg update --json` | Write JSON Lines to stdout, ending with one `{"kind":"result",…}` object. |
+| `prepare-commit-msg update --json` | Write JSON Lines to stdout, ending with one `{"kind":"result",…}` object whose `result` carries `"schema_version":2`. |
 | `prepare-commit-msg update --channel rc` | Follow a prerelease channel. |
 
-Progress and the confirmation prompt go to **stderr**; stdout carries only `--json` output. The exit status is `0` when up to date, declined or installed, `10` when an update is available (with `--check`), and `1` on any error.
+Progress and the confirmation prompt go to **stderr**; stdout carries only `--json` output. The exit status is `0` when up to date, declined or installed, `10` when an update is available (with `--check`), and `1` on an error before the new binary is in place. An error after that, such as failing to release the update lock, is reported as a `warning:` line on stderr, and the run still exits `0`.
 
 > **Security Note:** Self-update only modifies regular binaries located within the user's home directory. System paths (`/usr`, Homebrew Cellar, Nix store) are rejected.
 
