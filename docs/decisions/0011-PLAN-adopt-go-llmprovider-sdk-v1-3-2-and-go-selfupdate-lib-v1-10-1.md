@@ -220,4 +220,72 @@ Done means every item under Verification holds.
   resolves (a planted bad link was caught); the identifier scan of the
   three files: 0 hits.
 * **Commit.** On the owner's ask in the same message, the agent
-  committed the records to `main`, with `git commit --no-edit`.
+  committed the records to `main` as `56d7df7`, with `git commit
+  --no-edit`, after checking that the repository's hooks directory
+  chains to the global `prepare-commit-msg` and `pre-commit` hooks.
+
+### Phase 1: the bumps, the pin and the refused-key test (2026-10-08)
+
+**D3's test, red at SDK `v1.2.1`** (step 1). `TestRunStopsOnGeminiRefusedKey`
+(`main_test.go`) on the tree, `go.mod` still at `v1.2.1`:
+
+```text
+--- FAIL: TestRunStopsOnGeminiRefusedKey (0.00s)
+    main_test.go:490: err = all models for gemini failed, last error: model fallback failed: llmprovider: invalid request: gemini HTTP 400: [{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com"}]}}] after 2 request(s); want the run stopped with authentication failed for gemini after 1
+```
+
+That is the MADR's first SDK row, measured in this repository: `v1.2.1`
+classifies the refusal `invalid request`, and the fallback is asked with the
+same key.
+
+**D1, the bump** (step 2). `go get …go-llmprovider-sdk@v1.3.2
+…go-selfupdate-lib@v1.10.1`, then `go mod tidy`:
+
+* `go.mod`: the two `require` lines, `v1.2.1` → `v1.3.2` and `v1.9.0` →
+  `v1.10.1`;
+* `go.sum`: the two libraries' four lines;
+* `go list -m all`, before and after: the two libraries' lines differ, and
+  no other.
+
+**D3 green** (step 3):
+
+```text
+--- PASS: TestRunAnalyzer_FailureKinds (0.03s)
+--- PASS: TestRunStopsOnGeminiRefusedKey (0.00s)
+--- PASS: TestMigrationByteForByte (0.00s)
+--- PASS: TestUpdateCheckJSONSchema (0.00s)
+```
+
+**D2, the pin** (step 4). `ci.yml`'s `uses:` line names
+`publish-selfupdate-release.yml@a0a26b6ecf66f51c19e9fea0f665c76ca5e99e4c #
+v1.10.0`, the commit `git rev-parse 'v1.10.0^{commit}'` gives in
+go-selfupdate-lib. The comment above it says why it is not `v1.10.1`'s.
+Its `with:` and the job's permissions are unchanged: the diff's only
+non-comment line is the `uses:` line.
+
+**Proofs** (step 6):
+
+| Proof | Result |
+| :--- | :--- |
+| SDK held at `v1.2.1` | step 1's run on the tree, above |
+| the stop rule at `main.go:284` planted out (`if false && …`), on a scratch copy at `v1.3.2` | FAIL: `err = all models for gemini failed, last error: model fallback failed: llmprovider: authentication failed: gemini HTTP 400 API_KEY_INVALID: API key not valid. … after 2 request(s)` |
+
+The plant shows the test needs both halves: the SDK's classification,
+which on `v1.3.2` says `authentication failed`, and the loop's rule, which
+stops on it.
+
+**Checks** (step 7):
+
+| Check | Result |
+| :--- | :--- |
+| `make verify` | exit 0: `0 issues.`, workflow lint, build-all of six binaries, `total coverage: 84.5% (minimum 80.0%)`, `No vulnerabilities found.` |
+| `go test -race -count=1 ./...` | 5 packages ok |
+| `CGO_ENABLED=0 go vet ./...`, for linux, darwin and windows | 0 each |
+| `go mod tidy -diff` | 0 |
+| `gofmt -l main_test.go` | no output |
+| `make verify-staged` | exit 0: `go-llmprovider-sdk v1.3.2 resolved from GitHub (h1:GbDQ7ibn+…)`, `go-selfupdate-lib v1.10.1 resolved from GitHub (h1:ShT43ip2…)`, `0 issues.`, `No vulnerabilities found.` |
+| identifier scan of the five staged files | 0 hits |
+
+**Staged** for the owner's commit: `.github/workflows/ci.yml`, `go.mod`,
+`go.sum`, `main_test.go` and this PLAN. No other file changed; `make
+verify`'s `dist/` and `coverage.out` are ignored.

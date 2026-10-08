@@ -112,12 +112,15 @@ jobs:
       contents: write
       id-token: write
       attestations: write
-    # The publish workflow stays at v1.5.0's commit while go.mod requires
-    # go-selfupdate-lib v1.9.0: the module is proven by this repository's
-    # tests, the workflow only by a published release, and v1.9.0's has not
-    # published one yet. It moves in its own change once one has
-    # (docs/decisions/0010-MADR-adopt-go-selfupdate-lib-v1-9-0.md D2).
-    uses: maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml@6deaa524cfb28aad90bea97a6d9162e5b4257204 # v1.5.0
+    # The publish workflow is v1.10.0's while go.mod requires
+    # go-selfupdate-lib v1.10.1: the module is proven by this repository's
+    # tests, the workflow only by a published release. v1.10.0's is the newest
+    # with a live publish on record (go-selfupdate-lib 0014-PLAN I7 step 3);
+    # v1.10.1's has none yet. It moves to v1.10.1's commit, or a later one,
+    # once a publish through it is on record
+    # (docs/decisions/0010-MADR-adopt-go-selfupdate-lib-v1-9-0.md D2;
+    # docs/decisions/0011-MADR-adopt-go-llmprovider-sdk-v1-3-2-and-go-selfupdate-lib-v1-10-1.md D2).
+    uses: maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml@a0a26b6ecf66f51c19e9fea0f665c76ca5e99e4c # v1.10.0
     with:
       artifact-name: prepare-commit-msg-${{ needs.go.outputs.version || github.sha }}
       products-json: '["prepare-commit-msg"]'

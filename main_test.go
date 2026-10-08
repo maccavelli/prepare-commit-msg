@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -434,5 +437,56 @@ func TestRunAnalyzer_FailureKinds(t *testing.T) {
 				t.Fatalf("stderr %q does not report %q", stderr, tc.wantStderr)
 			}
 		})
+	}
+}
+
+// geminiRefusedKey is Gemini's reply to a refused key, as go-llmprovider-sdk's
+// live check captured it from the Interactions API: HTTP 400, in a
+// one-element array (0011-MADR, the SDK table's first row).
+const geminiRefusedKey = `[{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.",` +
+	`"status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo",` +
+	`"reason":"API_KEY_INVALID","domain":"googleapis.com"}]}}]`
+
+// TestRunStopsOnGeminiRefusedKey (0011-MADR D3): Gemini's real refusal of a
+// key, classified by the SDK, stops the run at the first model, as
+// TestRunAnalyzer_FailureKinds requires of a hand-built authentication
+// failure. The fallback is never asked with the same key.
+func TestRunStopsOnGeminiRefusedKey(t *testing.T) {
+	var requests atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = io.WriteString(w, geminiRefusedKey)
+	}))
+	defer srv.Close()
+
+	oldHook := generateWithRetry
+	t.Cleanup(func() { generateWithRetry = oldHook })
+	const key = "not-a-gemini-key"
+	generateWithRetry = func(ctx context.Context, _ llmprovider.Provider, prompt string, retries int, delay time.Duration) (string, error) {
+		p, err := newKeyProvider(llmprovider.ProviderGemini, key, "gemini-test", llmprovider.WithBaseURL(srv.URL))
+		if err != nil {
+			return "", err
+		}
+		return generateText(ctx, p, prompt, retries, delay)
+	}
+
+	conf := &config.Config{
+		ActiveProvider: "gemini",
+		Providers: map[string]config.ProviderConfig{
+			"gemini": {APIKey: key, Model: "primary", FallbackModels: []string{"fallback"}},
+		},
+		TimeoutSeconds: 5,
+	}
+	config.ApplyDefaults(conf)
+	msgPath := filepath.Join(t.TempDir(), "COMMIT_EDITMSG")
+	if err := os.WriteFile(msgPath, []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var err error
+	_ = captureStderr(t, func() { err = runAnalyzer(msgPath, conf, &git.Info{Files: []string{"a.go"}, Additions: 1}) })
+	if n := requests.Load(); err == nil || !strings.Contains(err.Error(), "authentication failed for gemini") || n != 1 {
+		t.Fatalf("err = %v after %d request(s); want the run stopped with authentication failed for gemini after 1", err, n)
 	}
 }
