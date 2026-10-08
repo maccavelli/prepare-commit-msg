@@ -44,6 +44,10 @@ This directory contains design documents, architectural decision records (MADR),
   * **Status:** Accepted
   * **Topic:** The library bump from v1.5.0, what `update` does differently, the publish workflow kept at v1.5.0's commit until v1.9.0's has published a release, and a test for `update --json`'s schema version.
 
+* [0011-MADR: Move to go-llmprovider-sdk v1.3.2 and go-selfupdate-lib v1.10.1, and Publish Through the Newest Workflow with a Live Publish on Record](decisions/0011-MADR-adopt-go-llmprovider-sdk-v1-3-2-and-go-selfupdate-lib-v1-10-1.md)
+  * **Status:** Accepted
+  * **Topic:** Both library bumps, what the SDK's v1.3 changes for the hook (a refused Gemini key stops the run), `update`'s kept backups and refused overwrites, the publish pin moved to v1.10.0's workflow, the newest with a live publish, and a test that sends Gemini's real refusal through the SDK.
+
 ## Implementation Plans
 
 * [0001-PLAN: Gemini Provider Modernization Implementation Plan](plans/0001-PLAN-gemini-provider-and-model-catalog-modernization.md)
@@ -85,3 +89,7 @@ This directory contains design documents, architectural decision records (MADR),
 * [0010-PLAN: Implement the Move to go-selfupdate-lib v1.9.0](decisions/0010-PLAN-adopt-go-selfupdate-lib-v1-9-0.md)
   * **Status:** Completed
   * **Topic:** Phases 0–4: the bump, the pin comment and the schema test, the README, release v1.7.0 with the live check, and close-out.
+
+* [0011-PLAN: Implement the Move to go-llmprovider-sdk v1.3.2 and go-selfupdate-lib v1.10.1](decisions/0011-PLAN-adopt-go-llmprovider-sdk-v1-3-2-and-go-selfupdate-lib-v1-10-1.md)
+  * **Status:** In Progress
+  * **Topic:** Phases 0–4: the bumps, the pin and the refused-key test, the README, release v1.8.0 with the live checks, and close-out.
