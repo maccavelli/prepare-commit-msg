@@ -289,3 +289,72 @@ stops on it.
 **Staged** for the owner's commit: `.github/workflows/ci.yml`, `go.mod`,
 `go.sum`, `main_test.go` and this PLAN. No other file changed; `make
 verify`'s `dist/` and `coverage.out` are ignored.
+
+### Deviation D1 (2026-10-08): 0009-MADR's Gemini row did not hold on `v1.2.1`
+
+* **Found** at Phase 2's start, writing the `v1.3.2` section next to the
+  `v1.2.1` one. Both
+  [0009-MADR-adopt-go-llmprovider-sdk-v1-2-1.md](0009-MADR-adopt-go-llmprovider-sdk-v1-2-1.md)
+  (`:80`, the table row "Gemini HTTP 400 with reason `API_KEY_INVALID`":
+  "`authentication failed`; **stops**") and the README's "Changes with
+  go-llmprovider-sdk v1.2.1" (`README.md:412`, "A rejected Gemini key stops
+  at once") say a rejected Gemini key stopped the run from `v1.6.0`.
+  Phase 1's red run measured the opposite at `v1.2.1`: `invalid request`,
+  and both models asked. Gemini's Interactions API sends the refusal in a
+  one-element array, which `v1.2.1` read as text (0011-MADR, the SDK
+  table's first row). So `v1.6.0` and `v1.7.0` never stopped on it.
+* **Options put to the owner:** correct 0009-MADR, by amendment, and the
+  README's `v1.2.1` bullet; correct it in the new section only; or leave
+  both.
+* **Decision.** The owner chose "Correct both".
+  * 0009-MADR gains an amendment, dated, citing this measurement; its row
+    is not rewritten.
+  * The README's `v1.2.1` bullet says the stop holds from `v1.8.0`, and the
+    `v1.3.2` section says why.
+* **Added to Phase 2:** `docs/decisions/0009-MADR-adopt-go-llmprovider-sdk-v1-2-1.md`.
+
+### Phase 2: documentation (2026-10-08)
+
+* **Before it.** On the owner's ask ("Commit to main, then proceed"), the
+  agent committed Phase 1 to `main` as `61e595b`; the repository's
+  pre-commit gate passed (`go-selfupdate-lib v1.10.1 resolved from
+  GitHub`, `0 issues.`, `No vulnerabilities found.`).
+* **D1** (above) was found and decided before any edit.
+
+**`README.md`:**
+
+| Where | Change |
+| :--- | :--- |
+| Table of contents | a line for "Changes with go-llmprovider-sdk v1.3.2" |
+| "Self-Update" | a paragraph: a backup an update could not restore is kept as `.<name>.selfupdate-kept-<n>`, `<name>` the binary's file name, and no later update removes it (B1); a binary replaced during an update is not overwritten (B2). The name was checked against go-selfupdate-lib `v1.10.1`'s `selfupdate/leftovers.go:55` and `replace_unix.go:60` (`target.Base`). |
+| "Changes with go-llmprovider-sdk v1.2.1" | the Gemini bullet says it holds from `v1.8.0`, not `v1.6.0`, and links the next section (D1) |
+| new: "Changes with go-llmprovider-sdk v1.3.2" | release `v1.8.0`, both library moves, and six bullets: the Gemini stop and why `v1.6.0`–`v1.7.0` lacked it; a malformed key failing at once; `incomplete`; the OS lock and updating every copy of the hook; `configure`; `update`'s kept backup, refused overwrite and `--json` failed result |
+
+The README names no other library version to change: the remaining
+mentions are the `v1.2.1` section's own and the mcplib history.
+
+**`docs/decisions/0009-MADR-adopt-go-llmprovider-sdk-v1-2-1.md`:** the
+amendment of 2026-10-08 (D1). Its table row is kept as written.
+
+**Checks:**
+
+| Check | Result |
+| :--- | :--- |
+| `TestReadmeCuratedModels` | PASS |
+| `go test -count=1 ./...` | exit 0 |
+| relative links and anchors (`md_links.py`, GitHub heading slugs) in `README.md`, the three records | `33 relative link(s), 0 problem(s)` |
+| the same check on a scratch copy of `README.md` with `[x](#no-such-heading)` and `[y](docs/decisions/0099-MADR-nope.md)` planted | exit 1: `missing anchor #no-such-heading`, `missing file docs/decisions/0099-MADR-nope.md` |
+| identifier scan of the three changed files | 0 hits |
+
+Writing this record, the check reported the two planted links quoted
+in the table above, inside code spans, as broken; a pipe after it had
+hidden its exit status, and the phase was staged. A link in a code span
+is not a link, so the checker now ignores code spans. Re-proved on a
+scratch copy with the two plants and a third inside a code span: exit
+1, the two plants reported and the quoted one not; on the tree,
+`33 relative link(s), 0 problem(s)`, exit 0, read before staging again.
+
+No Go file changed in this phase, so rule 2's code checks were not rerun;
+Phase 1's hold.
+
+**Staged** for the owner's commit: `README.md`, 0009-MADR and this PLAN.

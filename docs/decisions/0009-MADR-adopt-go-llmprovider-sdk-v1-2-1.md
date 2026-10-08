@@ -373,3 +373,22 @@ outcome above stands as written, and this record is `accepted`.
   * acting on `FinishLength`;
   * gobble-cli's pin. gobble-cli is another consumer of the SDK, at
     `v1.1.1`.
+
+## Amendment 2026-10-08: the Gemini row did not hold until SDK `v1.3.2`
+
+Made by
+[0011-PLAN-adopt-go-llmprovider-sdk-v1-3-2-and-go-selfupdate-lib-v1-10-1.md](0011-PLAN-adopt-go-llmprovider-sdk-v1-3-2-and-go-selfupdate-lib-v1-10-1.md),
+its deviation D1.
+
+* **Corrects the table's row** "Gemini HTTP 400 with reason
+  `API_KEY_INVALID`", which says `v1.2.1` classifies it `authentication
+  failed` and the run stops. Through `Generate` it did not: Gemini's
+  Interactions API sends that refusal in a one-element JSON array, which
+  `v1.2.1` read as text, so the reply was `invalid request`, and the hook
+  tried every fallback with the same key. `TestRunStopsOnGeminiRefusedKey`
+  measured it at `v1.2.1`: "all models for gemini failed … invalid request
+  … after 2 request(s)".
+* **So** releases `v1.6.0` and `v1.7.0` did not stop on a rejected Gemini
+  key, though this record and the README said they would. From `v1.8.0`,
+  on SDK `v1.3.2`, they do (go-llmprovider-sdk 0026-MADR, its amendment
+  "Gemini's Interactions API wraps its errors in an array").

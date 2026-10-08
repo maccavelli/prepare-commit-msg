@@ -22,6 +22,7 @@ An intelligent, zero-friction Git `prepare-commit-msg` hook written in Go. It in
 - [Self-Update](#self-update)
 - [Changes from the mcplib Releases](#changes-from-the-mcplib-releases)
 - [Changes with go-llmprovider-sdk v1.2.1](#changes-with-go-llmprovider-sdk-v121)
+- [Changes with go-llmprovider-sdk v1.3.2](#changes-with-go-llmprovider-sdk-v132)
 - [CLI Reference](#cli-reference)
 - [Developer Experience](#developer-experience)
 
@@ -371,6 +372,8 @@ prepare-commit-msg update [flags]
 
 Progress and the confirmation prompt go to **stderr**; stdout carries only `--json` output. The exit status is `0` when up to date, declined or installed, `10` when an update is available (with `--check`), and `1` on an error before the new binary is in place. An error after that, such as failing to release the update lock, is reported as a `warning:` line on stderr, and the run still exits `0`.
 
+If an update fails and cannot put the old binary back, the backup is kept beside it as `.<name>.selfupdate-kept-<n>`, where `<name>` is the binary's file name; no later update removes it, so delete it once the hook works. If something else replaces the binary while an update runs, the update fails instead of overwriting it.
+
 > **Security Note:** Self-update only modifies regular binaries located within the user's home directory. System paths (`/usr`, Homebrew Cellar, Nix store) are rejected.
 
 ---
@@ -410,7 +413,8 @@ What you may notice:
   such as an OpenCode or Kilo HTTP 403, no longer ends the run. A rejected key
   or sign-in still does, without trying the fallbacks.
 - **A rejected Gemini key stops at once,** instead of failing every fallback
-  model.
+  model. This holds from `v1.8.0`, not `v1.6.0`: see
+  [the next section](#changes-with-go-llmprovider-sdk-v132).
 - **Retries.** An OpenAI or Claude HTTP 409 is retried. A reply cut off after
   it began is retried once. A whole but empty reply is not sent again. No
   retry waits past the run's timeout.
@@ -423,6 +427,38 @@ What you may notice:
 - **The OAuth directory** must be a real directory you own on Linux and
   macOS, and loses any group or other write permission. On Windows it is
   restricted to your account.
+
+---
+
+## Changes with go-llmprovider-sdk v1.3.2
+
+Release `v1.8.0` moves from go-llmprovider-sdk `v1.2.1` to `v1.3.2`, and from
+go-selfupdate-lib `v1.9.0` to `v1.10.1`
+([0011-MADR](docs/decisions/0011-MADR-adopt-go-llmprovider-sdk-v1-3-2-and-go-selfupdate-lib-v1-10-1.md)).
+What you may notice:
+
+- **A rejected Gemini key stops at once.** The hook reports `authentication
+  failed for gemini` and asks no fallback model. The note above promised
+  this from `v1.6.0`, but Gemini sends that refusal in a form the SDK reads
+  only from `v1.3.2`, so `v1.6.0` and `v1.7.0` still asked every fallback
+  with the same key.
+- **A malformed key fails at once.** A key with a control character in it is
+  refused when the provider is set up, with a `failed to init` warning,
+  instead of being sent and retried.
+- **An answer cut off while the model was still thinking** is reported as
+  `incomplete`. The next model is tried, as before.
+- **Sign-in sessions lock through the operating system.** Refreshing an
+  OAuth sign-in takes an OS lock on `<provider>.oslock` in the OAuth
+  directory, which is released when the process ends, even if it is
+  killed. A hook from before `v1.8.0` does not see that lock: update every
+  copy of the hook that shares the directory.
+- **`configure`** stops when you cancel it, even when the live listing
+  recommends no model, and a masked key whose entry fails is never saved in
+  part.
+- **`update`** keeps a backup it could not restore, and does not overwrite a
+  binary replaced while it ran (see [Self-Update](#self-update)). Under
+  `--json`, a failed run's result names the product and the current
+  version, and its `exit_code` matches the exit status.
 
 ---
 
