@@ -228,6 +228,13 @@ Each is [read] unless marked:
   * `docs/0003-*` to `docs/0005-*` at the `docs/` root;
   * `docs/plans/0001-*` and `0002-*`;
   * `docs/decisions/` for `0001`, `0002` and `0006` to `0011`.
+
+> **Later state (2026-10-10).** The missing `AGENTS.md` and the split record
+> locations in the two bullets above were closed by
+> [0013-MADR-align-repository-with-workspace-scaffolding.md](0013-MADR-align-repository-with-workspace-scaffolding.md)
+> in `d77f500`. Those bullets remain the reading this decision used.
+> The tool-version bullets below are unchanged.
+
 * **Tools:**
   * `bootstrap-tools.sh` pins golangci-lint `v2.13.1`, govulncheck `v1.7.0`
     and actionlint `v1.7.12`;
@@ -609,6 +616,15 @@ Asked and answered on 2026-10-09. Every answer is the recommended one:
 * **An `AGENTS.md`, the agent pointers and a records tool** (the fleet's
   workspace scaffold), **and moving `0001` to `0005` into
   `docs/decisions/`.** Each is its own record.
+
+> **Completed (2026-10-10).** The workspace scaffold and the move of `0001`
+> through `0005` into `docs/decisions/` were completed by
+> [0013-MADR-align-repository-with-workspace-scaffolding.md](0013-MADR-align-repository-with-workspace-scaffolding.md)
+> and
+> [0013-PLAN-align-repository-with-workspace-scaffolding.md](0013-PLAN-align-repository-with-workspace-scaffolding.md)
+> in `d77f500`. The installer-directory and `ghattest` bullets below were
+> not part of that work.
+
 * **A default install directory in the installer spec:** a library change
   for go-selfupdate-lib's records, if the README's `--dir` proves not
   enough.
@@ -624,6 +640,12 @@ Asked and answered on 2026-10-09. Every answer is the recommended one:
   unit and Windows-host tests, not by a published release.
 * Whether golangci-lint v2.14.0 finds anything new after step 2's code
   changes. The probe ran on step 1's tree.
+
+> **Later evidence (2026-10-10).** The paired PLAN records that `make verify`
+> passed with golangci-lint `v2.14.0`, that the rehearsal and the `v1.8.0`
+> release ran, and that `install.ps1` had one live install and uninstall.
+> The `install.ps1` identity-failure path was not exercised. The bullets
+> above stay as the uncertainties at decision time.
 
 ### Sources
 

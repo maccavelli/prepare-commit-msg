@@ -928,6 +928,17 @@ directory, `~/.local/bin`, `LOCALAPPDATA` or user PATH was touched.
   * L2, and Dependabot;
   * the identity-failure path of `install.ps1`, which no live run
     exercised.
+
+> **Completed after this closing (2026-10-10).** The `AGENTS.md` and
+> workspace-scaffold item, and the move of `0001` through `0005` into
+> `docs/decisions/`, were finished by
+> [0013-PLAN-align-repository-with-workspace-scaffolding.md](0013-PLAN-align-repository-with-workspace-scaffolding.md)
+> in `d77f500`. L2, Dependabot, and the `install.ps1` identity-failure path
+> remain undone. The verification sentence that the pre-commit hook has
+> passed the owner's commits describes the tree before
+> [0013 D8](0013-MADR-align-repository-with-workspace-scaffolding.md#d8-retire-the-repository-owned-pre-commit-build-hook)
+> retired that hook.
+
 * **Observed, not changed:** every installer run prints a PATH hint,
   which does not apply to a hooks directory.
 * This PLAN is `complete`, and `docs/README.md` says so. 0012-MADR stays

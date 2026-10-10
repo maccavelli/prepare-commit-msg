@@ -28,6 +28,15 @@ The maintainer directed adopting the established, proven CI/CD architecture from
 
 ## Decision Outcome
 
+> **Publication steps are not the live workflow (2026-10-10).** This record
+> stays `proposed`. The live `.github/workflows/ci.yml` keeps the triggers,
+> concurrency, and native-test matrix described here. Publication is the
+> pinned go-selfupdate-lib build and publish workflow recorded in
+> [0010-MADR-adopt-go-selfupdate-lib-v1-9-0.md](0010-MADR-adopt-go-selfupdate-lib-v1-9-0.md)
+> and
+> [0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md](0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md).
+> The workflow does not upload `dist/*` with `gh release upload`.
+
 Adopt the `magic-cli-remote` workflow pattern:
 
 1. **Unified Workflow File**: Consolidate all CI/CD into [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) with triggers:

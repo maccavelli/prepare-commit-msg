@@ -102,32 +102,47 @@ and after the change.
 
 ## Controlled release
 
-Releases are tag-driven and fully automated via [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml):
+Releases are tag-driven through
+[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml).
+The workflow runs on pushes to `main`, pull requests, `workflow_dispatch`,
+and `v*` tags. Only a `v*` tag publishes a GitHub Release. Every other ref
+rehearses the build, stamped `rehearsal-<commit> (local)`, and publishes
+nothing.
 
 1. Ensure `main` is up to date and passes verification locally (`make verify`).
-2. Create and push a semantic version tag:
+2. Create and push an annotated semantic version tag:
 
 ```bash
-VERSION=v1.2.3
-git tag "$VERSION"
-git push origin "$VERSION"
+git tag -a v1.2.3 -m "v1.2.3"
+git push origin v1.2.3
 ```
 
-The CI/CD pipeline triggers automatically on the `v*` tag push:
+The tag run then:
 
-- Runs the quality contract (`make verify`).
-- Compiles all six cross-platform binaries with embedded version metadata.
-- Executes native tests on Linux, macOS, and Windows.
-- Generates `SHA256SUMS`.
-- Creates the GitHub Release and attaches all binaries and checksums directly.
+- runs the quality contract (`make verify`), which includes the six
+  cross-builds;
+- runs native `go test ./...` on Linux, macOS, and Windows;
+- calls the pinned build workflow
+  `maccavelli/go-selfupdate-lib/.github/workflows/build-selfupdate-release.yml`
+  at `5e199c831b5691ea687943e3c3fd495d50c739ed` with
+  `spec-path: selfupdate-release.json`, checks build identity, and writes
+  `SHA256SUMS`;
+- calls the pinned
+  `maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml`
+  at the same commit only when `needs.build.outputs.rehearsal` is `'false'`.
 
-Monitor release progress with:
+Published assets are the six binaries, `SHA256SUMS`, `install.sh`,
+`install.ps1`, and build-provenance attestations. The identity check and
+the attestation verify command stay in the
+[root README](../../README.md#maintainer-release).
+
+Monitor the run with:
 
 ```bash
 gh run list --workflow ci.yml --limit 1
 ```
 
-Verify downloaded artifacts with:
+Verify a downloaded checksum file with:
 
 ```bash
 (cd download && sha256sum --check SHA256SUMS)

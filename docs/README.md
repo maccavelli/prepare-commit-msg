@@ -22,7 +22,7 @@ This tree holds three kinds of document:
 | 0003 | MADR | [Layer and harden CI/CD quality gates](decisions/0003-MADR-layer-and-harden-ci-cd-quality-gates.md) | accepted |
 | 0003 | PLAN | [Implement layered CI/CD quality gates](decisions/0003-PLAN-layer-and-harden-ci-cd-quality-gates.md) | completed |
 | 0004 | MADR | [Align CI/CD with magic-cli-remote](decisions/0004-MADR-align-cicd-with-magic-cli-remote.md) | proposed |
-| 0004 | PLAN | [Implement CI/CD alignment](decisions/0004-PLAN-align-cicd-with-magic-cli-remote.md) | in progress |
+| 0004 | PLAN | [Implement CI/CD alignment](decisions/0004-PLAN-align-cicd-with-magic-cli-remote.md) | proposed |
 | 0005 | MADR | [Windows compatibility pre-commit suite](decisions/0005-MADR-windows-on-demand-compat-tests.md) | rejected |
 | 0005 | PLAN | [Implement Windows compatibility pre-commit suite](decisions/0005-PLAN-windows-on-demand-compat-tests.md) | rejected |
 | 0006 | MADR | [Canary mcplib v1.6.0-rc1](decisions/0006-MADR-mcplib-1-6-canary.md) | accepted |

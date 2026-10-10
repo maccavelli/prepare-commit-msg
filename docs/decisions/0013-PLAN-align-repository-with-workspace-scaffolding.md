@@ -709,6 +709,145 @@ marked in progress for close-out.
 agrees with them, the working tree is clean, and the committed tree passes both
 repository-owned documentation gates.
 
+### Phase 5: correct current-state documents
+
+**Entry condition:** the owner approves this phase (`proceed`, `execute the
+plan`, or `do phase 5`). Phases 0–4 stay complete at `d77f500`. This phase
+does not reopen them. Until that approval, do not edit any file listed below
+except this PLAN and its MADR.
+
+On approval, set this PLAN's status to `in-progress` and the matching
+`docs/README.md` row to `in progress`. Set both back to `complete` only after
+the acceptance checks below pass.
+
+**In scope:**
+
+* `docs/architecture.md`
+* `docs/guides/cicd-operations.md`, section `## Controlled release` only
+* `docs/decisions/0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md`, annotations only
+* `docs/decisions/0012-PLAN-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md`, annotations only
+* `docs/decisions/0004-MADR-align-cicd-with-magic-cli-remote.md`, one note
+* `docs/decisions/0004-PLAN-align-cicd-with-magic-cli-remote.md`, one note
+* the `0004` PLAN row in `docs/README.md`
+* `docs/decisions/0013-MADR-align-repository-with-workspace-scaffolding.md` (the amendment already written above Phase 5)
+* this PLAN's Phase 5 execution record
+
+**Out of scope:**
+
+* Rewriting the 0013 findings table, the 0012 fleet-standards reading, or the
+  0005 measured facts. Those stay as historical text. The 0005 outcome banner
+  already says so.
+* Changing the 0004 MADR status from `proposed`, or marking 0004 accepted,
+  rejected, or superseded. Its unified-workflow and native-test decisions are
+  not withdrawn. Only the direct `gh release upload` publication steps are
+  absent from the live workflow.
+* Go source, tests, `Makefile` behavior, CI workflows, hook scripts, and
+  release configuration.
+* A new records number, a GATES rewrite, or a second documentation tree.
+
+1. In `docs/architecture.md`, replace the false tree entries. There is no
+   `cmd/` directory. Hook dispatch and the commit-message write live in
+   `main.go` (`fsutil.ReplaceFileAtomic`). `update.go` holds release-asset
+   selection and the update command. `internal/` contains only `git`,
+   `config`, `ui`, and `fsutil`.
+
+   Change the runtime sentence so it names `main.go` as the dispatcher.
+   Replace the tree block's `cmd/` and `internal/` lines with:
+
+   ```text
+   main.go                    CLI dispatch, hook execution, and the commit-message write
+   update.go                  update command and release-asset selection
+   internal/                  git, config, UI, and atomic file writes
+   ```
+
+   Leave the rest of the tree, and the quality-boundary section, in place.
+   Do not add a full file inventory.
+
+2. Replace `## Controlled release` in `docs/guides/cicd-operations.md`
+   through the checksum example, and stop before `## Failed-release recovery`.
+   The replacement must state only what `.github/workflows/ci.yml`,
+   `selfupdate-release.json`, and the root README already state:
+
+   * the workflow runs on pushes to `main`, pull requests,
+     `workflow_dispatch`, and `v*` tags;
+   * only a `v*` tag publishes a GitHub Release;
+   * every other ref rehearses the build, stamped
+     `rehearsal-<commit> (local)`, and publishes nothing;
+   * the maintainer tag command is the annotated tag in the root README
+     (`git tag -a v1.2.3 -m "v1.2.3"`, then `git push origin v1.2.3`);
+   * the tag run executes `make verify` (including the six cross-builds) and
+     native `go test ./...` on Linux, macOS, and Windows;
+   * the `build` job calls
+     `maccavelli/go-selfupdate-lib/.github/workflows/build-selfupdate-release.yml`
+     pinned at `5e199c831b5691ea687943e3c3fd495d50c739ed` with
+     `spec-path: selfupdate-release.json`;
+   * the `release` job calls the matching `publish-selfupdate-release.yml`
+     pin only when `needs.build.outputs.rehearsal == 'false'`;
+   * published assets are the six binaries, `SHA256SUMS`, `install.sh`,
+     `install.ps1`, and build-provenance attestations;
+   * the identity check and the attestation verify command stay in the root
+     README (`#maintainer-release`), linked rather than copied;
+   * `gh run list --workflow ci.yml --limit 1` and
+     `sha256sum --check SHA256SUMS` remain the monitor and checksum commands.
+
+   Do not describe a `gh release upload dist/*` job. Do not edit
+   `## Failed-release recovery` or the sections above `## Controlled release`.
+
+3. Annotate, and do not rewrite, the 0012 records.
+
+   * After the two fleet-standards bullets that report no `AGENTS.md` and
+     records in three places, add a note that those two gaps were closed by
+     this MADR in `d77f500`, and that the bullets remain the reading this
+     0012 decision used. Leave the tool-version bullets untouched.
+   * Under `### Not decided here`, add a note that the workspace scaffold
+     and the move of `0001` through `0005` into `docs/decisions/` were
+     completed by this pair in `d77f500`. Leave the installer-directory and
+     `ghattest` bullets untouched.
+   * Under `### Not verified`, add a note that the paired 0012 PLAN later
+     recorded a passing `make verify` with golangci-lint `v2.14.0`, the
+     rehearsal, the `v1.8.0` release, and one live `install.ps1` install and
+     uninstall. State that the `install.ps1` identity-failure path was not
+     exercised. Do not delete the original bullets.
+   * In the 0012 PLAN closing list "Not done, as scoped", add a note that
+     the `AGENTS.md` / scaffold item and the record move were finished by
+     this PLAN in `d77f500`. State that L2, Dependabot, and the
+     `install.ps1` identity-failure path remain undone. Add that the closing
+     sentence about the pre-commit hook passing describes the tree before
+     0013 D8 retired that hook.
+
+4. Add one note to the 0004 MADR, immediately after the `## Decision Outcome`
+   heading, and the same note at the top of the 0004 PLAN. The note says:
+   this record stays `proposed`; the live `.github/workflows/ci.yml` keeps
+   the triggers, concurrency, and native-test matrix described here; publication
+   is the pinned go-selfupdate-lib build and publish workflow recorded in
+   `0010-MADR-adopt-go-selfupdate-lib-v1-9-0.md` and
+   `0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md`;
+   the workflow does not upload `dist/*` with `gh release upload`. Link those
+   two records by filename. In `docs/README.md`, change only the 0004 PLAN
+   status cell from `in progress` to `proposed`.
+
+5. Read every edited file in full at the edited regions. Run:
+
+   ```bash
+   python3 scripts/check_records.py --check-all
+   make markdownlint
+   ```
+
+   Require exit 0 from both. Confirm `docs/architecture.md` does not contain
+   `cmd/`, and that `test -d cmd` is false. Confirm the guide section names
+   the pinned build and publish workflows and does not name
+   `gh release upload`.
+
+6. Record the command exit statuses and the commit in this phase's execution
+   entry. Stage only the files this phase names. Commit with
+   `git commit --no-edit`.
+
+**Phase acceptance:** `docs/architecture.md` names `main.go`, `update.go`, and
+the four `internal/` packages that exist; the operations guide's controlled
+release matches `ci.yml` and the root README; 0012 and 0004 carry dated notes
+instead of rewritten findings; the 0004 PLAN index status is `proposed`; both
+documentation gates exit 0.
+
 ## Verification
 
 ### Required success matrix
@@ -962,3 +1101,23 @@ result.
 * Final close-out records and Markdown gates passed and are recorded in the
   GATES report. The Phase 4 commit is recorded in the handoff rather than by
   amending its own commit.
+
+### 2026-10-10 — Phase 5
+
+* Owner authorization: `do phase 5`. Phases 0–4 stay complete at `d77f500`.
+* `docs/architecture.md` names `main.go` as the dispatcher and lists
+  `main.go`, `update.go`, and `internal/` as git, config, UI, and atomic
+  file writes. `cmd/` is absent from that file. `test -d cmd` is false.
+* `docs/guides/cicd-operations.md` controlled release names the pinned
+  `build-selfupdate-release.yml` and `publish-selfupdate-release.yml`
+  workflows at `5e199c831b5691ea687943e3c3fd495d50c739ed`. The section does
+  not name `gh release upload`. `## Failed-release recovery` was not edited.
+* 0012 MADR and PLAN keep their original findings and carry the dated notes
+  specified by this phase. 0004 MADR and PLAN carry the publication note and
+  stay `proposed`. The docs index 0004 PLAN cell is `proposed`.
+* `python3 scripts/check_records.py --check-all` exited 0 with no output.
+* `make check-records` exited 0 and printed only the records-checker recipe.
+* `make markdownlint` exited 0. markdownlint-cli2 v0.23.2 linted 7 files
+  and reported 0 issues.
+* Phase 5 commit: pending in this entry. The handoff names the hash. Do not
+  amend this commit to insert it.

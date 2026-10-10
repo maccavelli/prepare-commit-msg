@@ -15,7 +15,7 @@ commit-message file. The same binary exposes `configure`, `update`,
 
 ## Runtime flow
 
-The root command dispatches CLI subcommands or hook execution. Hook execution
+`main.go` dispatches CLI subcommands or hook execution. Hook execution
 collects staged changes through `internal/git`, loads user settings through
 `internal/config`, and calls providers through `go-llmprovider-sdk`.
 `internal/fsutil` owns safe file writes. The update command delegates release
@@ -49,8 +49,9 @@ workflow calls pinned reusable build and publish workflows from
 README.md                  product entry and documentation link
 AGENTS.md                  shared agent workflow
 Makefile                   local and CI command surface
-cmd/                       CLI command implementations
-internal/                  Git, config, UI, filesystem, and hook behavior
+main.go                    CLI dispatch, hook execution, and the commit-message write
+update.go                  update command and release-asset selection
+internal/                  git, config, UI, and atomic file writes
 scripts/                   verification, hook, and repository utilities
 .githooks/pre-push         full local verification before push
 .github/workflows/ci.yml   CI, native tests, and release orchestration

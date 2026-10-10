@@ -1,5 +1,14 @@
 # Plan: Align CI/CD Workflow with `magic-cli-remote`
 
+> **Publication steps are not the live workflow (2026-10-10).** This record
+> stays `proposed`. The live `.github/workflows/ci.yml` keeps the triggers,
+> concurrency, and native-test matrix described here. Publication is the
+> pinned go-selfupdate-lib build and publish workflow recorded in
+> [0010-MADR-adopt-go-selfupdate-lib-v1-9-0.md](0010-MADR-adopt-go-selfupdate-lib-v1-9-0.md)
+> and
+> [0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md](0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md).
+> The workflow does not upload `dist/*` with `gh release upload`.
+
 ## Overview
 Replaces the fragmented and broken CI/CD workflows (`quality.yml`, `release.yml`) with a single, unified `.github/workflows/ci.yml` modeled on `magic-cli-remote`. This restores automated release publishing whenever a `v*` tag is pushed.
 

@@ -9,6 +9,12 @@ informed: Repository maintainers and coding agents
 
 ## Context and Problem Statement
 
+> **Assessed before execution.** The inventory below is the repository on
+> 2026-10-10, before Phases 1–3. It is not the current tree. The current
+> system is [architecture.md](../architecture.md). Completion of Phases 0–4
+> is recorded in the paired PLAN and in
+> [0013-GATES-workspace-scaffolding.md](../reports/0013-GATES-workspace-scaffolding.md).
+
 This repository is an existing Go product with repository-owned build, test,
 release, and staged-snapshot commands. It does not yet have the in-repository
 agent workspace defined by the fleet `workspace-scaffolding` standard.
@@ -99,6 +105,13 @@ boundaries instead of rebuilding during each commit.
 This outcome and its same-slug implementation plan are proposed for owner
 review. Decision acceptance alone does not authorize execution; the owner must
 also approve the PLAN or an individual phase.
+
+> **Amendment (2026-10-10).** The owner accepted this MADR and approved the
+> PLAN the same day. Phases 0–4 completed in `d77f500`. The paragraph above
+> is the authorization rule as written when the outcome was still proposed.
+> Phase 5 of the paired PLAN, which corrects current-state documents that
+> disagree with the tree, is not approved by this amendment. The owner
+> approved Phase 5 on 2026-10-10 by instructing that phase to be done.
 
 ### D1. Use one root documentation tree
 
@@ -353,6 +366,17 @@ The decision is implemented only when all of the following are true:
   more records and guides accumulate.
 
 ## More Information
+
+### Amendment — current-state documents (2026-10-10)
+
+Phases 0–4 completed the scaffold. A review of the resulting tree found
+current-state prose that still describes the pre-change repository or a
+release job the workflow no longer uses. Phase 5 of
+[0013-PLAN-align-repository-with-workspace-scaffolding.md](0013-PLAN-align-repository-with-workspace-scaffolding.md)
+is the proposed correction. It annotates historical findings and replaces
+only the documents that claim to describe the system as it is now. This
+amendment does not approve that phase. The owner approved Phase 5 on
+2026-10-10 by instructing that phase to be done.
 
 The assessment was read-only until this MADR was created. Existing source,
 tests, CI, hooks, product configuration, records, and unrelated uncommitted
