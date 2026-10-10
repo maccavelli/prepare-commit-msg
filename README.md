@@ -23,6 +23,7 @@ An intelligent, zero-friction Git `prepare-commit-msg` hook written in Go. It in
 - [Changes from the mcplib Releases](#changes-from-the-mcplib-releases)
 - [Changes with go-llmprovider-sdk v1.2.1](#changes-with-go-llmprovider-sdk-v121)
 - [Changes with go-llmprovider-sdk v1.3.2](#changes-with-go-llmprovider-sdk-v132)
+- [Changes with go-selfupdate-lib v1.13.0](#changes-with-go-selfupdate-lib-v1130)
 - [CLI Reference](#cli-reference)
 - [Developer Experience](#developer-experience)
 
@@ -367,7 +368,7 @@ prepare-commit-msg update [flags]
 | `prepare-commit-msg update --version v1.2.0 --yes` | Pin or rollback to a specific release version. |
 | `prepare-commit-msg update --force --yes` | Force reinstall / overwrite local or dev builds. |
 | `prepare-commit-msg update --dry-run` | Download and verify the release; install nothing. |
-| `prepare-commit-msg update --json` | Write JSON Lines to stdout, ending with one `{"kind":"result",…}` object whose `result` carries `"schema_version":2`. |
+| `prepare-commit-msg update --json` | Write JSON Lines to stdout, ending with one `{"kind":"result",…}` object whose `result` carries `"schema_version":4`. |
 | `prepare-commit-msg update --channel rc` | Follow a prerelease channel. |
 
 Progress and the confirmation prompt go to **stderr**; stdout carries only `--json` output. The exit status is `0` when up to date, declined or installed, `10` when an update is available (with `--check`), and `1` on an error before the new binary is in place. An error after that, such as failing to release the update lock, is reported as a `warning:` line on stderr, and the run still exits `0`.
@@ -432,10 +433,10 @@ What you may notice:
 
 ## Changes with go-llmprovider-sdk v1.3.2
 
-Release `v1.8.0` moves from go-llmprovider-sdk `v1.2.1` to `v1.3.2`, and from
-go-selfupdate-lib `v1.9.0` to `v1.10.1`
-([0011-MADR](docs/decisions/0011-MADR-adopt-go-llmprovider-sdk-v1-3-2-and-go-selfupdate-lib-v1-10-1.md)).
-What you may notice:
+Release `v1.8.0` moves from go-llmprovider-sdk `v1.2.1` to `v1.3.2`
+([0011-MADR](docs/decisions/0011-MADR-adopt-go-llmprovider-sdk-v1-3-2-and-go-selfupdate-lib-v1-10-1.md)),
+and from go-selfupdate-lib `v1.9.0` to `v1.13.0`, whose changes are in the
+next section. What you may notice:
 
 - **A rejected Gemini key stops at once.** The hook reports `authentication
   failed for gemini` and asks no fallback model. The note above promised
@@ -462,6 +463,28 @@ What you may notice:
 
 ---
 
+## Changes with go-selfupdate-lib v1.13.0
+
+Release `v1.8.0` is built with Go 1.27.2 and requires go-selfupdate-lib
+`v1.13.0`
+([0012-MADR](docs/decisions/0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md)).
+What you may notice:
+
+- **Built with Go 1.27.2.** Releases up to `v1.7.0` were built with Go
+  1.27.1, whose standard library has published advisories that 1.27.2
+  fixes. Run `prepare-commit-msg update` to take `v1.8.0`.
+- **`update --json`'s result is schema 4.** It adds `rolled_back` (the
+  previous binary was put back after the new one was installed),
+  `probes_skipped` and `replaced_before_stop`; no key is renamed or
+  removed.
+- **An interrupted update keeps the previous binary.** If an `update` is
+  killed between replacing the binary and finishing, the next `update`
+  keeps the old copy beside the hook as
+  `.prepare-commit-msg.selfupdate-kept-<n>`, instead of removing it.
+  Delete it once the hook works.
+
+---
+
 ## CLI Reference
 
 ```text
@@ -481,7 +504,7 @@ Brief guide for contributors and local development.
 
 ### Toolchain & Quality Gates
 
-The repository uses pinned developer tools in `.tools/bin` to ensure identical results across local machines and CI. Building from source needs Go 1.27.1.
+The repository uses pinned developer tools in `.tools/bin` to ensure identical results across local machines and CI. Building from source needs Go 1.27.2.
 
 ```bash
 make tools          # Bootstrap pinned tools (golangci-lint, govulncheck, actionlint)

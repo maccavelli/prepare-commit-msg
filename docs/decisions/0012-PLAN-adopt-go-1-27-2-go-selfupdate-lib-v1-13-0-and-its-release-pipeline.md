@@ -411,3 +411,57 @@ using go 1.27.2 for everything now", and approved this PLAN: "proceed".
    * Phase 1 step 1's change to `scripts/bootstrap-tools.sh` is in the
      work tree, unstaged;
    * the records are staged alone, for the owner's commit.
+
+### Phase 1: the toolchain, the library and the tools (2026-10-09)
+
+1. **`scripts/bootstrap-tools.sh`** (step 1) set `GO_VERSION="go1.27.2"`,
+   golangci-lint `v2.14.0` (expected `"2.14.0"`) and govulncheck `v1.8.0`;
+   actionlint stays `v1.7.12`. Made in Phase 0, as its step 4 planned. The
+   owner's records commit, `332bb70`, included it with the records. So it
+   is on `main` already, and this phase stages the rest.
+   * `make verify-staged` then rebuilt the three tools. `go version` on
+     each in `.tools/bin` gives `go1.27.2`.
+2. **`go.mod`** (step 2): `go get …@v1.13.0`, `go mod edit -go=1.27.2`,
+   `go mod tidy`. The diff is:
+   * `go 1.27.1` → `go 1.27.2`;
+   * `go-selfupdate-lib v1.10.1` → `v1.13.0`;
+   * in `go.sum`, the library's two lines.
+
+   There is no `toolchain` line.
+3. **`Makefile:1`** (step 3): `MOD_VERSION := 1.27.2`.
+4. **Seen failing first** (step 4). With the library at `v1.13.0` and the
+   test unchanged:
+
+   ```text
+   --- FAIL: TestUpdateCheckJSONSchema (0.00s)
+       migration_test.go:186: last stdout line is kind "result", schema_version 4; want result, 2
+   ```
+
+   `wantResultSchema` is now 4, with its comment naming 0012-MADR L1.
+5. **`README.md`** (step 5):
+   * `:370` says `"schema_version":4`;
+   * "Building from source needs Go 1.27.2";
+   * a new section, "Changes with go-selfupdate-lib v1.13.0", in the table
+     of contents. It covers Go 1.27.2 and `update`, schema 4, and the
+     backup an interrupted update leaves.
+   * **One line not in the step:** "Changes with go-llmprovider-sdk
+     v1.3.2" said release `v1.8.0` moves go-selfupdate-lib "to `v1.10.1`".
+     That no longer holds, so it now says "to `v1.13.0`, whose changes are
+     in the next section".
+6. **Checks** (step 6, rule 2):
+
+   | Check | Host | Result |
+   | :--- | :--- | :--- |
+   | `make verify` | this Mac | exit 0: `0 issues.`, `total coverage: 81.9% (minimum 80.0%)`, `No vulnerabilities found.` |
+   | `make verify` | the Linux test host, `go1.27.2`, on a copy of the work tree | exit 0: `0 issues.`, `total coverage: 81.8% (minimum 80.0%)`, `No vulnerabilities found.` |
+   | `go test -count=1 ./...`, `go vet ./...` | the Windows test host, `go1.27.2` | five `ok`; vet exit 0 |
+   | `go test -race -count=1 ./...` | this Mac | exit 0 |
+   | `CGO_ENABLED=0 GOOS={linux,darwin,windows} go vet ./...` | this Mac | exit 0, 0, 0 |
+   | `go mod tidy -diff` | this Mac | exit 0 |
+   | `gofmt -l migration_test.go` | this Mac | empty |
+
+7. **Staged:** `go.mod`, `go.sum`, `Makefile`, `migration_test.go`,
+   `README.md` and this PLAN. `make verify-staged` on the staged snapshot:
+   exit 0. Both libraries resolved from GitHub (go-selfupdate-lib `v1.13.0`,
+   `h1:5gMIuQvC…`), golangci-lint `0 issues.`, govulncheck
+   `No vulnerabilities found.`

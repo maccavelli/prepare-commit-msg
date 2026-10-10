@@ -159,9 +159,9 @@ func TestMigrationByteForByte(t *testing.T) {
 }
 
 // wantResultSchema is the update result's schema version from
-// go-selfupdate-lib v1.6.0 on, which README.md's "Self-Update" states
-// (0010-MADR D3, D4).
-const wantResultSchema = 2
+// go-selfupdate-lib v1.13.0 on, which README.md's "Self-Update" states
+// (0010-MADR D3, D4; 0012-MADR L1).
+const wantResultSchema = 4
 
 // TestUpdateCheckJSONSchema: `update --check --json` ends with one result
 // object, whose schema version is the one the README documents. A library
