@@ -53,3 +53,4 @@ This tree holds three kinds of document:
 | perform or recover a release | [CI/CD operations guide](guides/cicd-operations.md#controlled-release) |
 | inspect repository settings procedures | [CI/CD operations guide](guides/cicd-operations.md#repository-settings-audit) |
 | know why the workspace and hook policy changed | [0013 MADR](decisions/0013-MADR-align-repository-with-workspace-scaffolding.md) |
+| follow repository workflow rules | [AGENTS.md](../AGENTS.md) |

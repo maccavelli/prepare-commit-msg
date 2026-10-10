@@ -27,7 +27,7 @@ pending.
 | :--- | :--- |
 | `.markdownlint-cli2.jsonc` | `cmp` exit 0 |
 | `scripts/check_records.py` | `cmp` exit 0 |
-| Eight Phase 3 harness support files | pending |
+| Eight Phase 3 harness support files | eight `cmp` calls, each exit 0 |
 
 ## Moves and links
 
@@ -52,11 +52,11 @@ is repaired. Live script and guide references use the new paths.
 | Carried-forward hook comparison | Removing the generic wrapper comparison in a scratch installer made the suite exit 1 with `installer overwrote a modified carried-forward hook`. |
 | No-host pre-commit assertion | Planting a managed pre-commit in the scratch no-host case made the suite exit 1 with `installer created a managed pre-commit without a host pre-commit`. |
 | Records links | A missing link in a scratch root README made `--check-all` exit 1 with `broken relative link:`. |
-| Markdown MD004 | pending |
-| Markdown MD013 in README | pending |
-| Markdown MD013 in AGENTS.md | pending |
-| Record exclusion | pending |
-| Identifier scan | pending |
+| Markdown MD004 | `markdownlint-cli2` in an independent scratch tree exited 1 with `README.md:3:1 error MD004/ul-style` and expected dash/actual asterisk. |
+| Markdown MD013 in README | `markdownlint-cli2` over a 224-character paragraph exited 1 with `README.md:3:201 error MD013/line-length`, expected 200 and actual 224. |
+| Markdown MD013 in AGENTS.md | `markdownlint-cli2` over the same paragraph exited 1 with `AGENTS.md:3:201 error MD013/line-length`, expected 200 and actual 224. |
+| Record exclusion | `markdownlint-cli2` with only a scratch `9999-MADR-plant.md` exited 0 and reported zero files/issues. |
+| Identifier scan | `python3 /tmp/0013-identifier-scan.py --root <scratch> --all` exited 1 and reported one local-account hit in `AGENTS.md` without printing the identifier. |
 
 ## Actual-tree gates
 
@@ -70,10 +70,17 @@ is repaired. Live script and guide references use the new paths.
 | Records gates | `--next` exit 0 with `0014`; `--check-all` and `make check-records` exit 0 with no output beyond the Make recipe |
 | Markdown gates | Installed v0.23.2 binary and `make markdownlint` exit 0; five files linted, zero issues |
 | `make verify` | Authorized run exit 0; modules verified, zero lint issues, vet and race tests passed, 81.7% coverage, no vulnerabilities, workflow checks and six cross-builds passed |
+| Phase 3 records | `--next` exit 0 with `0014`; direct and Make `--check-all` gates exit 0 |
+| Phase 3 Markdown | Installed v0.23.2 binary and `make markdownlint` exit 0; seven files linted, zero issues |
+| Phase 3 line endings | 93 staged paths had zero noncanonical attributes, including all nine new paths |
 
 ## Identifier scan
 
-Pending Phase 3, when all generated and copied files exist.
+`python3 /tmp/0013-identifier-scan.py --root . --base a848788` scanned 34
+added or changed files. It reported zero local-account, mail-identifier,
+private-Git-host, hostname-domain, and profile-path hits. It counted expected
+public-forge references in 14 files separately. The scratch plant reported
+the planted `AGENTS.md` and exited 1 without printing the identifier.
 
 ## Product checks
 
@@ -84,5 +91,4 @@ invoke `make verify`; `make verify-staged` remains available on demand.
 
 ## Remaining work
 
-Commit the passing Phase 2 tree, install and plant-test the Phase 3 agent
-files, then close out this record.
+Commit the passing Phase 3 agent files, then close out this record.

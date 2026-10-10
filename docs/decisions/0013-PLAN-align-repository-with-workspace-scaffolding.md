@@ -627,10 +627,13 @@ commit.
    | LF checkout | Use Phase 1's isolated `core.autocrlf=true` experiment. | without the repo rule the fixture is CRLF; with it the fixture is LF. |
 
    Restore nothing in the working tree because no plant is made there.
-6. Scan every added or changed file for the local account name, email and Git
-   host domains, hostname domain, and user-profile path prefixes. Read search
-   values from the environment at run time. Record only categories and hit
-   counts. Require zero hits; placeholders such as `<user>` are allowed.
+6. Scan every added or changed file for the local account name, email,
+   potentially private Git host domains, hostname domain, and user-profile
+   path prefixes. Read search values from the environment at run time. Exclude
+   established public forge domains from the sensitive Git-host category and
+   record their reference count separately. Record only categories and hit
+   counts. Require zero sensitive hits; placeholders such as `<user>` are
+   allowed.
 7. Run the actual-tree gates, redirecting long output and capturing each exit
    status before inspection:
 
@@ -722,7 +725,7 @@ repository-owned documentation gates.
 | Record placement | Repository file inventory | All MADRs/PLANs under `docs/decisions/`; GATES under `docs/reports/`; no `docs/plans/` and no record at the `docs/` root. |
 | Guide placement | File and link inventory | Runbook under `docs/guides/`; live links use its new path. |
 | LF policy | Isolated checkout plant and `git ls-files --eol` | CRLF without the rule, LF with it; tracked text attributed LF; fixtures explicitly `-text`. |
-| Identifier hygiene | Environment-derived scan | Zero real-machine identifier hits in added or changed files. |
+| Identifier hygiene | Environment-derived scan | Zero real-machine or private-host identifier hits in added or changed files; public-forge references counted separately. |
 | Product contract | `make verify` in Phase 2 | Exit 0 after the Makefile and hook-script changes. |
 | Repository pre-commit removal | File inventory and active-wrapper inspection | `.githooks/pre-commit` absent; managed pre-commit delegates only to an executable host hook and is otherwise absent. |
 | Hook composition | `make hooks-test` in Phase 2 | Exit 0; fresh install, v1 migration, host pre-commit, repository pre-push, refusal, and uninstall cases pass. |
@@ -880,4 +883,49 @@ result.
   issues, vet and race tests passed, aggregate coverage was 81.7% against an
   80.0% minimum, govulncheck found no vulnerabilities, script/workflow checks
   passed, and all six release targets built.
-* Phase 2 commit: pending.
+* Phase 2 commit: `c538518` (`chore(workspace): align docs, hooks, and
+  quality gates`).
+
+### 2026-10-10 — Approved Phase 3 deviation
+
+* Evidence: the environment-derived scan produced zero hits for the local
+  account, mail identifiers, hostname domain, and profile paths, but counted
+  the repository's expected public forge domain in 14 changed files. Those
+  references include public documentation links, Go import paths, and the
+  canonical Markdown configuration.
+* Resolution approved by the owner: exclude established public forge domains
+  from the sensitive Git-host category, count their references separately,
+  and continue to require zero hits for private Git hosts and all real-machine
+  identifier categories.
+* Consequence: public project references remain intact while the disclosure
+  gate continues to reject machine-specific and organization-internal values.
+
+### 2026-10-10 — Phase 3
+
+* Generated `AGENTS.md` by asserting and replacing each canonical slot with
+  the approved scope, dependency, and pre-add text. No `{{…}}` token remains;
+  the canonical identifier and commit sections are unchanged.
+* Copied the eight harness support files to the Claude, Grok, OpenCode,
+  Codex, and Kilo locations. All eight comparisons passed, as did the Phase 2
+  comparisons for `.markdownlint-cli2.jsonc` and
+  `scripts/check_records.py`: ten `cmp` calls, ten exit-0 results.
+* Added the `AGENTS.md` row to the docs task matrix. The docs index links to
+  the root README, architecture, guide, GATES record, MADR, PLAN, and agent
+  instructions; the root README links back to the index, and the records
+  checker reports no broken relative link.
+* Scratch Markdown plants used `markdownlint-cli2` in independent temporary
+  trees. The asterisk-list plant exited 1 with `MD004/ul-style`; 224-character
+  paragraphs in `README.md` and `AGENTS.md` each exited 1 with MD013 expected
+  200/actual 224; the same paragraph in `9999-MADR-plant.md` exited 0 with
+  zero files/issues. The missing-link plant exited 1 with
+  `broken relative link:`.
+* The amended environment-derived scanner command scanned 34 implementation
+  files and reported zero local-account, mail-identifier, private-Git-host,
+  hostname-domain, and profile-path hits. Fourteen files contained expected
+  public-forge references, counted separately. A scratch local-account plant
+  exited 1 and reported `AGENTS.md` without printing the identifier.
+* Actual gates: `--next` exited 0 with `0014`; direct and Make records checks
+  exited 0; the installed v0.23.2 linter and `make markdownlint` each linted
+  seven files with zero issues. All 93 staged paths, including the nine new
+  paths, had canonical attributes.
+* Phase 3 commit: pending.
