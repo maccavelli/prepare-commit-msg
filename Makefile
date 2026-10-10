@@ -14,7 +14,7 @@ FLEET_LINT_CFG := .golangci.yml
 .PHONY: all build clean test coverage test-coverage run install version build-all \
 	linux linux-amd64 linux-arm64 darwin-arm64 darwin-amd64 windows-amd64 windows-arm64 \
 	help tools fmt fmt-check mod-check vet lint vuln workflow-lint verify verify-staged \
-	release-artifacts verify-release hooks-install hooks-uninstall hooks-test
+	hooks-install hooks-uninstall hooks-test
 
 all: help build-all
 
@@ -111,12 +111,6 @@ hooks-uninstall: ## Restores the hooks-path state from before installation
 
 hooks-test: ## Tests hook composition in isolated temporary repositories
 	./scripts/test-hooks.sh
-
-release-artifacts: clean build-all ## Builds and checksums the complete release asset set
-	./scripts/verify-release.sh --write-checksums $(DIST_DIR)
-
-verify-release: release-artifacts ## Builds and validates release assets (set VERSION=vX.Y.Z)
-	./scripts/verify-release.sh "$(VERSION)" "$(DIST_DIR)"
 
 run: build ## Builds and executes the local binary
 	@BIN_NAME=$(DIST_DIR)/$(BINARY_NAME)-$(shell go env GOOS)-$(shell go env GOARCH)$(if $(filter windows,$(shell go env GOOS)),.exe,) ; \

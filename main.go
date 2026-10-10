@@ -46,6 +46,7 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  %s configure [flags]              - run setup wizard or non-interactive configure\n", AppTitle)
 	fmt.Fprintf(os.Stderr, "  %s update [flags]                 - check for and apply updates from GitHub\n", AppTitle)
 	fmt.Fprintf(os.Stderr, "  %s version                        - show version\n", AppTitle)
+	fmt.Fprintf(os.Stderr, "  %s identity                       - print the build identity alone\n", AppTitle)
 	fmt.Fprintf(os.Stderr, "  %s help                           - show this help\n", AppTitle)
 	fmt.Fprintf(os.Stderr, "  %s <commit_msg_file> [source] [sha] - run as git prepare-commit-msg hook\n", AppTitle)
 	fmt.Fprintf(os.Stderr, "\nConfigure flags:\n")
@@ -83,6 +84,12 @@ func main() {
 	switch args[0] {
 	case "version", "--version", "-V":
 		fmt.Printf("%s version %s\n", AppTitle, buildIdentity())
+		return
+	case "identity":
+		// The build workflow and the installers run this, and require the
+		// identity alone on its first line
+		// (docs/decisions/0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md B1).
+		fmt.Println(buildIdentity())
 		return
 	case "help", "--help", "-h":
 		printUsage()

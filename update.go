@@ -1,18 +1,36 @@
 package main
 
 import (
+	_ "embed"
 	"net/http"
 	"time"
 
 	"github.com/maccavelli/go-selfupdate-lib/buildinfo"
 	"github.com/maccavelli/go-selfupdate-lib/selfupdate"
 	"github.com/maccavelli/go-selfupdate-lib/selfupdate/cli"
+	"github.com/maccavelli/go-selfupdate-lib/selfupdate/releasespec"
 )
 
-const (
-	archAMD64 = "amd64"
-	archARM64 = "arm64"
-)
+// releaseSpec is the release spec the build workflow reads: the products,
+// the platforms and the packaging of every release
+// (docs/decisions/0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md B1).
+//
+//go:embed selfupdate-release.json
+var releaseSpec []byte
+
+// releaseAssets is the asset selector the embedded spec decides. It fails
+// when the spec does not name this program, so a spec and a program that
+// disagree fail in the tests, before any release.
+func releaseAssets() (selfupdate.AssetSelector, error) {
+	spec, err := releasespec.Parse(releaseSpec)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := spec.Product(AppTitle); err != nil {
+		return nil, err
+	}
+	return spec.AssetSelector()
+}
 
 // updateTimeout bounds each GitHub request. cli.Run bounds the whole run.
 const updateTimeout = 15 * time.Minute
@@ -36,14 +54,7 @@ func defaultNewUpdateUpdater() (*selfupdate.Updater, error) {
 	if err != nil {
 		return nil, err
 	}
-	selector, err := selfupdate.NewExactAssetSelector([]selfupdate.Platform{
-		{OS: "linux", Arch: archAMD64},
-		{OS: "linux", Arch: archARM64},
-		{OS: "darwin", Arch: archAMD64},
-		{OS: "darwin", Arch: archARM64},
-		{OS: "windows", Arch: archAMD64},
-		{OS: "windows", Arch: archARM64},
-	})
+	selector, err := releaseAssets()
 	if err != nil {
 		return nil, err
 	}

@@ -465,3 +465,73 @@ using go 1.27.2 for everything now", and approved this PLAN: "proceed".
    exit 0. Both libraries resolved from GitHub (go-selfupdate-lib `v1.13.0`,
    `h1:5gMIuQvC…`), golangci-lint `0 issues.`, govulncheck
    `No vulnerabilities found.`
+
+### Phase 2: the spec, `identity`, and the workflows (2026-10-09)
+
+The owner committed Phase 1 as `c4a84ed`.
+
+1. **`selfupdate-release.json`** (step 1), at the root, as the step gives
+   it: one product, `package` `.`, `identity_args` `["identity"]`, the six
+   platforms, and `packaging` `binary`.
+2. **`update.go`** (step 2):
+   * `//go:embed selfupdate-release.json`;
+   * `releaseAssets()` runs `releasespec.Parse`, then
+     `spec.Product(AppTitle)`, then `spec.AssetSelector()`;
+   * `defaultNewUpdateUpdater` uses it in place of
+     `NewExactAssetSelector` and its list;
+   * the `archAMD64` and `archARM64` constants, used nowhere else, go.
+3. **`main.go`** (step 3):
+   * `case "identity":` prints `fmt.Println(buildIdentity())`;
+   * the usage text gains its line;
+   * `version` is unchanged.
+4. **Tests,** in a new `releasespec_test.go` (step 4):
+
+   | Test | Seen failing | Then |
+   | :--- | :--- | :--- |
+   | `TestReleaseSpec`: the spec parses, names the product with `identity_args` `[identity]`, its targets are the six platforms, `releaseAssets()` succeeds | a scratch copy with `"packaging"` misspelled `"packagng"`: `parse the embedded spec: releasespec: json: unknown field "packagng"` | PASS |
+   | `TestIdentityCommand`: `identity`'s whole output is `id.String() + "\n"` | before `main.go` had the case: `identity exited 1`, the hook path. A scratch copy with `identity` printing `version`'s line: `identity printed "prepare-commit-msg version v1.8.0 (release) 0123456789ab\n", want "v1.8.0 (release) 0123456789ab\n"` | PASS |
+
+5. **`ci.yml`** (step 5):
+   * the `go` job is "Go (quality contract)", with no `outputs` and no
+     tag steps;
+   * `go-native` is unchanged;
+   * a `build` job (`needs: [go, go-native]`, `contents: read`) calls
+     `build-selfupdate-release.yml@5e199c83… # v1.13.0` with
+     `spec-path: selfupdate-release.json`;
+   * `release` needs `build`, runs only when `rehearsal` is `'false'`,
+     and calls `publish-selfupdate-release.yml@5e199c83… # v1.13.0` with
+     the build job's five outputs;
+   * the comment names 0012-MADR B1/P1 and 0010-MADR D2.
+6. **`Makefile`** (step 6): `release-artifacts` and `verify-release` are
+   gone, from the targets and `.PHONY`. `scripts/verify-release.sh` is
+   removed with `git rm`. Nothing else referred to them but the README,
+   below.
+7. **`README.md`:**
+   * the CLI reference gains `identity` (step 3);
+   * "Maintainer Release" (step 7) describes the build workflow, the
+     identity runs, the rehearsal, and the publish.
+8. **0010-MADR** (step 8) gains "Amendments", "A1 (2026-10-09): D2's
+   rule reads by the publish path". D2's own text is unchanged.
+9. **Checks** (step 9):
+   * `make verify`: exit 0, `0 issues.`, `total coverage: 81.9% (minimum
+     80.0%)`, `No vulnerabilities found.`;
+   * `go test -race -count=1 ./...`: exit 0;
+   * `go vet` for linux, darwin and windows: exit 0 each;
+   * `go mod tidy -diff`: exit 0;
+   * `gofmt -l`: empty;
+   * `make workflow-lint` (actionlint): exit 0.
+10. **The build workflow's own steps, locally,** before any push. On a
+    scratch copy of this work tree, committed in that copy only, and
+    go-selfupdate-lib cloned at `v1.13.0`:
+    * `selfupdate-release plan … -ref-type branch` exited 0, with
+      `rehearsal=true` and the six platforms in `platforms-json`;
+    * its `identity-matrix` has five legs, every platform but
+      darwin/amd64;
+    * `selfupdate-release build` exited 0 with the six binaries;
+    * the darwin/arm64 one's `identity` printed
+      `rehearsal-<sha> (local) <12-hex>`.
+
+    The run on GitHub is Phase 5 step 1's.
+11. **Staged** for the owner's commit. `make verify-staged` on the staged
+    snapshot: exit 0, both libraries resolved from GitHub, `0 issues.`,
+    `No vulnerabilities found.`

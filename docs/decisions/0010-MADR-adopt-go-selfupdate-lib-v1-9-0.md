@@ -324,6 +324,30 @@ written, and this record is `accepted`.
   it?
 * **Q5 (D5).** Release `v1.7.0` (recommended), or `v1.6.1`?
 
+## Amendments
+
+### A1 (2026-10-09): D2's rule reads by the publish path
+
+*Decided in
+[0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md](0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md)
+(P1), and applied in its PLAN's Phase 2. D2's text above is left as
+written.*
+
+* **The rule now reads:** the publish pin is the newest go-selfupdate-lib
+  commit whose publish path, meaning the publish workflow file and the
+  scripts it runs from the pinned checkout, is unchanged from a commit that
+  has published live.
+* **Why:**
+  * `v1.13.0`'s publish workflow is the same blob (`a0c842a8…`) as
+    `v1.11.0`'s, which published live in go-selfupdate-lib 0015-PLAN's
+    `v1.11.0` rehearsal;
+  * the four scripts it runs are unchanged;
+  * the build workflow, adopted by 0012-MADR (B1), must be pinned to the
+    same commit as the publish workflow, and that commit's version is the
+    one `go.mod` requires.
+* **The pins** are both
+  `5e199c831b5691ea687943e3c3fd495d50c739ed` (`v1.13.0`).
+
 ## More Information
 
 * go-selfupdate-lib records, by full filename in that repository:

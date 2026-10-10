@@ -24,14 +24,12 @@ permissions:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Go quality gate + cross-platform release builds on tag runs
+  # Go quality gate
   # ---------------------------------------------------------------------------
   go:
-    name: Go (test; build on tag)
+    name: Go (quality contract)
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    outputs:
-      version: ${{ steps.build.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
@@ -49,25 +47,6 @@ jobs:
 
       - name: Run repository quality contract
         run: make verify
-
-      - name: Build release binaries
-        id: build
-        if: github.ref_type == 'tag'
-        run: |
-          set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
-          echo "Building release artifacts for tag: $TAG"
-          make verify-release VERSION="$TAG"
-          echo "version=$TAG" >> "$GITHUB_OUTPUT"
-
-      - name: Upload release artifacts
-        if: github.ref_type == 'tag'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
-        with:
-          name: prepare-commit-msg-${{ steps.build.outputs.version || github.sha }}
-          path: dist/
-          if-no-files-found: error
-          retention-days: 7
 
   # ---------------------------------------------------------------------------
   # Native test execution across supported operating systems
@@ -102,27 +81,40 @@ jobs:
         run: go test ./...
 
   # ---------------------------------------------------------------------------
-  # Publish release assets — tag runs only
+  # Build, check and stage the release from selfupdate-release.json. On a tag
+  # it builds the release; on any other ref it rehearses it, stamped
+  # rehearsal-<commit>, and the release job is skipped.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build release
+    needs: [go, go-native]
+    permissions:
+      contents: read
+    # Both workflows are pinned to the commit of go-selfupdate-lib v1.13.0,
+    # the version go.mod requires. The publish path (the publish workflow
+    # file and the scripts it runs) is unchanged from v1.11.0's, which has
+    # published live, so 0010-MADR D2's rule, as amended, holds
+    # (docs/decisions/0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md
+    # B1, P1; docs/decisions/0010-MADR-adopt-go-selfupdate-lib-v1-9-0.md D2).
+    uses: maccavelli/go-selfupdate-lib/.github/workflows/build-selfupdate-release.yml@5e199c831b5691ea687943e3c3fd495d50c739ed # v1.13.0
+    with:
+      spec-path: selfupdate-release.json
+
+  # ---------------------------------------------------------------------------
+  # Publish the staged release — tag runs only
   # ---------------------------------------------------------------------------
   release:
     name: Publish GitHub Release
-    if: github.ref_type == 'tag'
-    needs: [go, go-native]
+    needs: build
+    if: needs.build.outputs.rehearsal == 'false'
     permissions:
       contents: write
       id-token: write
       attestations: write
-    # The publish workflow is v1.10.0's while go.mod requires
-    # go-selfupdate-lib v1.10.1: the module is proven by this repository's
-    # tests, the workflow only by a published release. v1.10.0's is the newest
-    # with a live publish on record (go-selfupdate-lib 0014-PLAN I7 step 3);
-    # v1.10.1's has none yet. It moves to v1.10.1's commit, or a later one,
-    # once a publish through it is on record
-    # (docs/decisions/0010-MADR-adopt-go-selfupdate-lib-v1-9-0.md D2;
-    # docs/decisions/0011-MADR-adopt-go-llmprovider-sdk-v1-3-2-and-go-selfupdate-lib-v1-10-1.md D2).
-    uses: maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml@a0a26b6ecf66f51c19e9fea0f665c76ca5e99e4c # v1.10.0
+    uses: maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml@5e199c831b5691ea687943e3c3fd495d50c739ed # v1.13.0
     with:
-      artifact-name: prepare-commit-msg-${{ needs.go.outputs.version || github.sha }}
-      products-json: '["prepare-commit-msg"]'
-      platforms-json: '[{"os":"linux","arch":"amd64"},{"os":"linux","arch":"arm64"},{"os":"darwin","arch":"amd64"},{"os":"darwin","arch":"arm64"},{"os":"windows","arch":"amd64"},{"os":"windows","arch":"arm64"}]'
-      extra-assets-json: '[]'
+      artifact-name: ${{ needs.build.outputs.artifact-name }}
+      products-json: ${{ needs.build.outputs.products-json }}
+      platforms-json: ${{ needs.build.outputs.platforms-json }}
+      extra-assets-json: ${{ needs.build.outputs.extra-assets-json }}
+      prerelease-channels-json: ${{ needs.build.outputs.prerelease-channels-json }}
