@@ -531,6 +531,49 @@ Why each:
   `--apply` to read the plan, then with `--apply`. The rulesets are those
   the script already defines.
 
+### A2 (2026-10-10): the script applies more than the rulesets, and its allow list must name the library's workflows
+
+*Found in the PLAN's Phase 4, before any change. Deviation D1 of
+[0012-PLAN-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md](0012-PLAN-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md).*
+
+* **Found [read].** A1 says the script applies "the rulesets the script
+  already defines". `--apply` makes eight changes
+  (`scripts/configure-github.sh:113-127`, `:205-218`):
+  * the Actions policy: `enabled`, `allowed_actions: "selected"`,
+    `sha_pinning_required: true`;
+  * the selected actions: `github_owned_allowed: true`,
+    `verified_allowed: false`, `patterns_allowed: []`;
+  * the workflow token: `default_workflow_permissions: "read"`;
+  * automated security fixes, deleted;
+  * a `release` environment, with a branch policy for `main`;
+  * the two rulesets.
+* **Today [read],** from the API:
+  * `allowed_actions: "all"` and `sha_pinning_required: false`;
+  * the token is already `read`;
+  * there are no environments.
+* **The risk [read].** GitHub's settings page says that under "selected",
+  "only actions and reusable workflows specified in the list will be
+  allowed", apart from local ones and, in an organization, the
+  organization's own. It says nothing of a personal account's other
+  repositories. So the empty list would likely refuse the two
+  `maccavelli/go-selfupdate-lib` reusable workflows B1 adopted.
+  * Every action those workflows use is GitHub-owned and pinned by SHA:
+    `actions/checkout`, `setup-go`, `upload-artifact`,
+    `download-artifact` and `attest-build-provenance`.
+  * The page says the pinning rule does not cover reusable workflows.
+* **Decided (the owner, 2026-10-10, "Allow the two workflows"):**
+  * the script's workflow list becomes `ci.yml` (A1);
+  * `patterns_allowed` names
+    `maccavelli/go-selfupdate-lib/.github/workflows/build-selfupdate-release.yml@*`
+    and `…/publish-selfupdate-release.yml@*`;
+  * after the push, the owner applies all eight changes;
+  * before the tag, a CI run on `main` proves the rehearsal still runs
+    under the new policy;
+  * if CI is refused, `allowed_actions` back to `"all"` undoes it.
+* **Not chosen:** applying only the rulesets, which leaves the script's
+  other hardening unapplied; and deferring the settings, which ships
+  `v1.8.0` without the tag ruleset (against H1).
+
 ## More Information
 
 ### Owner questions

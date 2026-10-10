@@ -554,10 +554,11 @@ git push origin v1.2.3
 
 Once the quality contract and the native tests pass on Linux, macOS and Windows, the tag's CI run calls go-selfupdate-lib's build workflow. It builds the six binaries listed in `selfupdate-release.json` with a fixed recipe, checks each one's build information, runs `prepare-commit-msg identity` on the five platforms GitHub hosts and requires `v1.2.3 (release)`, and writes `SHA256SUMS`. Its publish workflow then publishes the GitHub Release. On a push that is not a tag, the same build runs as a rehearsal, stamped `rehearsal-<commit> (local)`, and nothing is published ([0012-MADR](docs/decisions/0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md)).
 
-Assets include cross-compiled binaries, `SHA256SUMS`, and build-provenance attestations:
+Assets include cross-compiled binaries, `SHA256SUMS`, `install.sh`, `install.ps1`, and build-provenance attestations. The attestation's signer is go-selfupdate-lib's publish workflow, so name it:
 ```bash
-sha256sum --check SHA256SUMS
-gh attestation verify prepare-commit-msg-linux-amd64 --repo maccavelli/prepare-commit-msg
+sha256sum --check --ignore-missing SHA256SUMS
+gh attestation verify prepare-commit-msg-linux-amd64 --repo maccavelli/prepare-commit-msg \
+  --signer-workflow maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml
 ```
 
 ---

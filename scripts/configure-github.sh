@@ -76,10 +76,10 @@ if [ "$(jq -r '.slug' "$CONFIG_TMP/github-actions-app.json")" != \
 fi
 GITHUB_ACTIONS_APP_ID="$(jq -r '.id' "$CONFIG_TMP/github-actions-app.json")"
 
-HARDENED_WORKFLOW_SHA="$(git log -1 --format=%H -- \
-	.github/workflows/quality.yml \
-	.github/workflows/ci.yml \
-	.github/workflows/release.yml)"
+# ci.yml is the one workflow since docs/0004-MADR-align-cicd-with-magic-cli-remote.md
+# folded quality.yml and release.yml into it
+# (docs/decisions/0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md A1).
+HARDENED_WORKFLOW_SHA="$(git log -1 --format=%H -- .github/workflows/ci.yml)"
 [ -n "$HARDENED_WORKFLOW_SHA" ] || {
 	echo "could not resolve the hardened workflow commit" >&2
 	exit 1
@@ -100,15 +100,13 @@ else
 	esac
 fi
 
-for workflow_file in quality.yml ci.yml release.yml; do
-	LOCAL_BLOB="$(git hash-object ".github/workflows/$workflow_file")"
-	REMOTE_BLOB="$(api \
-		"repos/$REPOSITORY/contents/.github/workflows/$workflow_file?ref=$DEFAULT_BRANCH" \
-		--jq '.sha' 2>/dev/null || true)"
-	if [ "$LOCAL_BLOB" != "$REMOTE_BLOB" ]; then
-		REMOTE_READY=false
-	fi
-done
+LOCAL_BLOB="$(git hash-object .github/workflows/ci.yml)"
+REMOTE_BLOB="$(api \
+	"repos/$REPOSITORY/contents/.github/workflows/ci.yml?ref=$DEFAULT_BRANCH" \
+	--jq '.sha' 2>/dev/null || true)"
+if [ "$LOCAL_BLOB" != "$REMOTE_BLOB" ]; then
+	REMOTE_READY=false
+fi
 
 jq -n '{
 	enabled: true,
@@ -116,10 +114,16 @@ jq -n '{
 	sha_pinning_required: true
 }' >"$CONFIG_TMP/actions-policy.json"
 
+# ci.yml calls go-selfupdate-lib's reusable build and publish workflows,
+# which an empty list would refuse under "selected"; every action they use
+# is GitHub-owned and pinned by SHA (0012-MADR A2).
 jq -n '{
 	github_owned_allowed: true,
 	verified_allowed: false,
-	patterns_allowed: []
+	patterns_allowed: [
+		"maccavelli/go-selfupdate-lib/.github/workflows/build-selfupdate-release.yml@*",
+		"maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml@*"
+	]
 }' >"$CONFIG_TMP/selected-actions.json"
 
 jq -n '{

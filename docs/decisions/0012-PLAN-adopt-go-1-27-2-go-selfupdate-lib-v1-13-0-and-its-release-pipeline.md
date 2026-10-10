@@ -588,3 +588,81 @@ The owner committed Phase 2 as `fbe5b3e`.
 6. **Staged** for the owner's commit. `make verify-staged` on the staged
    snapshot: exit 0, both libraries resolved from GitHub, `0 issues.`,
    `No vulnerabilities found.`
+
+### Deviation D1 (2026-10-10): `configure-github.sh --apply` would block the library's workflows
+
+* **Found,** at Phase 4, before any change:
+  * `--apply` makes eight changes, not two;
+  * its Actions policy is `allowed_actions: "selected"` with
+    `patterns_allowed: []`, and SHA pinning required;
+  * GitHub's documentation allows, under that policy, only listed
+    actions and reusable workflows, local ones, and an organization's own.
+
+  So Phase 2's calls to the two `maccavelli/go-selfupdate-lib` reusable
+  workflows would likely be refused. The repository today allows all
+  actions, with no pinning rule, and has no environment. 0012-MADR A2
+  has the details.
+* **Decision (the owner):** "Allow the two workflows".
+* **Scope change,** Phase 4 step 4. `scripts/configure-github.sh` also
+  gains, in `selected-actions.json`'s `patterns_allowed`:
+
+  ```text
+  maccavelli/go-selfupdate-lib/.github/workflows/build-selfupdate-release.yml@*
+  maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml@*
+  ```
+
+  Step 5 applies all eight changes. Phase 5 gains a step between its
+  steps 2 and 3: after the apply, a CI run on `main`, a re-run of step
+  1's, started by the owner, must pass with its rehearsal, before the
+  tag. If it is refused, `allowed_actions: "all"` restores today's policy,
+  and that is a deviation.
+
+### Phase 4: hygiene, steps 1–4 (2026-10-10)
+
+The owner committed Phase 3 as `12b612d`. Deviation D1, above, came first.
+
+1. **`README.md`'s attestation check** (step 1) now names the signer
+   workflow:
+   `--signer-workflow maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml`.
+   `gh attestation verify --help` documents the flag. In the same lines,
+   beyond the step:
+   * the asset list names `install.sh` and `install.ps1`;
+   * the checksum line is `sha256sum --check --ignore-missing
+     SHA256SUMS`, so a user who downloaded one binary is not told the
+     other files are missing.
+
+     Checked on a scratch file pair with one entry missing: GNU-style
+     `sha256sum` on the Linux test host (uutils coreutils 0.10.0) lists
+     the option, and on this Mac both `sha256sum` and
+     `shasum -a 256 --check --ignore-missing` exit 0 with `a: OK`.
+2. **`git rm testfile.txt`** (step 2). `git grep testfile` outside `docs/`
+   finds nothing. 0009-PLAN and 0010-PLAN are not edited.
+3. **`scripts/configure-github.sh`** (step 4, with D1):
+   * the hardened-workflow commit is `git log -- .github/workflows/ci.yml`,
+     with a comment naming `docs/0004-MADR-align-cicd-with-magic-cli-remote.md`,
+     whose commit `44b95af` folded `quality.yml` and `release.yml` into
+     `ci.yml`;
+   * the blob check compares `ci.yml` alone. It is written without a
+     loop, since shellcheck's SC2043 flagged a one-item loop;
+   * `patterns_allowed` names the two go-selfupdate-lib workflows.
+   * **Seen failing first,** on a scratch clone with `origin` set to the
+     GitHub URL, because the script refuses any other: the unchanged
+     script's dry run exited 128 with `fatal: could not open
+     '.github/workflows/quality.yml' for reading: No such file or
+     directory`. That is stronger than the `remote_ready` false the step
+     expected: it never reached the check.
+   * **The fixed script's dry run** exited 0:
+     * `dry-run only: hardened workflows are not yet present on
+       origin/main`;
+     * `hardened_workflow_sha` `fbe5b3e`, `remote_main_sha` `aed7c60`,
+       `remote_ready` false, because nothing since `aed7c60` is pushed;
+     * eight mutations, the selected-actions body naming both patterns.
+   * `shellcheck scripts/configure-github.sh`: exit 0.
+4. **Checks:** `make verify` exit 0, with `0 issues.`, `total coverage:
+   81.9% (minimum 80.0%)` and `No vulnerabilities found.` Its
+   `workflow-lint` step parses every script.
+5. **Staged** for the owner's commit: `README.md`, `testfile.txt` (its
+   removal), `scripts/configure-github.sh`, 0012-MADR (A2) and this PLAN.
+   `make verify-staged` on the staged snapshot: exit 0, both libraries
+   resolved from GitHub, `0 issues.`, `No vulnerabilities found.`
+6. **Step 5,** the owner's `--apply`, waits for Phase 5 step 1's push.
