@@ -121,8 +121,23 @@ You can supply credentials and configure behavior using standard environment var
 
 ### 1. Download or Build the Binary
 
-#### Pre-built Binaries (GitHub Releases)
-Download the latest executable for your OS and architecture from [Releases](https://github.com/maccavelli/prepare-commit-msg/releases):
+#### With the installer (recommended)
+From `v1.8.0`, every release carries `install.sh` and `install.ps1`. Each downloads that release over HTTPS, checks every file against its `SHA256SUMS`, installs the binary for your platform, and runs `prepare-commit-msg identity` to confirm it before it keeps it; the previous binary stays as `prepare-commit-msg.prev` (`prepare-commit-msg.exe.prev` on Windows). Install straight into the global hooks directory of step 2:
+
+```bash
+curl -fsSL https://github.com/maccavelli/prepare-commit-msg/releases/latest/download/install.sh | sh -s -- --dir ~/.global-git-hooks
+```
+
+```powershell
+& ([scriptblock]::Create((irm https://github.com/maccavelli/prepare-commit-msg/releases/latest/download/install.ps1))) -InstallDir "$env:USERPROFILE\.global-git-hooks" -NoPathUpdate
+```
+
+- **Name the directory.** Without `--dir` (`-InstallDir` on Windows), the installer uses `~/.local/bin` (`%LOCALAPPDATA%\Programs\prepare-commit-msg`), which Git does not run hooks from. `PREPARE_COMMIT_MSG_INSTALL_DIR` sets it too.
+- **The installer never changes your Git configuration.** A global hooks directory can hold other hooks, so pointing Git at it is step 2's, and yours.
+- `--version vX.Y.Z` installs another release; `--verify-attestation` also checks each download's build attestation with a logged-in `gh`; `--uninstall` removes the binary and its `.prev`. On Windows the same are `-Version`, `-VerifyAttestation` and `-Uninstall`.
+
+#### Pre-built binaries (manual)
+Or download the executable for your OS and architecture from [Releases](https://github.com/maccavelli/prepare-commit-msg/releases), and check it against the release's `SHA256SUMS`:
 - **Linux:** `prepare-commit-msg-linux-amd64` / `prepare-commit-msg-linux-arm64`
 - **macOS:** `prepare-commit-msg-darwin-amd64` / `prepare-commit-msg-darwin-arm64`
 - **Windows:** `prepare-commit-msg-windows-amd64.exe` / `prepare-commit-msg-windows-arm64.exe`
@@ -138,19 +153,21 @@ make install        # Compiles and installs binary to ~/.global-git-hooks/prepar
 ### 2. Install as a Git Hook
 
 #### Option A: Global Git Hook (Recommended for all repositories)
-Configure Git to use a global hooks directory so all current and future repositories automatically use the hook:
+Point Git at the global hooks directory, so all current and future repositories use the hook. The installer above has already put the binary there; with a manual download or a build, place it first:
 
 ```bash
-# 1. Create a global hooks directory
+# 1. Create a global hooks directory (the installer creates it)
 mkdir -p ~/.global-git-hooks
 
-# 2. Place binary into the directory
+# 2. Place the binary into the directory (the installer has done this)
 cp dist/prepare-commit-msg-$(go env GOOS)-$(go env GOARCH) ~/.global-git-hooks/prepare-commit-msg
 chmod +x ~/.global-git-hooks/prepare-commit-msg
 
 # 3. Point Git at the global hooks directory
 git config --global core.hooksPath ~/.global-git-hooks
 ```
+
+If `core.hooksPath` already names another directory, put the binary there instead (`--dir` that directory) rather than replacing the setting, so the hooks it holds keep running.
 
 #### Option B: Per-Repository Hook
 Symlink or copy the binary into a single repository's `.git/hooks/` directory:
@@ -161,7 +178,7 @@ chmod +x .git/hooks/prepare-commit-msg
 ```
 
 #### Windows Installation
-1. Place `prepare-commit-msg.exe` in `%USERPROFILE%\.global-git-hooks\prepare-commit-msg.exe`.
+1. Install with `install.ps1` as above, or place `prepare-commit-msg.exe` in `%USERPROFILE%\.global-git-hooks\prepare-commit-msg.exe` yourself.
 2. Configure Git:
    ```cmd
    git config --global core.hooksPath %USERPROFILE%\.global-git-hooks

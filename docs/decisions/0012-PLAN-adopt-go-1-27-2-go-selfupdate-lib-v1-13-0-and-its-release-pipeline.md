@@ -535,3 +535,56 @@ The owner committed Phase 1 as `c4a84ed`.
 11. **Staged** for the owner's commit. `make verify-staged` on the staged
     snapshot: exit 0, both libraries resolved from GitHub, `0 issues.`,
     `No vulnerabilities found.`
+
+### Phase 3: installers (2026-10-09)
+
+The owner committed Phase 2 as `fbe5b3e`.
+
+1. **The spec** (step 1) gains `"installer": {"name": "prepare-commit-msg"}`.
+2. **`TestReleaseSpec`** (step 2) also requires:
+   * `InstallerScripts()` to be `[install.sh install.ps1]`;
+   * the installer to be present with no hooks;
+   * `InstallerEnvPrefix(AppTitle)` to be `PREPARE_COMMIT_MSG`, the
+     prefix the README names.
+
+   **Seen failing:** a scratch copy with the `installer` line removed
+   failed with `releasespec_test.go:42: installer scripts [], want
+   [install.sh install.ps1]`. The tree passes.
+3. **`README.md`** (step 3). Under "1. Download or Build the Binary" there
+   is a new "With the installer (recommended)":
+   * the two one-liners, with `--dir ~/.global-git-hooks` and
+     `-InstallDir "$env:USERPROFILE\.global-git-hooks" -NoPathUpdate`;
+   * what the installer checks, and the `.prev` names on each OS;
+   * the default directory, which Git does not run hooks from, and
+     `PREPARE_COMMIT_MSG_INSTALL_DIR`;
+   * that the installer never changes Git's configuration;
+   * `--version`, `--verify-attestation` and `--uninstall`.
+
+   The manual download now says to check `SHA256SUMS`. "Option A" says
+   the installer has placed the binary, and gains a paragraph: when
+   `core.hooksPath` already names a directory, install into it rather
+   than replace the setting. Windows names `install.ps1`. Both headings
+   are unchanged, so the table of contents holds.
+4. **Facts the text rests on,** read in go-selfupdate-lib's templates at
+   `v1.13.0`:
+   * `install.sh` creates the directory (`mkdir -p "$DIR"`, `:419`), and
+     `install.ps1` too (`New-Item -ItemType Directory -Force`, `:383`);
+   * on a scratch copy, `selfupdate-release plan -ref-type tag -ref-name
+     v1.8.0` exited 0, with `extra-assets-json`
+     `["install.sh","install.ps1"]`;
+   * `selfupdate-release installer -repository
+     maccavelli/prepare-commit-msg -tag v1.8.0` rendered both. The
+     rendered `install.sh` has `ENV_PREFIX='PREPARE_COMMIT_MSG'` and
+     `IDENTITY='prepare-commit-msg identity'`, and reads `INSTALL_DIR`
+     through that prefix (`:72`, `:374`);
+   * `shellcheck` on the rendered `install.sh` exited 0.
+5. **Checks** (step 4):
+   * `make verify`: exit 0, `0 issues.`, `total coverage: 81.9% (minimum
+     80.0%)`, `No vulnerabilities found.`;
+   * `go test -race`: exit 0;
+   * `go vet` for linux, darwin and windows: exit 0 each;
+   * `go mod tidy -diff`: exit 0;
+   * `gofmt -l`: empty.
+6. **Staged** for the owner's commit. `make verify-staged` on the staged
+   snapshot: exit 0, both libraries resolved from GitHub, `0 issues.`,
+   `No vulnerabilities found.`

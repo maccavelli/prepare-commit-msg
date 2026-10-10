@@ -11,5 +11,6 @@
     {"os": "windows", "arch": "amd64"},
     {"os": "windows", "arch": "arm64"}
   ],
-  "packaging": "binary"
+  "packaging": "binary",
+  "installer": {"name": "prepare-commit-msg"}
 }

@@ -36,6 +36,18 @@ func TestReleaseSpec(t *testing.T) {
 	if _, err := releaseAssets(); err != nil {
 		t.Fatalf("releaseAssets: %v", err)
 	}
+	// Every release carries both installers, which install into the
+	// directory the user names and leave core.hooksPath alone (0012-MADR I1).
+	if got := spec.InstallerScripts(); !slices.Equal(got, []string{"install.sh", "install.ps1"}) {
+		t.Fatalf("installer scripts %v, want [install.sh install.ps1]", got)
+	}
+	if spec.Installer == nil || len(spec.Installer.Hooks) != 0 {
+		t.Fatalf("installer %+v, want present with no hooks", spec.Installer)
+	}
+	// README.md names the installers' variables by this prefix.
+	if prefix, err := spec.InstallerEnvPrefix(AppTitle); err != nil || prefix != "PREPARE_COMMIT_MSG" {
+		t.Fatalf("installer env prefix %q, %v; want PREPARE_COMMIT_MSG", prefix, err)
+	}
 }
 
 // TestIdentityCommand: identity prints the build identity alone, which the
