@@ -807,4 +807,21 @@ result.
   with no broken links and the eight known placement warnings.
 * Full-file review, metadata, pair links, final newline, and
   `git diff --check`: passed.
-* Phase 0 commit: pending.
+* Phase 0 commit: `7f883c2` (`docs(workspace): accept scaffold decision and
+  start implementation`), created and pushed by the owner.
+
+### 2026-10-10 — Phase 1
+
+* `.gitattributes`: canonical template prefix installed byte-for-byte; the
+  existing `testdata/migration/** -text` block is the only appended delta.
+* `.gitignore`: all nine missing canonical entries appended once; every
+  existing product entry retained.
+* Isolated checkout plant with global attributes disabled and
+  `core.autocrlf=true`: the no-rule checkout was CRLF; the repository-rule
+  checkout was LF; the migration fixture reported `text: unset`.
+* Actual-tree attributes: representative Go, shell, Markdown, workflow, and
+  migration paths matched policy. `git ls-files --eol` exit 0 inspected 81
+  tracked paths with zero noncanonical results.
+* Template-prefix comparison, ignore-entry assertions, full-file review, and
+  `git diff --check`: passed.
+* Phase 1 commit: pending.
