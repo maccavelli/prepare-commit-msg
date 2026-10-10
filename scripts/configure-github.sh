@@ -258,7 +258,12 @@ api --method PUT "repos/$REPOSITORY/actions/permissions/selected-actions" \
 	--input "$CONFIG_TMP/selected-actions.json" >/dev/null
 api --method PUT "repos/$REPOSITORY/actions/permissions/workflow" \
 	--input "$CONFIG_TMP/workflow-permissions.json" >/dev/null
-api --method DELETE "repos/$REPOSITORY/automated-security-fixes" >/dev/null
+# GitHub refuses this DELETE (HTTP 422) while vulnerability alerts are off,
+# even when the fixes are already off, so it runs only when they are on
+# (docs/decisions/0012-PLAN-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md D2).
+if [ "$(api "repos/$REPOSITORY/automated-security-fixes" --jq '.enabled')" != "false" ]; then
+	api --method DELETE "repos/$REPOSITORY/automated-security-fixes" >/dev/null
+fi
 api --method PUT "repos/$REPOSITORY/environments/release" \
 	--input "$CONFIG_TMP/environment.json" >/dev/null
 

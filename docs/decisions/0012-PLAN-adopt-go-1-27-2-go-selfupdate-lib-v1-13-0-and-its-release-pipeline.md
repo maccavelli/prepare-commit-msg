@@ -679,3 +679,39 @@ The owner committed Phase 3 as `12b612d`. Deviation D1, above, came first.
     `-windows-amd64.exe` and `-windows-arm64.exe`;
   * Publish GitHub Release: skipped, as on any push that is not a tag.
   * The run's log names `install.sh` and `install.ps1`.
+
+### Deviation D2 (2026-10-10): `--apply` stopped at the automated-security-fixes call
+
+* **Found,** at Phase 4 step 5. With the owner's permission ("you have
+  explicit permissions to run those tests"), the agent ran:
+  * the dry run: exit 0, `remote_ready` true, hardened `fbe5b3e`, remote
+    `1cafc4b`, the eight mutations;
+  * then `scripts/configure-github.sh --apply`, which exited 1 at its
+    fourth call, `api --method DELETE "repos/$REPOSITORY/automated-security-fixes"`
+    (`:261`): `gh: Vulnerability alerts must be enabled to configure
+    automated security fixes. (HTTP 422)`. The script first saved its
+    pre-apply audit to `.git/prepare-commit-msg-github-settings-before.json`.
+* **The state after it,** from the API:
+  * applied: `actions/permissions` is `selected` with
+    `sha_pinning_required: true`, and `selected-actions` names both
+    go-selfupdate-lib workflows;
+  * unchanged: the workflow token is `read`, as it was before;
+  * already the target: `automated-security-fixes` reports
+    `enabled: false`, and `vulnerability-alerts` returns 404, so it is
+    off;
+  * not applied: the `release` environment, its branch policy, and both
+    rulesets. `GET …/rulesets?includes_parents=true` returns `[]`.
+* **The new policy holds for CI.** With the owner's permission, the agent
+  re-ran run 38057642183. Attempt 2 passed: the quality contract, three
+  native jobs, Build release / build, and five identity legs, with
+  Publish skipped. The publish workflow, on the same allow list, runs
+  first on the tag.
+* **Not pre-existing:** the script had never been applied.
+* **Decision (the owner):** "Make the script idempotent". The script
+  skips the DELETE when `GET …/automated-security-fixes` already reports
+  `enabled: false`, the state that call exists to reach. It is staged for
+  the owner's commit. After the commit, the agent re-runs `--apply`, whose
+  PUTs and upserts are idempotent, and checks the environment and both
+  rulesets through the API.
+* **Scope:** `scripts/configure-github.sh` again, in Phase 4. 0012-MADR is
+  unchanged: A2's end state is the same.
