@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: complete
 date: 2026-10-10
 associated-madr: "0013-MADR-align-repository-with-workspace-scaffolding.md"
 ---
@@ -928,4 +928,37 @@ result.
   exited 0; the installed v0.23.2 linter and `make markdownlint` each linted
   seven files with zero issues. All 93 staged paths, including the nine new
   paths, had canonical attributes.
-* Phase 3 commit: pending.
+* Phase 3 commit: `90a3a95` (`feat(workflow): add cross-agent MADR and PLAN
+  guidance`).
+
+### 2026-10-10 — Phase 4 close-out
+
+* Commit inventory reviewed:
+  * Phase 0 `7f883c2`: docs index and the accepted 0013 MADR/PLAN pair.
+  * Phase 1 `013e650`: `.gitattributes`, `.gitignore`, and this PLAN.
+  * Phase 2 `c538518`: Make and Markdown tooling; root/docs/architecture/guide
+    documentation; nine record/guide moves; 0003 through 0006 link/status
+    repairs; 0013 MADR/PLAN/GATES evidence; hook deletion, installer/tests, and
+    the live configure-script comment.
+  * Phase 3 `90a3a95`: `AGENTS.md`; eight Claude, Grok, OpenCode, Codex, and
+    Kilo support files; `opencode.json`; docs index; this PLAN; and the GATES
+    record.
+* All sixteen pinned canonical template SHA-256 values were recomputed and
+  matched. The ten repository byte-copy targets also retained ten exit-0
+  `cmp` results.
+* Generated and merged deltas are limited to the reviewed `AGENTS.md` slots,
+  repository-specific docs index and architecture content, the canonical
+  Makefile snippet integration, the `.gitattributes` migration-fixture
+  exception, and the additive `.gitignore` fragment. The hook and
+  documentation changes are those named by D8 and Phase 2.
+* Both deviations were owner-approved and recorded before continuation: the
+  conditional absence of managed pre-commit when no host hook exists, and the
+  separation of public-forge references from sensitive Git-host identifiers.
+  No unapproved deviation remains.
+* Nothing in the accepted scope remains undone. No Go source, test, module,
+  dependency, CI workflow, release specification, tag, release, push, remote
+  setting, or live service was changed. Per the PLAN, the passing Phase 2
+  `make verify` was not repeated after docs/agent-only phases.
+* Final close-out records and Markdown gates passed and are recorded in the
+  GATES report. The Phase 4 commit is recorded in the handoff rather than by
+  amending its own commit.

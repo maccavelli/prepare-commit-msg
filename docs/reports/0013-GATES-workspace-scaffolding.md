@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: complete
 date: 2026-10-10
 associated-plan: "0013-PLAN-align-repository-with-workspace-scaffolding.md"
 ---
@@ -18,8 +18,7 @@ next number is 0014.
 ## Template hashes
 
 All sixteen reviewed SHA-256 values in the PLAN matched the canonical
-workspace templates before execution. Revalidation at final close-out is
-pending.
+workspace templates before execution and again at final close-out.
 
 ## Copied-file comparisons
 
@@ -73,6 +72,7 @@ is repaired. Live script and guide references use the new paths.
 | Phase 3 records | `--next` exit 0 with `0014`; direct and Make `--check-all` gates exit 0 |
 | Phase 3 Markdown | Installed v0.23.2 binary and `make markdownlint` exit 0; seven files linted, zero issues |
 | Phase 3 line endings | 93 staged paths had zero noncanonical attributes, including all nine new paths |
+| Phase 4 close-out | `--next`, direct/Make records checks, and direct/Make pinned Markdown checks exit 0; next is `0014`, seven files linted, zero issues |
 
 ## Identifier scan
 
@@ -91,4 +91,5 @@ invoke `make verify`; `make verify-staged` remains available on demand.
 
 ## Remaining work
 
-Commit the passing Phase 3 agent files, then close out this record.
+None. All acceptance criteria are satisfied. The Phase 4 status-only commit is
+recorded in the execution handoff rather than by amending this report.

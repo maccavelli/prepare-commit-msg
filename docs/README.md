@@ -40,8 +40,8 @@ This tree holds three kinds of document:
 | 0012 | MADR | [Adopt Go 1.27.2 and go-selfupdate-lib v1.13.0](decisions/0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md) | accepted |
 | 0012 | PLAN | [Implement Go 1.27.2 and go-selfupdate-lib v1.13.0](decisions/0012-PLAN-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md) | complete |
 | 0013 | MADR | [Adopt the fleet workspace scaffold](decisions/0013-MADR-align-repository-with-workspace-scaffolding.md) | accepted |
-| 0013 | PLAN | [Implement the fleet workspace scaffold](decisions/0013-PLAN-align-repository-with-workspace-scaffolding.md) | in progress |
-| 0013 | GATES | [Workspace-scaffolding verification](reports/0013-GATES-workspace-scaffolding.md) | in progress |
+| 0013 | PLAN | [Implement the fleet workspace scaffold](decisions/0013-PLAN-align-repository-with-workspace-scaffolding.md) | complete |
+| 0013 | GATES | [Workspace-scaffolding verification](reports/0013-GATES-workspace-scaffolding.md) | complete |
 
 ## I want to…
 
