@@ -99,5 +99,5 @@ This directory contains design documents, architectural decision records (MADR),
   * **Topic:** Phases 0–4: the bumps, the pin and the refused-key test, the README, release v1.8.0 with the live checks, and close-out.
 
 * [0012-PLAN: Implement the Move to Go 1.27.2 and go-selfupdate-lib v1.13.0, and the Library's Build, Publish and Install Pipeline](decisions/0012-PLAN-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md)
-  * **Status:** In Progress
+  * **Status:** Complete
   * **Topic:** Phases 0–6: the records and 0011-PLAN's carried release, the toolchain, library and tools, the spec, `identity` and both workflows at v1.13.0, the installers, hygiene and the rulesets, release v1.8.0 with the live checks, and close-out.

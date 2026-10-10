@@ -1,6 +1,6 @@
 ---
-status: in-progress
-date: 2026-10-09
+status: complete
+date: 2026-10-10
 associated-madr: "0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md"
 ---
 # Implement the move to Go 1.27.2 and go-selfupdate-lib v1.13.0, and the library's build, publish and install pipeline
@@ -746,3 +746,189 @@ The owner committed Phase 3 as `12b612d`. Deviation D1, above, came first.
 
   After the owner's commit, the agent re-runs `--apply`, and checks both
   rulesets through the API.
+
+### Phase 4 step 5 and Phase 5 step 2: the settings converge (2026-10-10)
+
+* After D3's fix (`69d4efc`, pushed), the agent re-ran
+  `scripts/configure-github.sh --apply` with the owner's permission. It
+  exited 0: "GitHub repository enforcement converged; resulting audit
+  follows". It kept the pre-apply audit D2's run had saved.
+* **Read back from the API:**
+  * `actions/permissions`: `allowed_actions` `selected`,
+    `sha_pinning_required` true;
+  * `selected-actions`: GitHub-owned, plus the two go-selfupdate-lib
+    workflow patterns;
+  * the `release` environment, with one branch policy, `main`;
+  * the rulesets:
+
+    | id | name | target | enforcement | rules | bypass |
+    | :--- | :--- | :--- | :--- | :--- | :--- |
+    | 24842254 | `prepare-commit-msg-main` | branch | active | deletion, non_fast_forward | repository admin |
+    | 24842346 | `prepare-commit-msg-release-tags` | tag, `refs/tags/v*` | active | creation, deletion, non_fast_forward | repository admin only; `current_user_can_bypass` `always` |
+* **CI under the policy:**
+  * run 38057642183, attempt 2, at `1cafc4b`, passed after the Actions
+    policy was applied (D2);
+  * the run on `688c30e` was cancelled, superseded by the push of
+    `69d4efc` under `ci.yml`'s `cancel-in-progress`;
+  * run 38059390475 at `69d4efc` passed:
+    * the quality contract, the three native jobs, and Build release /
+      build;
+    * five identity legs, each reporting
+      `rehearsal-69d4efc65a48 (local) 69d4efc65a48`;
+    * Publish skipped.
+
+    `69d4efc` is the commit `v1.8.0` tags.
+
+### Phase 5, steps 3–4: `v1.8.0` (2026-10-10)
+
+* **Step 3.** The owner tagged `v1.8.0`, annotated (`git cat-file -t`
+  gives `tag`), object `9742acdc…`, peeled to `69d4efc`, and pushed it.
+  `git ls-remote` gives the same.
+* **Step 4, the tag's CI,** run 38059937426, passed every job:
+  * the quality contract, and the native tests on Linux, macOS and
+    Windows;
+  * Build release / build;
+  * five identity legs, each reporting `v1.8.0 (release) 69d4efc65a48`:
+    `prepare-commit-msg-linux-amd64`, `-linux-arm64`, `-darwin-arm64`,
+    `-windows-amd64.exe` and `-windows-arm64.exe`;
+  * **Publish GitHub Release / publish.** This is the publish workflow's
+    first live run under the `selected` Actions policy and SHA pinning
+    (D1, A2).
+* **Step 4, the release:**
+  * `gh release view v1.8.0` gives `isDraft` false, `isPrerelease` false
+    and `isImmutable` true, published `2026-10-10T14:36:05Z`;
+  * `GET …/releases/latest` gives `v1.8.0`, immutable;
+  * there are nine assets: the six binaries, `SHA256SUMS`, `install.sh`
+    and `install.ps1`.
+* **Step 4, the checks,** in a scratch directory on this Mac:
+  * `shasum -a 256 --check --ignore-missing SHA256SUMS` gives `OK` for
+    `prepare-commit-msg-darwin-arm64` and `-linux-amd64`;
+  * `gh attestation verify … --repo maccavelli/prepare-commit-msg
+    --signer-workflow maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml`
+    exits 0 for `prepare-commit-msg-linux-amd64` and for `install.sh`;
+  * the darwin/arm64 binary's `identity` prints
+    `v1.8.0 (release) 69d4efc65a48`; `go version` on it gives
+    `go1.27.2`, and `govulncheck -mode=binary` reports
+    `No vulnerabilities found.`
+
+### Phase 5, step 7: the installers, live (2026-10-10)
+
+The README's one-liners ran against `releases/latest`, which is
+`v1.8.0`. Each host used a scratch directory; no host's real hooks
+directory, `~/.local/bin`, `LOCALAPPDATA` or user PATH was touched.
+
+| Host | Form | Install | `identity` | Uninstall |
+| :--- | :--- | :--- | :--- | :--- |
+| this Mac | `curl … install.sh \| sh -s -- --dir "$HOME/.global-git-hooks"`, with `HOME` a scratch directory | exit 0: `installed <scratch-home>/.global-git-hooks/prepare-commit-msg (v1.8.0)` | `v1.8.0 (release) 69d4efc65a48` | `--uninstall`, exit 0: `removed …/prepare-commit-msg`, the directory then empty |
+| the Linux test host | the same | exit 0, the same line | the same | the same |
+| the Windows test host, Windows PowerShell 5.1.26100.9444 | `& ([scriptblock]::Create((irm …/install.ps1))) -InstallDir <scratch>\.global-git-hooks -NoPathUpdate` | `installed <scratch>\.global-git-hooks\prepare-commit-msg.exe (v1.8.0)` | `v1.8.0 (release) 69d4efc65a48` (exit 0) | `-Uninstall`: `removed …\prepare-commit-msg.exe`, the folder then empty |
+| the same host, PowerShell 7.6.6 | the same | the same | the same | the same |
+
+* **The installer left Git's configuration alone.** With the scratch
+  `HOME`, `git config --global --get core.hooksPath` was empty after the
+  install (I1).
+* **The user PATH:** "user PATH unchanged: True" under both PowerShells.
+* **What every install printed:** a PATH hint, such as `add … to your
+  PATH`. For a hooks directory it does not apply, since Git runs the hook
+  by path. The installers print it for every directory. It is noted here,
+  not changed.
+* **`install.ps1`, live.** This is the first live run of the template
+  since go-selfupdate-lib `v1.12.1` (0012-MADR "Not verified"). It ran
+  the install and uninstall paths; the identity-failure path was not run.
+
+### Phase 5, steps 5–6: `update` and the installed hook (2026-10-10)
+
+* **Step 5.** The owner ran `update` on the installed hook on every host
+  that uses it: "updating all hosts i use prepare-commit-msg on went
+  perfectly". Before it, the hooks were `v1.7.0` on this Mac and on the
+  Windows test host. On the Linux test host the hook was `1.4.0
+  (release)`, an mcplib-era build.
+* **Step 6,** read-only, on each host's installed hook:
+
+  | Check | this Mac | the Linux test host | the Windows test host |
+  | :--- | :--- | :--- | :--- |
+  | `version` | `prepare-commit-msg version v1.8.0 (release) 69d4efc65a48` | the same | the same |
+  | `identity` | `v1.8.0 (release) 69d4efc65a48` | the same | the same |
+  | `go version -m` | `go1.27.2`; `go-llmprovider-sdk v1.3.2`, `go-selfupdate-lib v1.13.0` | the same | the same |
+  | `govulncheck -mode=binary` | exit 0, `No vulnerabilities found.` | the same | the same |
+  | `update --check` | exit 0, `prepare-commit-msg: up to date (v1.8.0)` | the same | the same |
+
+* **0011-PLAN's live checks,** on this Mac, in scratch repositories, each
+  with one staged change (a README and a Go function):
+  * **A real message.** The installed hook, with the owner's own
+    configuration, exited 0 and wrote a six-line message, first line
+    `feat(demo): add basic addition function`.
+  * **The refused-key stop.** With `HOME` a scratch directory,
+    `configure --yes --provider gemini --model gemini-3.7-flash
+    --fallback gemini-3.6-flash`, then the hook with `GEMINI_API_KEY`
+    set to the literal `not-a-key`. Its whole standard error:
+
+    ```text
+    prepare-commit-msg: generating via gemini (gemini-3.7-flash)...
+    prepare-commit-msg: could not generate a message: authentication failed for gemini: llmprovider: authentication failed: gemini HTTP 400 API_KEY_INVALID: API key not valid. Please pass a valid API key.
+    prepare-commit-msg: commit editor left unchanged — type a message manually or run: prepare-commit-msg configure
+    ```
+
+    It stopped at the first model, never asked `gemini-3.6-flash`, and
+    exited 0, so the commit is not blocked. The message file stayed
+    empty.
+
+### Verification, at closing (2026-10-10)
+
+* **V1 (T1, D1).**
+  * `go.mod` says `go 1.27.2`.
+  * `.tools/bin`'s golangci-lint `v2.14.0`, govulncheck `v1.8.0` and
+    actionlint `v1.7.12` are built with `go1.27.2`.
+  * `make verify` passed on this Mac and the Linux test host (Phase 1),
+    and `make verify-staged` passed for every phase's commit.
+  * The pre-commit hook, which failed every commit before Phase 0, has
+    passed the owner's commits since.
+* **V2 (L1).** The `go.mod`/`go.sum` diff is the `go` line and the
+  library's lines. `TestUpdateCheckJSONSchema` failed at 2 and passes at
+  4. `govulncheck ./...` is clean.
+* **V3 (B1).** `TestReleaseSpec` and `TestIdentityCommand` failed on their
+  plants, and pass. `update.go` holds no platform list. The rehearsal on
+  `main` passed with five identity legs: run 38057642183, and again in
+  38059390475.
+* **V4 (P1).** Both `uses:` name `5e199c83…`, and
+  `0010-MADR-adopt-go-selfupdate-lib-v1-9-0.md` carries A1.
+* **V5 (I1).** `v1.8.0` carries `install.sh` and `install.ps1`. The
+  one-liners installed and uninstalled on three hosts, four shells, in
+  scratch directories (step 7).
+* **V6 (H1).**
+  * The README's check names the signer workflow.
+  * `testfile.txt` is not tracked.
+  * Both rulesets are active: `prepare-commit-msg-main` (24842254) and
+    `prepare-commit-msg-release-tags` (24842346).
+* **V7 (the release).**
+  * The tag's CI, the immutable release, its nine assets and both
+    attestations hold (steps 3–4).
+  * Every installed hook is `v1.8.0`, built with `go1.27.2`, and
+    `govulncheck -mode=binary` is clean.
+  * 0011's live checks pass.
+
+### Closing (2026-10-10)
+
+* V1–V7 hold.
+* **Deviations,** each recorded above:
+  * **D1:** the Actions allow list names the two go-selfupdate-lib
+    workflows;
+  * **D2:** the script skips a DELETE that GitHub refuses while
+    vulnerability alerts are off;
+  * **D3:** the tag ruleset's bypass is administrators only, since GitHub
+    refuses the Actions integration for a personal account's repository.
+
+  0012-MADR carries A1 and A2, with D3's note.
+* **Not done, as scoped:**
+  * `AGENTS.md` and the workspace scaffold, which the owner has taken up
+    in its own records,
+    `0013-MADR-align-repository-with-workspace-scaffolding.md` and its
+    PLAN;
+  * moving `0001` to `0005` into `docs/decisions/`;
+  * L2, and Dependabot;
+  * the identity-failure path of `install.ps1`, which no live run
+    exercised.
+* **Observed, not changed:** every installer run prints a PATH hint,
+  which does not apply to a hooks directory.
+* This PLAN is `complete`, and `docs/README.md` says so. 0012-MADR stays
+  `accepted`.
