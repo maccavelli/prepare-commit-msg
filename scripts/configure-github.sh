@@ -68,14 +68,6 @@ DEFAULT_BRANCH="$(jq -r '.default_branch' "$CONFIG_TMP/repository.json")"
 	exit 1
 }
 
-api "apps/github-actions" >"$CONFIG_TMP/github-actions-app.json"
-if [ "$(jq -r '.slug' "$CONFIG_TMP/github-actions-app.json")" != \
-	"github-actions" ]; then
-	echo "could not resolve the GitHub Actions integration" >&2
-	exit 1
-fi
-GITHUB_ACTIONS_APP_ID="$(jq -r '.id' "$CONFIG_TMP/github-actions-app.json")"
-
 # ci.yml is the one workflow since docs/0004-MADR-align-cicd-with-magic-cli-remote.md
 # folded quality.yml and release.yml into it
 # (docs/decisions/0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md A1).
@@ -171,7 +163,12 @@ jq -n '{
 	rules: [{type: "deletion"}, {type: "non_fast_forward"}]
 }' >"$CONFIG_TMP/main-ruleset.json"
 
-jq -n --argjson actions_app_id "$GITHUB_ACTIONS_APP_ID" '{
+# Administrators alone may bypass. A repository a personal account owns
+# cannot name the GitHub Actions integration as a bypass actor, and no
+# workflow creates or deletes a v* tag: the publish workflow's
+# `gh release create --verify-tag` requires the tag to exist
+# (docs/decisions/0012-PLAN-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md D3).
+jq -n '{
 	name: "prepare-commit-msg-release-tags",
 	target: "tag",
 	enforcement: "active",
@@ -179,11 +176,6 @@ jq -n --argjson actions_app_id "$GITHUB_ACTIONS_APP_ID" '{
 		{
 			actor_id: 5,
 			actor_type: "RepositoryRole",
-			bypass_mode: "always"
-		},
-		{
-			actor_id: $actions_app_id,
-			actor_type: "Integration",
 			bypass_mode: "always"
 		}
 	],

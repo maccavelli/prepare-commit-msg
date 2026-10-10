@@ -715,3 +715,34 @@ The owner committed Phase 3 as `12b612d`. Deviation D1, above, came first.
   rulesets through the API.
 * **Scope:** `scripts/configure-github.sh` again, in Phase 4. 0012-MADR is
   unchanged: A2's end state is the same.
+
+### Deviation D3 (2026-10-10): GitHub refuses the tag ruleset's Actions bypass
+
+* **Found.** After D2's fix (`688c30e`, pushed), the agent re-ran
+  `--apply`. It exited 1 with `gh: Validation Failed (HTTP 422)`. The API
+  then showed:
+  * applied: the `release` environment, its one branch policy (`main`),
+    and the ruleset `prepare-commit-msg-main` (id 24842254, `active`);
+  * missing: `prepare-commit-msg-release-tags`.
+
+  Re-sending that POST with the script's own body gave the reason:
+  `"Actor GitHub Actions integration must be part of the ruleset source or
+  owner organization"`. The body's second bypass actor is the GitHub
+  Actions integration (`actor_id` 15368, `Integration`), and a repository
+  a personal account owns cannot name it.
+* **Nothing needs that bypass:**
+  * go-selfupdate-lib's publish workflow at `v1.13.0` creates the release
+    with `gh release create "$TAG"` and `--verify-tag` (`:202-215`), which
+    requires the tag to exist;
+  * neither the build workflow nor `ci.yml` runs `git tag`, `git push` or
+    `gh release create`.
+* **Decision (the owner):** "Drop the Actions bypass".
+* **Scope:** `scripts/configure-github.sh` again.
+  * The tag ruleset's bypass list is the repository administrator role
+    alone.
+  * The `apps/github-actions` lookup, which fed only that entry, goes with
+    it.
+  * 0012-MADR A2 gains a note.
+
+  After the owner's commit, the agent re-runs `--apply`, and checks both
+  rulesets through the API.

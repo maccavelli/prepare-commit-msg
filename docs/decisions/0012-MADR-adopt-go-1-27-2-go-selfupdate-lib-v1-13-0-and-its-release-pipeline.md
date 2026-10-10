@@ -573,6 +573,15 @@ Why each:
 * **Not chosen:** applying only the rulesets, which leaves the script's
   other hardening unapplied; and deferring the settings, which ships
   `v1.8.0` without the tag ruleset (against H1).
+* *(Note, 2026-10-10, Deviation D3 of the PLAN.)* GitHub refuses the
+  tag ruleset as the script wrote it: "Actor GitHub Actions integration
+  must be part of the ruleset source or owner organization" (HTTP 422).
+  A repository a personal account owns cannot name the GitHub Actions app
+  as a bypass actor. No workflow creates or deletes a `v*` tag; the
+  publish workflow runs `gh release create … --verify-tag`
+  (go-selfupdate-lib `v1.13.0`, `publish-selfupdate-release.yml:202-215`).
+  So the owner chose to drop that bypass. Repository administrators keep
+  theirs, and nothing else can create, delete or force-move a `v*` tag.
 
 ## More Information
 
