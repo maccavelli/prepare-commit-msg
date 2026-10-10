@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: in-progress
 date: 2026-10-10
 associated-madr: "0013-MADR-align-repository-with-workspace-scaffolding.md"
 ---
@@ -12,8 +12,9 @@ Associated MADR:
 ## Goal
 
 Bring this existing Go product into complete alignment with the fleet
-workspace scaffold while preserving its product behavior, product gates,
-record numbers, historical rationale, and unrelated work.
+workspace scaffold while preserving its product behavior, deliberate
+pre-push and CI gates, record numbers, historical rationale, and unrelated
+work.
 
 Done means:
 
@@ -27,33 +28,53 @@ Done means:
 * the operations runbook is in `docs/guides/`;
 * the root README, docs index, architecture document, guide, records, and gate
   report form a navigable, link-clean tree;
+* the repository-owned pre-commit entrypoint is absent, existing host
+  pre-commit behavior is preserved, and full verification still runs at
+  pre-push and in CI;
 * the existing Go and repository verification contract still passes;
 * the execution record contains command exit statuses, plant failures,
   template comparisons, deviations, and anything deliberately left undone.
 
-This PLAN is proposed for review. It authorizes no implementation, staging,
-commit, push, tag, installer, build, or live-service mutation until the owner
-explicitly approves execution or an individual phase.
+The owner accepted the MADR and approved this PLAN for execution on
+2026-10-10. Pushes and tags remain outside that approval.
 
 ## Research Baseline
 
 ### Repository facts
 
-The plan is based on the repository at `3a1874f`, which commits the proposed
-MADR. At authoring time this PLAN is untracked, and
+The amended plan is based on the clean repository at `69d4efc` on 2026-10-10.
+The proposed MADR and PLAN are committed on `main`; later commits record
+pipeline results and repository-settings fixes. Before execution, re-run the
+baseline probes rather than assuming this state is still current.
+
+During this amendment,
 `0012-PLAN-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md`
-has a separate unstaged execution-log update. That update is outside this
-PLAN and must be preserved. Before execution, re-run the baseline probes
-rather than assuming this state is still current.
+acquired a separate unstaged execution-log update. That path is outside this
+PLAN and must be preserved without staging or editing it.
 
 * The repository is an existing Go product with a `Makefile`, CI, local hook
   wrappers, release tooling, and a hand-maintained docs index.
-* The active hooks path is a repository wrapper. Its recorded previous path
-  matches the global hooks setting, and its `pre-commit`, `pre-push`, and
-  `prepare-commit-msg` wrappers are present. This supports
-  `git commit --no-edit`.
+* The active hooks path is `.git/prepare-commit-msg-hooks`. Its recorded
+  previous path matches the global hooks setting, and its `pre-commit`,
+  `pre-push`, and `prepare-commit-msg` wrappers are present. This supports
+  `git commit --no-edit` but also means the implementation must migrate the
+  installed pre-commit wrapper before its repository entrypoint is deleted.
 * The current product checks are `make verify` for the complete contract and
   `make verify-staged` for the staged Go/module snapshot.
+* `.githooks/pre-commit` contains only an `exec make ... verify-staged`
+  launcher. `.githooks/pre-push` runs `make verify`, and
+  `.github/workflows/ci.yml` also runs `make verify`.
+* `scripts/install-hooks.sh` explicitly installs both repository wrappers and
+  then carries other executable hooks forward from the previously effective
+  hooks directory. `scripts/test-hooks.sh` currently requires both repository
+  wrappers in its expected invocation log.
+* A scratch repository containing the current installer, a host pre-commit,
+  and only the repository pre-push entrypoint reproduced the upgrade hazard:
+  installation exited 1 with `repository hook is not executable:` naming the
+  absent `.githooks/pre-commit`.
+* Proposed MADR 0005 depends on a repository pre-commit trigger, but its Python
+  replacement was never implemented; the tracked pre-commit entrypoint is
+  still Bash.
 * The documentation has one subject tree. There is no adjacent stack with its
   own records.
 * The repository-wide sequence uses `0001` through `0013`; after this pair is
@@ -61,8 +82,16 @@ rather than assuming this state is still current.
 * A complete scratch copy with the canonical records checker passes existing
   relative links and reports eight placement warnings.
 * Moving the eight misplaced records and the operations runbook in a scratch
-  copy, without repairing links, produces exactly 23 broken relative links.
-  The deterministic repair set is recorded in Phase 2.
+  copy after this amendment, without repairing links, produces exactly 25
+  broken relative links. The original 23 plus the two supersession links added
+  to the MADR form the deterministic repair set recorded in Phase 2.
+* Git's hook documentation states that pre-commit is client-side and bypassable
+  with `--no-verify`; its pre-push hook can reject a push. GitHub's status-check
+  documentation states that required checks must pass before a protected
+  branch merge. Repository evidence, rather than those general facts, is what
+  identifies the duplicated `make` invocations removed here. Primary sources:
+  [Git hooks](https://git-scm.com/docs/githooks) and
+  [GitHub status checks](https://docs.github.com/en/pull-requests/reference/status-checks).
 
 ### Canonical template facts
 
@@ -103,7 +132,15 @@ for approval. Do not silently execute a newer scaffold than the one reviewed.
   `.gitignore`.
 * Adding the canonical records checker and Markdown configuration.
 * Adding the canonical portable `SHELL`, `check-records`, and `markdownlint`
-  Makefile content without altering the Go gates.
+  Makefile content while retaining both Go verification targets.
+* Deleting `.githooks/pre-commit`, removing its repository wrapper from the
+  installer, and migrating an already-installed managed wrapper to host-only
+  delegation without weakening modified-wrapper refusal.
+* Updating hook-composition tests, hook documentation, and the Make target help
+  to describe and prove host pre-commit preservation plus repository pre-push.
+* Marking the proposed 0005 MADR/PLAN pair rejected because its unimplemented
+  Windows trigger conflicts with the owner's decision to remove repository
+  pre-commit hooks.
 * Moving the `0001` through `0005` records that are outside
   `docs/decisions/`, with all required link repairs.
 * Moving `docs/cicd-operations.md` to
@@ -126,9 +163,10 @@ for approval. Do not silently execute a newer scaffold than the one reviewed.
 * Go source, tests, module requirements, dependency versions, linter versions,
   release specifications, CI workflow behavior, GitHub settings, tags,
   releases, and live-service changes.
-* Changing repository hook behavior or reinstalling hooks.
 * Changing the canonical user skill or any host-level identity, hook, MCP, or
   application configuration.
+* Removing `make verify-staged`, `scripts/go-precheck.py`, the repository
+  pre-push hook, `make verify`, or CI verification.
 * Adding `.editorconfig`, Dependabot, `SECURITY.md`, `CODEOWNERS`,
   `CONTRIBUTING.md`, `CHANGELOG.md`, a new CI workflow, application-specific
   Claude settings, or extra Kilo configuration.
@@ -158,7 +196,9 @@ for approval. Do not silently execute a newer scaffold than the one reviewed.
    continuing.
 8. Before each phase commit, inspect `git diff` and `git diff --cached`, stage
    only the phase paths, run that phase's pre-add checks, and confirm the hook
-   path is still the global directory or its chaining repository wrapper.
+   path is still the global directory or its chaining repository wrapper. In
+   Phase 2, also confirm the active wrapper no longer references the deleted
+   repository pre-commit entrypoint.
 9. Commit with `git commit --no-edit`. Never pass `-m`, `-F`, `-c`, `-C`, or
    `--amend`; never bypass hooks. Record the resulting commit in this PLAN.
 10. Do not push or tag.
@@ -179,7 +219,7 @@ PLAN or Phase 0.
 
 1. Re-run the repository and template baseline probes. Confirm:
    * the only decision number newly claimed is `0013`;
-   * `3a1874f` or its descendant contains the proposed MADR unchanged except
+   * `69d4efc` or its descendant contains the proposed pair unchanged except
      for separately reviewed amendments;
    * the MADR and PLAN filenames and slugs are identical apart from the kind;
    * this PLAN links to the MADR and the MADR names this same-slug PLAN;
@@ -188,9 +228,7 @@ PLAN or Phase 0.
    * no named phase path contains an unreviewed concurrent edit.
 2. Change the MADR status from `proposed` to `accepted`, with the actual
    approval date. Change this PLAN from `proposed` to `in-progress`, with the
-   same date. Replace the MADR's inline PLAN filename in `More Information`
-   with a relative Markdown link to this PLAN, then confirm the pair links
-   both ways.
+   same date. Confirm the existing relative links connect the pair both ways.
 3. Add the `0013` MADR and PLAN to the current hand-maintained sections of
    `docs/README.md`. Use their full filenames and actual statuses. Do not
    restructure the index yet; Phase 2 performs that atomic migration.
@@ -291,8 +329,12 @@ fails.
 * `README.md`
 * `docs/README.md`
 * `scripts/configure-github.sh` (comment path only)
+* `scripts/install-hooks.sh`
+* `scripts/test-hooks.sh`
 * records whose live relative links change because of a move
 * this PLAN
+
+**Deleted file:** `.githooks/pre-commit`.
 
 **Moves:**
 
@@ -316,42 +358,99 @@ fails.
    * add `check-records` and `markdownlint` to the existing `.PHONY` list;
    * place the two canonical recipes after `verify-staged` and before the
      interactive/build convenience targets;
-   * do not change `verify`, `verify-staged`, a Go command, a tool pin, or an
-     existing target dependency.
-3. Create `docs/guides/` by moving the real operations runbook. Create
-   `docs/reports/` by writing the real GATES record in step 8. Do not create an
+   * retain `verify`, `verify-staged`, every Go command, every tool pin, and
+     every existing target dependency;
+   * revise only the `hooks-install` help text so it says that the target
+     installs the repository pre-push wrapper while preserving host hooks.
+3. Establish the legacy-hook baseline in a scratch repository before changing
+   the installer. Copy the current installer and uninstaller, provide only an
+   executable `.githooks/pre-push`, and configure an executable host
+   pre-commit. Run the current installer and require exit 1 with
+   `repository hook is not executable:` naming `.githooks/pre-commit`. Record
+   the command and diagnostic; do not create the missing hook in the working
+   tree.
+4. Delete `.githooks/pre-commit`. Keep `make verify-staged` and
+   `scripts/go-precheck.py` unchanged as an explicit staged-snapshot
+   diagnostic.
+5. Amend `scripts/install-hooks.sh` deterministically:
+   * remove the `install_wrapper pre-commit` call and retain
+     `install_wrapper pre-push`;
+   * before copying previous hooks, generate the exact legacy managed
+     pre-commit wrapper and the host-only pass-through wrapper from the saved
+     previous-hook path;
+   * if the installed pre-commit matches the legacy wrapper, remove it so the
+     generic carry-forward path can install host-only delegation;
+   * if it matches a host-only wrapper whose source no longer exists, remove
+     the stale wrapper;
+   * if it differs from both known generated forms, exit nonzero rather than
+     deleting or overwriting a modified managed hook;
+   * when the generic carry-forward path finds an existing managed wrapper,
+     compare it with the generated candidate and refuse any mismatch. This
+     preserves the existing modified-wrapper safety property after migration;
+   * retain the v1 marker and metadata format so `scripts/uninstall-hooks.sh`
+     needs no behavior change.
+6. Rewrite the pre-commit portions of `scripts/test-hooks.sh` while keeping its
+   pre-push and uninstall coverage:
+   * create a host pre-commit and both host and repository pre-push fixtures;
+     do not create a repository pre-commit fixture;
+   * require a fresh, repeated install to succeed and the managed pre-commit
+     wrapper to contain `PREVIOUS_HOOK` but no `REPOSITORY_HOOK` or
+     `.githooks/pre-commit` reference;
+   * require the invocation log to contain exactly `previous-pre-commit`,
+     `previous-pre-push`, and `repository-pre-push`, in that order;
+   * retain the assertion that a failing host pre-commit blocks the commit;
+   * synthesize the exact legacy managed pre-commit wrapper, rerun the
+     installer, and require migration back to host-only delegation;
+   * retain modified-wrapper refusal, pre-push standard-input replay,
+     idempotence, and both uninstall restoration cases.
+7. Prove the revised hook test detects the retired behavior. In a scratch copy
+   of the revised scripts, reinsert `install_wrapper pre-commit` into the
+   installer without adding a repository pre-commit fixture. Run
+   `scripts/test-hooks.sh` and require a nonzero exit with
+   `repository hook is not executable:`. Run the unmodified test afterward and
+   require exit 0 with `hook composition tests passed`.
+8. Create `docs/guides/` by moving the real operations runbook. Create
+   `docs/reports/` by writing the real GATES record in step 13. Do not create an
    empty documentation directory or `.gitkeep`.
-4. Move each MADR and its PLAN together with `git mv`. Remove the now-empty
+9. Move each MADR and its PLAN together with `git mv`. Remove the now-empty
    `docs/plans/` directory. Do not renumber, retitle, or change metadata merely
    to modernize an older record.
-5. Repair the 23 links demonstrated by the scratch move:
+10. Repair the 25 links demonstrated by the scratch move:
 
    | File after the move | Required repair |
    | :--- | :--- |
    | `0003-MADR-layer-and-harden-ci-cd-quality-gates.md` | Change two repository-root targets from `../…` to `../../…`: the CI workflow and `Makefile`. |
    | `0004-MADR-align-cicd-with-magic-cli-remote.md` | Change both CI workflow targets from `../.github/…` to `../../.github/…`. |
    | `0004-PLAN-align-cicd-with-magic-cli-remote.md` | Change the CI target to `../../.github/…`, the docs index target to `../README.md`, and the runbook target to `../guides/cicd-operations.md`. |
-   | `0005-MADR-windows-on-demand-compat-tests.md` | Change five root targets to begin `../../`: `scripts/go-precheck.py`, `.githooks/pre-commit` twice, `scripts/install-hooks.sh`, and `scripts/verify-scripts.sh`. |
+   | `0005-MADR-windows-on-demand-compat-tests.md` | Change the three surviving root targets to begin `../../`: `scripts/go-precheck.py`, `scripts/install-hooks.sh`, and `scripts/verify-scripts.sh`. Convert both links to the deleted `.githooks/pre-commit` file into inline code while preserving the historical statements. |
    | `0006-MADR-mcplib-1-6-canary.md` | Change the `0004` link from `../0004-MADR-…` to the sibling `0004-MADR-…`. |
-   | `docs/README.md` | Point the eight `0001` through `0005` misplaced-record links into `decisions/`. The final rewrite in step 9 supplies these targets. |
+   | `0013-MADR-align-repository-with-workspace-scaffolding.md` | Change the `0003` and `0005` links from `../NNNN-MADR-…` to sibling links after those records move. |
+   | `docs/README.md` | Point the eight `0001` through `0005` misplaced-record links into `decisions/`. The final rewrite in step 14 supplies these targets. |
    | `docs/guides/cicd-operations.md` | Point `0003-MADR-…` to `../decisions/0003-MADR-…` and the CI workflow to `../../.github/workflows/ci.yml`. |
 
    Run the records checker after these repairs. It must report neither a broken
    link nor a placement warning.
-6. Repair live plain-text references:
+11. Repair live plain-text references and decision status:
    * change the comment in `scripts/configure-github.sh` from
      `docs/0004-MADR-…` to `docs/decisions/0004-MADR-…` without changing
      executable shell text;
    * change the two operational runbook references in
      `0006-PLAN-mcplib-1-6-canary.md` to
-     `docs/guides/cicd-operations.md`.
+     `docs/guides/cicd-operations.md`;
+   * add a compact note to moved 0003 MADR that links to 0013 D8 and says only
+     its repository pre-commit requirement is superseded. Keep 0003 accepted
+     because its pre-push, CI, release, and settings decisions remain active;
+   * change the moved 0005 MADR and PLAN from `status: proposed` to
+     `status: rejected` and add a compact outcome note to each linking to 0013
+     D8. Preserve their measured facts, planned commands, and rejected
+     alternatives as historical evidence.
 
    Preserve old paths where an accepted MADR or completed PLAN is explicitly
    describing the repository's former state or an execution command that ran
    at that time. Record the reviewed historical allowlist in the GATES file so
    a residual-path search has an explained result rather than an unexplained
    match.
-7. Write `docs/architecture.md` from the canonical template with present-tense
+12. Write `docs/architecture.md` from the canonical template with present-tense
    repository facts:
    * **What it is:** a Go CLI and `prepare-commit-msg` hook with `configure`,
      `update`, `version`, and `identity` command paths;
@@ -361,15 +460,16 @@ fails.
      behavior through `go-selfupdate-lib`;
    * **Human-facing setup:** `internal/ui`, the root README, and the operations
      guide;
-   * **Quality and delivery boundary:** Make targets, repository-local hook
-     wrappers, the single CI workflow, `selfupdate-release.json`, and the
+   * **Quality and delivery boundary:** Make targets, host-hook preservation,
+     the repository pre-push wrapper, the absence of a repository pre-commit
+     build hook, the single CI workflow, `selfupdate-release.json`, and the
      external reusable release workflows;
    * **Tree:** the actual post-migration root and docs structure;
    * **What is not here:** provider implementations, self-update internals,
      host identity, global hook configuration, and live GitHub settings.
 
    Do not include historical rationale, future design, or a placeholder.
-8. Create `docs/reports/0013-GATES-workspace-scaffolding.md` with:
+13. Create `docs/reports/0013-GATES-workspace-scaffolding.md` with:
    * front matter `status: in-progress`, the execution date, and
      `associated-plan: "0013-PLAN-align-repository-with-workspace-scaffolding.md"`;
    * a body link to `../decisions/0013-PLAN-align-repository-with-workspace-scaffolding.md`;
@@ -378,7 +478,7 @@ fails.
      checks, and remaining work;
    * factual `pending` entries for Phase 3 plants, rather than empty cells or
      invented results.
-9. Rewrite `docs/README.md` using the canonical structure while preserving
+14. Rewrite `docs/README.md` using the canonical structure while preserving
    repository information:
    * link `architecture.md`, `guides/cicd-operations.md`, `decisions/`, and
      `reports/`;
@@ -386,28 +486,37 @@ fails.
      and Status columns;
    * index every MADR and PLAN from `0001` through `0013` plus
      `0013-GATES-workspace-scaffolding.md`;
-   * take status from front matter where present; for legacy records without
+   * record both 0005 records as rejected; take status from front matter
+     elsewhere where present; for legacy records without
      status metadata, preserve the current index's status rather than inventing
      one;
    * add “I want to…” rows for understanding architecture, installing and
      configuring the hook, running developer checks, performing a release,
      reading the operations runbook, and understanding the workspace decision;
    * defer the `AGENTS.md` navigation row until Phase 3 creates that file.
-10. Add a `Documentation` entry to the root README table of contents and a
+15. Update current hook documentation and add the root documentation entry:
+    * in the moved operations guide, describe `make verify` as the deliberate
+      local command and the repository pre-push/CI contract; describe
+      `make verify-staged` as optional and on demand; state that
+      `make hooks-install` preserves a host pre-commit but installs no
+      repository pre-commit build hook;
+    * in the root README target table, give `hooks-install` and `hooks-test`
+      the same precise scope;
+    * add a `Documentation` entry to the root README table of contents and a
     `## Documentation` section immediately before `## License`. The section
     links to `docs/README.md`, `docs/architecture.md`, and
     `docs/guides/cicd-operations.md`, and gives a compact “I want to…” excerpt.
     Preserve all product sections and prose.
-11. Prove unnumbered-link detection in a scratch copy before relying on it:
+16. Prove unnumbered-link detection in a scratch copy before relying on it:
     insert a missing relative link into the scratch root README and require
     `check_records.py --check-all` to exit 1 with `broken relative link:`.
     Also confirm the old runbook path is dead from its new directory and its
     repaired targets resolve.
-12. Run Markdown lint on the phase tree. Fix failures in `README.md`,
+17. Run Markdown lint on the phase tree. Fix failures in `README.md`,
     `docs/README.md`, `docs/architecture.md`, and the moved guide without
     changing technical meaning. MADRs and PLANs remain excluded by the
     canonical config. Do not add an exclusion to conceal a failure.
-13. Verify the phase:
+18. Verify the phase:
 
     ```bash
     python3 scripts/check_records.py --next
@@ -415,28 +524,39 @@ fails.
     npx --yes markdownlint-cli2@0.23.2
     make check-records
     make markdownlint
+    bash -n scripts/install-hooks.sh scripts/test-hooks.sh
+    shellcheck scripts/install-hooks.sh scripts/test-hooks.sh scripts/configure-github.sh
+    make hooks-test
+    make hooks-install
     make verify
-    shellcheck scripts/configure-github.sh
     ```
 
     Require `0014`, zero record/link errors, zero placement warnings, zero
-    Markdown errors, and exit 0 from the product checks. `make verify` is run
-    here because this phase changes the Makefile and a shell-script comment; do
-    not repeat it later unless a subsequent change affects its inputs or this
-    run fails.
-14. Record complete command output or an exact bounded excerpt plus the exit
+    Markdown errors, and exit 0 from the hook and product checks. After
+    `make hooks-install`, inspect the active managed pre-commit in full: it
+    must delegate only to the saved host hook and contain no repository-hook
+    variable or `.githooks/pre-commit` path. The active pre-push must still
+    compose the previous hook with `.githooks/pre-push`. `make verify` is run
+    here because this phase changes the Makefile and shell scripts; do not
+    repeat it later unless a subsequent change affects its inputs or this run
+    fails.
+19. Record complete command output or an exact bounded excerpt plus the exit
     status in the GATES file and this PLAN. Compare both canonical byte-copy
     files with `cmp`.
-15. Stage only the Phase 2 files and moves. Run `make check-records`,
-    `make markdownlint`, and `make verify-staged` on the staged snapshot.
-    Inspect the staged rename detection and confirm no product source, test,
-    module, CI, hook, or release file changed. Commit with
-    `git commit --no-edit`.
+20. Stage only the Phase 2 files, deletion, and moves. Run
+    `make check-records`, `make markdownlint`, and `make hooks-test`. Do not run
+    `make verify-staged` as a pre-commit substitute; cite the complete
+    `make verify` result from step 18. Inspect staged rename and deletion
+    detection and confirm no product source, test, module, CI, or release file
+    changed. Commit with `git commit --no-edit`; the migrated active wrapper
+    must invoke only the pre-existing host pre-commit behavior.
 
 **Phase acceptance:** the fixed docs tree exists; all records and the guide are
 in their decided locations; all links and Markdown pass; docs tooling and Make
 entry points work; the GATES record contains real Phase 1 and Phase 2 evidence;
-the product contract passes; the agent files remain absent until Phase 3.
+the repository pre-commit entrypoint is absent; fresh and legacy hook installs
+preserve host pre-commit behavior and retain repository pre-push; the product
+contract passes; the agent files remain absent until Phase 3.
 
 ### Phase 3: install agent instructions and prove every new gate
 
@@ -475,7 +595,6 @@ commit.
 
    Use these pre-add rules:
 
-   * After staging any Go or module-file change, run `make verify-staged`.
    * Before every commit, run `make check-records` and `make markdownlint`.
    * Run any additional product check required by the active PLAN phase.
    * A file that fails a required check is not committed.
@@ -602,8 +721,10 @@ repository-owned documentation gates.
 | Guide placement | File and link inventory | Runbook under `docs/guides/`; live links use its new path. |
 | LF policy | Isolated checkout plant and `git ls-files --eol` | CRLF without the rule, LF with it; tracked text attributed LF; fixtures explicitly `-text`. |
 | Identifier hygiene | Environment-derived scan | Zero real-machine identifier hits in added or changed files. |
-| Product contract | `make verify` in Phase 2 | Exit 0 after the Makefile and shell-comment changes. |
-| Staged contract | `make verify-staged` in Phase 2 | Exit 0 on the staged phase. |
+| Product contract | `make verify` in Phase 2 | Exit 0 after the Makefile and hook-script changes. |
+| Repository pre-commit removal | File inventory and active-wrapper inspection | `.githooks/pre-commit` absent; installed pre-commit delegates only to the host hook. |
+| Hook composition | `make hooks-test` in Phase 2 | Exit 0; fresh install, v1 migration, host pre-commit, repository pre-push, refusal, and uninstall cases pass. |
+| Verification boundaries | Repository inventory | `verify-staged` remains on demand; `make verify` remains in pre-push and CI. |
 | Working tree | `git status --short` after Phase 4 | Empty. |
 
 ### Required failure plants
@@ -615,7 +736,9 @@ The GATES record is incomplete unless it contains observed failures for:
 * Markdown MD013 in the root README;
 * Markdown MD013 in `AGENTS.md`;
 * an identifier in scratch `AGENTS.md`;
-* CRLF checkout without the repository LF rule.
+* CRLF checkout without the repository LF rule;
+* the revised hook test against a scratch installer with the retired
+  `install_wrapper pre-commit` call restored.
 
 It must also contain the successful control showing that the same long
 paragraph in a MADR is excluded from Markdown lint.
@@ -634,8 +757,11 @@ index the reader can:
 
 ## Rollout and Rollback
 
-This is a repository-only rollout. It changes no binary, dependency, CI job,
-remote setting, hook installation, tag, release, or live service.
+This rollout changes repository files and migrates this clone's managed hook
+directory through `make hooks-install`. It changes no binary, dependency, CI
+job, remote setting, host hook source, tag, release, or live service. Other
+existing clones run `make hooks-install` once after updating to migrate their
+legacy wrapper; fresh clones receive the new layout directly.
 
 Each phase lands as its own commit after its checks pass. If a committed phase
 must be undone, use a new `git revert` commit for that exact phase, then repair
@@ -646,8 +772,12 @@ Rollback order is the reverse of rollout:
 
 1. Revert Phase 4 status-only close-out.
 2. Revert Phase 3 agent files and pointer installation.
-3. Revert Phase 2 docs tooling and moves as one unit so MADR/PLAN pairs and
-   their links return together.
+3. Before reverting Phase 2, run the new `make hooks-uninstall` to restore the
+   saved pre-install hooks path. Revert Phase 2 docs tooling, hook changes, and
+   moves as one unit so MADR/PLAN pairs and their links return together. If the
+   repository pre-commit policy is intentionally restored, run the restored
+   `make hooks-install` and `make hooks-test`; otherwise stop and amend this
+   decision rather than leaving code and local hook state inconsistent.
 4. Revert Phase 1 LF and ignore policy.
 5. Revert Phase 0 only if the decision itself is withdrawn; mark the MADR
    rejected or superseded rather than deleting accepted history.
@@ -664,6 +794,17 @@ result.
 
 ## Execution Record
 
-No phase has been approved or executed. Populate this section during execution
-with dated phase entries, command exit statuses, relevant output, commit IDs,
-deviations, and work deliberately left undone.
+### 2026-10-10 — Phase 0
+
+* Owner authorization: MADR accepted and full PLAN approved for execution.
+* Baseline: `a848788` on `main`, one commit ahead of `origin/main`; the working
+  changes were limited to the reviewed 0013 MADR/PLAN amendments.
+* Hook path: `.git/prepare-commit-msg-hooks`; the managed wrapper records and
+  chains to the global hooks directory.
+* Canonical template hashes: all sixteen values still match the reviewed
+  table; hash command exit 0.
+* Scratch records checker: `--next` exit 0 with `0014`; `--check-all` exit 0
+  with no broken links and the eight known placement warnings.
+* Full-file review, metadata, pair links, final newline, and
+  `git diff --check`: passed.
+* Phase 0 commit: pending.

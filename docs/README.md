@@ -52,6 +52,10 @@ This directory contains design documents, architectural decision records (MADR),
   * **Status:** Accepted
   * **Topic:** Go 1.27.1's advisories in the gates and the shipped hook, the `go` line at 1.27.2, the library at v1.13.0 (schema 4), both workflows pinned at v1.13.0, the build workflow and an identity command, installers that leave `core.hooksPath` to the user, tool pins, and the rulesets, README and `testfile.txt` findings.
 
+* [0013-MADR: Adopt the fleet workspace scaffold and normalize the documentation tree](decisions/0013-MADR-align-repository-with-workspace-scaffolding.md)
+  * **Status:** Accepted
+  * **Topic:** Fleet workspace files, documentation-tree normalization, repository documentation gates, LF policy, and retirement of the repository-owned pre-commit build hook.
+
 ## Implementation Plans
 
 * [0001-PLAN: Gemini Provider Modernization Implementation Plan](plans/0001-PLAN-gemini-provider-and-model-catalog-modernization.md)
@@ -101,3 +105,7 @@ This directory contains design documents, architectural decision records (MADR),
 * [0012-PLAN: Implement the Move to Go 1.27.2 and go-selfupdate-lib v1.13.0, and the Library's Build, Publish and Install Pipeline](decisions/0012-PLAN-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md)
   * **Status:** Complete
   * **Topic:** Phases 0–6: the records and 0011-PLAN's carried release, the toolchain, library and tools, the spec, `identity` and both workflows at v1.13.0, the installers, hygiene and the rulesets, release v1.8.0 with the live checks, and close-out.
+
+* [0013-PLAN: Implement the fleet workspace scaffold and documentation-tree normalization](decisions/0013-PLAN-align-repository-with-workspace-scaffolding.md)
+  * **Status:** In Progress
+  * **Topic:** Phased installation of the workspace scaffold, documentation moves and gates, agent pointers, and safe retirement of the repository pre-commit build hook.
