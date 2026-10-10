@@ -48,6 +48,10 @@ This directory contains design documents, architectural decision records (MADR),
   * **Status:** Accepted
   * **Topic:** Both library bumps, what the SDK's v1.3 changes for the hook (a refused Gemini key stops the run), `update`'s kept backups and refused overwrites, the publish pin moved to v1.10.0's workflow, the newest with a live publish, and a test that sends Gemini's real refusal through the SDK.
 
+* [0012-MADR: Move to Go 1.27.2 and go-selfupdate-lib v1.13.0, and Build, Publish and Install through the Library's Release Pipeline](decisions/0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md)
+  * **Status:** Accepted
+  * **Topic:** Go 1.27.1's advisories in the gates and the shipped hook, the `go` line at 1.27.2, the library at v1.13.0 (schema 4), both workflows pinned at v1.13.0, the build workflow and an identity command, installers that leave `core.hooksPath` to the user, tool pins, and the rulesets, README and `testfile.txt` findings.
+
 ## Implementation Plans
 
 * [0001-PLAN: Gemini Provider Modernization Implementation Plan](plans/0001-PLAN-gemini-provider-and-model-catalog-modernization.md)
@@ -91,5 +95,9 @@ This directory contains design documents, architectural decision records (MADR),
   * **Topic:** Phases 0–4: the bump, the pin comment and the schema test, the README, release v1.7.0 with the live check, and close-out.
 
 * [0011-PLAN: Implement the Move to go-llmprovider-sdk v1.3.2 and go-selfupdate-lib v1.10.1](decisions/0011-PLAN-adopt-go-llmprovider-sdk-v1-3-2-and-go-selfupdate-lib-v1-10-1.md)
-  * **Status:** In Progress
+  * **Status:** Superseded by 0012-PLAN
   * **Topic:** Phases 0–4: the bumps, the pin and the refused-key test, the README, release v1.8.0 with the live checks, and close-out.
+
+* [0012-PLAN: Implement the Move to Go 1.27.2 and go-selfupdate-lib v1.13.0, and the Library's Build, Publish and Install Pipeline](decisions/0012-PLAN-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md)
+  * **Status:** In Progress
+  * **Topic:** Phases 0–6: the records and 0011-PLAN's carried release, the toolchain, library and tools, the spec, `identity` and both workflows at v1.13.0, the installers, hygiene and the rulesets, release v1.8.0 with the live checks, and close-out.

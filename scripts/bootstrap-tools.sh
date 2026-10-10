@@ -4,10 +4,10 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 TOOLS_BIN="$REPO_ROOT/.tools/bin"
 
-GOLANGCI_LINT_VERSION="v2.13.1"
-GOVULNCHECK_VERSION="v1.7.0"
+GOLANGCI_LINT_VERSION="v2.14.0"
+GOVULNCHECK_VERSION="v1.8.0"
 ACTIONLINT_VERSION="v1.7.12"
-GO_VERSION="go1.27.1"
+GO_VERSION="go1.27.2"
 
 mkdir -p "$TOOLS_BIN"
 
@@ -47,7 +47,7 @@ install_tool \
 	"golangci-lint" \
 	"github.com/golangci/golangci-lint/v2/cmd/golangci-lint" \
 	"$GOLANGCI_LINT_VERSION" \
-	"2.13.1"
+	"2.14.0"
 install_tool \
 	"govulncheck" \
 	"golang.org/x/vuln/cmd/govulncheck" \

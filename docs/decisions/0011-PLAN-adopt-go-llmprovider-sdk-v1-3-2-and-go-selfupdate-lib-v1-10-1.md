@@ -1,6 +1,6 @@
 ---
-status: in-progress
-date: 2026-10-08
+status: superseded
+date: 2026-10-09
 associated-madr: "0011-MADR-adopt-go-llmprovider-sdk-v1-3-2-and-go-selfupdate-lib-v1-10-1.md"
 ---
 # Implement the move to go-llmprovider-sdk v1.3.2 and go-selfupdate-lib v1.10.1
@@ -358,3 +358,21 @@ No Go file changed in this phase, so rule 2's code checks were not rerun;
 Phase 1's hold.
 
 **Staged** for the owner's commit: `README.md`, 0009-MADR and this PLAN.
+
+### Superseded (2026-10-09)
+
+* **Phases 0–2 landed** (`56d7df7`, `61e595b`, `aed7c60`): both modules,
+  the pin at `a0a26b6`, the refused-key test, and the README.
+* **Phases 3 and 4 were not run.** `v1.8.0` was never tagged.
+* **They are carried** into
+  [0012-PLAN-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md](0012-PLAN-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md),
+  Phases 5 and 6, under
+  [0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md](0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md):
+  * the `v1.8.0` release, its checks, `update`, and the live checks of
+    Phase 3 step 5;
+  * that release is built with Go 1.27.2, against go-selfupdate-lib
+    `v1.13.0`.
+* **V2 does not hold, by decision.** `v1.8.0` publishes through
+  `5e199c83…` (`v1.13.0`), not `a0a26b6`. 0012-MADR P1 explains why, and
+  amends `0010-MADR-adopt-go-selfupdate-lib-v1-9-0.md` D2's wording.
+* This PLAN is `superseded`; its record above stays as written.
