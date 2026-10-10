@@ -237,7 +237,7 @@ unchanged, and only its comment changes.
 * **This repository:**
   * [0002-MADR-self-update-cli-and-github-releases-integration.md](0002-MADR-self-update-cli-and-github-releases-integration.md)
     (self-update);
-  * [0004-MADR-align-cicd-with-magic-cli-remote.md](../0004-MADR-align-cicd-with-magic-cli-remote.md)
+  * [0004-MADR-align-cicd-with-magic-cli-remote.md](0004-MADR-align-cicd-with-magic-cli-remote.md)
     (the tag-driven release).
 
 **Evidence:**

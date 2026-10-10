@@ -1,6 +1,10 @@
 # prepare-commit-msg
 
-An intelligent, zero-friction Git `prepare-commit-msg` hook written in Go. It inspects your **staged** changes and leverages fast LLMs—including Google Gemini, OpenAI, Anthropic Claude, xAI Grok, Kilo Gateway (Kilo Code), OpenCode, Hugging Face, Together AI, or a local **Ollama** instance—to automatically generate clean, structured [Conventional Commit](https://www.conventionalcommits.org/) messages.
+An intelligent, zero-friction Git `prepare-commit-msg` hook written in Go. It inspects your
+**staged** changes and uses fast LLMs from Google Gemini, OpenAI, Anthropic Claude, xAI Grok, Kilo
+Gateway (Kilo Code), OpenCode, Hugging Face, Together AI, or a local **Ollama** instance. It
+automatically generates clean, structured [Conventional
+Commit](https://www.conventionalcommits.org/) messages.
 
 ---
 
@@ -26,6 +30,7 @@ An intelligent, zero-friction Git `prepare-commit-msg` hook written in Go. It in
 - [Changes with go-selfupdate-lib v1.13.0](#changes-with-go-selfupdate-lib-v1130)
 - [CLI Reference](#cli-reference)
 - [Developer Experience](#developer-experience)
+- [Documentation](#documentation)
 
 ---
 
@@ -35,8 +40,13 @@ Crafting meaningful commit messages that adhere to conventional commit standards
 
 - **Consistent Commit Quality:** Generates standardized `type(scope): description` headers with concise bullet points detailing technical changes and file statistics.
 - **Zero-Friction Workflow:** Runs automatically during `git commit`. Your editor opens with the message pre-filled and ready for review, edit, or approval.
-- **Privacy & Flexibility:** Run fully offline with local **Ollama** models, route through developer gateways (**Kilo Code**, **OpenCode**, **Hugging Face**), or use direct cloud APIs (**Gemini**, **OpenAI**, **Claude**, **Grok**).
-- **Fail-Safe Reliability:** If an LLM call times out, authentication fails, or network is down, the hook **never blocks your commit** (soft-fail). It leaves Git's standard editor untouched so you can type manually.
+- **Privacy & Flexibility:** Run fully offline with local **Ollama** models,
+  route through developer gateways (**Kilo Code**, **OpenCode**, **Hugging
+  Face**), or use direct cloud APIs (**Gemini**, **OpenAI**, **Claude**,
+  **Grok**).
+- **Fail-Safe Reliability:** If an LLM call times out, authentication fails,
+  or the network is down, the hook **never blocks your commit** (soft-fail).
+  It leaves Git's standard editor untouched so you can type manually.
 
 ---
 
@@ -122,7 +132,12 @@ You can supply credentials and configure behavior using standard environment var
 ### 1. Download or Build the Binary
 
 #### With the installer (recommended)
-From `v1.8.0`, every release carries `install.sh` and `install.ps1`. Each downloads that release over HTTPS, checks every file against its `SHA256SUMS`, installs the binary for your platform, and runs `prepare-commit-msg identity` to confirm it before it keeps it; the previous binary stays as `prepare-commit-msg.prev` (`prepare-commit-msg.exe.prev` on Windows). Install straight into the global hooks directory of step 2:
+
+From `v1.8.0`, every release carries `install.sh` and `install.ps1`. Each downloads that release
+over HTTPS, checks every file against its `SHA256SUMS`, installs the binary for your platform, and
+runs `prepare-commit-msg identity` before keeping it. The previous binary stays as
+`prepare-commit-msg.prev` (`prepare-commit-msg.exe.prev` on Windows). Install directly into the
+global hooks directory from step 2:
 
 ```bash
 curl -fsSL https://github.com/maccavelli/prepare-commit-msg/releases/latest/download/install.sh | sh -s -- --dir ~/.global-git-hooks
@@ -132,17 +147,28 @@ curl -fsSL https://github.com/maccavelli/prepare-commit-msg/releases/latest/down
 & ([scriptblock]::Create((irm https://github.com/maccavelli/prepare-commit-msg/releases/latest/download/install.ps1))) -InstallDir "$env:USERPROFILE\.global-git-hooks" -NoPathUpdate
 ```
 
-- **Name the directory.** Without `--dir` (`-InstallDir` on Windows), the installer uses `~/.local/bin` (`%LOCALAPPDATA%\Programs\prepare-commit-msg`), which Git does not run hooks from. `PREPARE_COMMIT_MSG_INSTALL_DIR` sets it too.
-- **The installer never changes your Git configuration.** A global hooks directory can hold other hooks, so pointing Git at it is step 2's, and yours.
-- `--version vX.Y.Z` installs another release; `--verify-attestation` also checks each download's build attestation with a logged-in `gh`; `--uninstall` removes the binary and its `.prev`. On Windows the same are `-Version`, `-VerifyAttestation` and `-Uninstall`.
+- **Name the directory.** Without `--dir` (`-InstallDir` on Windows), the
+  installer uses `~/.local/bin`
+  (`%LOCALAPPDATA%\Programs\prepare-commit-msg`), which Git does not run
+  hooks from. `PREPARE_COMMIT_MSG_INSTALL_DIR` sets it too.
+- **The installer never changes your Git configuration.** A global hooks
+  directory can hold other hooks, so pointing Git at it is step 2's, and
+  yours.
+- `--version vX.Y.Z` installs another release; `--verify-attestation` also
+  checks each download's build attestation with a logged-in `gh`;
+  `--uninstall` removes the binary and its `.prev`. On Windows the same are
+  `-Version`, `-VerifyAttestation`, and `-Uninstall`.
 
 #### Pre-built binaries (manual)
+
 Or download the executable for your OS and architecture from [Releases](https://github.com/maccavelli/prepare-commit-msg/releases), and check it against the release's `SHA256SUMS`:
+
 - **Linux:** `prepare-commit-msg-linux-amd64` / `prepare-commit-msg-linux-arm64`
 - **macOS:** `prepare-commit-msg-darwin-amd64` / `prepare-commit-msg-darwin-arm64`
 - **Windows:** `prepare-commit-msg-windows-amd64.exe` / `prepare-commit-msg-windows-arm64.exe`
 
 #### Or Build from Source
+
 ```bash
 make build          # Builds local binary into dist/
 make install        # Compiles and installs binary to ~/.global-git-hooks/prepare-commit-msg
@@ -153,6 +179,7 @@ make install        # Compiles and installs binary to ~/.global-git-hooks/prepar
 ### 2. Install as a Git Hook
 
 #### Option A: Global Git Hook (Recommended for all repositories)
+
 Point Git at the global hooks directory, so all current and future repositories use the hook. The installer above has already put the binary there; with a manual download or a build, place it first:
 
 ```bash
@@ -170,6 +197,7 @@ git config --global core.hooksPath ~/.global-git-hooks
 If `core.hooksPath` already names another directory, put the binary there instead (`--dir` that directory) rather than replacing the setting, so the hooks it holds keep running.
 
 #### Option B: Per-Repository Hook
+
 Symlink or copy the binary into a single repository's `.git/hooks/` directory:
 
 ```bash
@@ -178,11 +206,14 @@ chmod +x .git/hooks/prepare-commit-msg
 ```
 
 #### Windows Installation
+
 1. Install with `install.ps1` as above, or place `prepare-commit-msg.exe` in `%USERPROFILE%\.global-git-hooks\prepare-commit-msg.exe` yourself.
 2. Configure Git:
+
    ```cmd
    git config --global core.hooksPath %USERPROFILE%\.global-git-hooks
    ```
+
    *(Git for Windows automatically searches for matching `.exe` or shell wrappers).*
 
 ---
@@ -208,6 +239,7 @@ prepare-commit-msg configure
 ```
 
 The wizard guides you through:
+
 1. Provider selection across all 10 supported cloud, gateway, and local backends.
 2. Endpoint resolution (for Ollama or custom gateway endpoints).
 3. API Key detection from environment or prompt entry; a saved sign-in is
@@ -338,6 +370,7 @@ git commit
 
 1. The hook analyzes your staged changes and queries the configured provider.
 2. Your default Git editor opens with the generated message:
+
    ```text
    feat(auth): add OAuth2 token refresh flow
 
@@ -351,6 +384,7 @@ git commit
    # Please enter the commit message for your changes. Lines starting
    # with '#' will be ignored, and an empty message aborts the commit.
    ```
+
 3. Edit the message or save and close the editor to complete the commit.
 
 ### Hook Trigger Matrix
@@ -388,9 +422,16 @@ prepare-commit-msg update [flags]
 | `prepare-commit-msg update --json` | Write JSON Lines to stdout, ending with one `{"kind":"result",…}` object whose `result` carries `"schema_version":4`. |
 | `prepare-commit-msg update --channel rc` | Follow a prerelease channel. |
 
-Progress and the confirmation prompt go to **stderr**; stdout carries only `--json` output. The exit status is `0` when up to date, declined or installed, `10` when an update is available (with `--check`), and `1` on an error before the new binary is in place. An error after that, such as failing to release the update lock, is reported as a `warning:` line on stderr, and the run still exits `0`.
+Progress and the confirmation prompt go to **stderr**; stdout carries only `--json` output. The exit
+status is `0` when up to date, declined, or installed; `10` when an update is available with
+`--check`; and `1` on an error before the new binary is in place. An error after that, such as
+failure to release the update lock, is reported as a `warning:` line on stderr, and the run still
+exits `0`.
 
-If an update fails and cannot put the old binary back, the backup is kept beside it as `.<name>.selfupdate-kept-<n>`, where `<name>` is the binary's file name; no later update removes it, so delete it once the hook works. If something else replaces the binary while an update runs, the update fails instead of overwriting it.
+If an update fails and cannot put the old binary back, the backup remains beside it as
+`.<name>.selfupdate-kept-<n>`, where `<name>` is the binary's file name. No later update removes it,
+so delete it once the hook works. If something else replaces the binary while an update runs, the
+update fails instead of overwriting it.
 
 > **Security Note:** Self-update only modifies regular binaries located within the user's home directory. System paths (`/usr`, Homebrew Cellar, Nix store) are rejected.
 
@@ -539,8 +580,8 @@ make verify         # Run complete quality contract: mod-check, fmt-check, lint,
 | `make coverage` | Verify statement coverage meets minimum threshold (80.0%) |
 | `make lint` | Run `golangci-lint` with fleet configuration |
 | `make fmt` | Format source files and imports |
-| `make hooks-install` | Install composable repository-local Git hooks |
-| `make hooks-test` | Test hook composition against temporary repositories |
+| `make hooks-install` | Preserve host hooks and install the repository pre-push wrapper |
+| `make hooks-test` | Test host-hook preservation, legacy migration, and repository pre-push composition |
 | `make clean` | Clean build outputs from `dist/` |
 
 ### Maintainer Release
@@ -552,14 +593,35 @@ git tag -a v1.2.3 -m "v1.2.3"
 git push origin v1.2.3
 ```
 
-Once the quality contract and the native tests pass on Linux, macOS and Windows, the tag's CI run calls go-selfupdate-lib's build workflow. It builds the six binaries listed in `selfupdate-release.json` with a fixed recipe, checks each one's build information, runs `prepare-commit-msg identity` on the five platforms GitHub hosts and requires `v1.2.3 (release)`, and writes `SHA256SUMS`. Its publish workflow then publishes the GitHub Release. On a push that is not a tag, the same build runs as a rehearsal, stamped `rehearsal-<commit> (local)`, and nothing is published ([0012-MADR](docs/decisions/0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md)).
+Once the quality contract and native tests pass on Linux, macOS, and Windows, the tag's CI run calls
+go-selfupdate-lib's build workflow. It builds the six binaries in `selfupdate-release.json` with a
+fixed recipe, checks each binary's build information, runs `prepare-commit-msg identity` on the five
+platforms GitHub hosts, requires `v1.2.3 (release)`, and writes `SHA256SUMS`. Its publish workflow
+then publishes the GitHub Release. On a non-tag push, the same build runs as a rehearsal stamped
+`rehearsal-<commit> (local)`, and publishes nothing
+([0012-MADR](docs/decisions/0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md)).
 
 Assets include cross-compiled binaries, `SHA256SUMS`, `install.sh`, `install.ps1`, and build-provenance attestations. The attestation's signer is go-selfupdate-lib's publish workflow, so name it:
+
 ```bash
 sha256sum --check --ignore-missing SHA256SUMS
 gh attestation verify prepare-commit-msg-linux-amd64 --repo maccavelli/prepare-commit-msg \
   --signer-workflow maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml
 ```
+
+---
+
+## Documentation
+
+Start with the [documentation index](docs/README.md) for decisions, plans,
+reports, and task-oriented navigation.
+
+- To understand the current system, read
+  [the architecture](docs/architecture.md).
+- To run verification, manage repository settings, or perform a release, use
+  [the CI/CD operations guide](docs/guides/cicd-operations.md).
+- To understand the workspace and local-hook policy, read
+  [MADR 0013](docs/decisions/0013-MADR-align-repository-with-workspace-scaffolding.md).
 
 ---
 

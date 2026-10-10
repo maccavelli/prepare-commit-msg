@@ -21,7 +21,7 @@ The maintainer directed adopting the established, proven CI/CD architecture from
 ## Decision Drivers
 
 * **Automated Tag-Driven Releases**: Pushing a `v*` tag must automatically execute quality checks, compile cross-platform binaries, and publish the GitHub release.
-* **Single Workflow Simplicity**: Consolidate CI and Release into a single [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) workflow, eliminating fragmentation across `ci.yml`, `quality.yml`, and `release.yml`.
+* **Single Workflow Simplicity**: Consolidate CI and Release into a single [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) workflow, eliminating fragmentation across `ci.yml`, `quality.yml`, and `release.yml`.
 * **Reliable Concurrency**: Branch and PR runs cancel superseded runs, while tag runs are never cancelled (`cancel-in-progress: ${{ github.ref_type != 'tag' }}`).
 * **Native Cross-Platform Testing**: Execute native tests across Linux, macOS, and Windows runners before publishing.
 * **Direct Publication**: Use GitHub CLI (`gh release create` and `gh release upload --clobber`) directly, without intermediate draft staging.
@@ -30,7 +30,7 @@ The maintainer directed adopting the established, proven CI/CD architecture from
 
 Adopt the `magic-cli-remote` workflow pattern:
 
-1. **Unified Workflow File**: Consolidate all CI/CD into [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) with triggers:
+1. **Unified Workflow File**: Consolidate all CI/CD into [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) with triggers:
    ```yaml
    on:
      push:

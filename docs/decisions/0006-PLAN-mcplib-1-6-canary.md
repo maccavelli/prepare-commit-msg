@@ -178,7 +178,7 @@ a failure is reported on stderr instead of discarded.
 
 ## Phase S5 — Release `v1.4.0` (owner's ask)
 
-1. Follow `docs/cicd-operations.md` "Controlled release":
+1. Follow `docs/guides/cicd-operations.md` "Controlled release":
    `git tag -a v1.4.0 -m "prepare-commit-msg v1.4.0"`, then
    `git push origin v1.4.0`.
 2. The release job runs mcplib's workflow at `4e1f9a5`. Confirm the release
@@ -243,7 +243,7 @@ Only after S6 passes:
 * **Rollback:**
   * Before S5: revert the S3 commit. S1 stands on its own.
   * After S5: ship `v1.4.1` with the revert. Never replace a published
-    release, per `docs/cicd-operations.md` "Failed-release recovery".
+    release, per `docs/guides/cicd-operations.md` "Failed-release recovery".
 * **If the canary fails:** do not promote. Fix mcplib under its own record, tag
   `v1.6.0-rc.2`, and repeat S3–S6 here (a §9 deviation).
 

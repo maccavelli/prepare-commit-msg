@@ -7,6 +7,11 @@ decision-makers:
 
 # Layer and Harden CI/CD Quality Gates
 
+> **Partially superseded:**
+> [0013 D8](0013-MADR-align-repository-with-workspace-scaffolding.md#d8-retire-the-repository-owned-pre-commit-build-hook)
+> retires only this decision's repository pre-commit requirement. Its
+> pre-push, CI, release, and repository-settings decisions remain active.
+
 ## Context and Problem Statement
 
 The repository's CI and release workflows provide useful checks, but they do
@@ -30,9 +35,9 @@ and release automation enforce without duplicating commands.
 
 The following facts were verified on 2026-08-30:
 
-* [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs only for pushes
+* [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) runs only for pushes
   to `main` and pull requests. It does not run for an ordinary pushed feature
-  branch. The repository's [mirror notice](../README.md#L1-L4) also says that
+  branch. The repository's [mirror notice](../../README.md#L1-L4) also says that
   GitHub pull requests are not the integration path, making the pull-request
   trigger insufficient as the only pre-merge trigger.
 * CI runs tests, `go vet`, `golangci-lint`, and six cross-compilations on one
@@ -64,7 +69,7 @@ The following facts were verified on 2026-08-30:
 
 ### Local quality-gate facts
 
-* The [Makefile](../Makefile) exposes separate `fmt`, `vet`, `test`, `lint`,
+* The [Makefile](../../Makefile) exposes separate `fmt`, `vet`, `test`, `lint`,
   `test-coverage`, and `build-all` targets, but no single authoritative target
   equivalent to CI. The README consequently asks developers to remember four
   separate commands.

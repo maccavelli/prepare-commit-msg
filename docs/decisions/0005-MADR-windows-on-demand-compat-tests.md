@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: rejected
 date: 2026-09-14
 decision-makers: Project Owner
 consulted: none
@@ -8,6 +8,11 @@ informed: none
 <!-- markdownlint-disable MD013 MD024 MD033 MD036 MD060 -->
 
 # Windows compatibility suite as a Python pre-commit hook, skipped on Unix
+
+> **Outcome:** Rejected by
+> [0013 D8](0013-MADR-align-repository-with-workspace-scaffolding.md#d8-retire-the-repository-owned-pre-commit-build-hook),
+> which removes repository-owned pre-commit hooks. The measured facts and
+> unexecuted proposal remain here as historical evidence.
 
 ## Context and Problem Statement
 
@@ -26,7 +31,7 @@ Python, never bash** (and not PowerShell).
 The suite still must not join `make test`, `make verify`, or the CI
 `go-native` Windows job. Existing fleet bash (`install-hooks.sh`,
 Makefile recipes) is not rewritten in this decision. The staged-Go gate is
-already Python ([`scripts/go-precheck.py`](../scripts/go-precheck.py)).
+already Python ([`scripts/go-precheck.py`](../../scripts/go-precheck.py)).
 
 ### What was measured, not assumed
 
@@ -65,15 +70,15 @@ Measured on 2026-09-14 against worktree
 * WSL Git in the same worktree has **no** local `core.hooksPath`; effective
   hooks are `.git/hooks` (sample files only). WSL Git does not share Git
   for Windows' global `hooksPath`.
-* [`.githooks/pre-commit`](../.githooks/pre-commit) is bash:
+* `.githooks/pre-commit` is bash:
   `exec make -C "$REPO_ROOT" verify-staged`. It does not run today under
   Git for Windows because local hooks are not installed.
-* [`scripts/install-hooks.sh`](../scripts/install-hooks.sh) sets **local**
+* [`scripts/install-hooks.sh`](../../scripts/install-hooks.sh) sets **local**
   `core.hooksPath` to a managed directory that runs the previous hook then
   `.githooks/<name>`. That is the only in-repo mechanism that makes
   `.githooks/pre-commit` fire while still composing with the global
   `prepare-commit-msg.exe`.
-* [`scripts/verify-scripts.sh`](../scripts/verify-scripts.sh) runs `bash -n`
+* [`scripts/verify-scripts.sh`](../../scripts/verify-scripts.sh) runs `bash -n`
   on **every** file under `scripts/` and `.githooks/`. A Python
   `.githooks/pre-commit` or `scripts/*.py` would fail `make verify` unless
   `bash -n` is restricted to `*.sh`.
@@ -185,7 +190,7 @@ Measured on 2026-09-14 against worktree
    Unix skip, and `make hooks-install` in README and
    `docs/cicd-operations.md`. Do **not** add the suite to CI `go-native`
    or `make verify`.
-9. **D9** — Replace [`.githooks/pre-commit`](../.githooks/pre-commit) with
+9. **D9** — Replace `.githooks/pre-commit` with
    a Python 3 script (`#!/usr/bin/env python3`) that: (1) on all
    platforms, runs the existing staged-Go gate when it can (`make
    verify-staged` if `make` exists; otherwise `scripts/go-precheck.py`

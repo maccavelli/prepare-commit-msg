@@ -1,3 +1,16 @@
+# Recipes need bash (for pipefail) and grep, diff, cp and mv. On Windows
+# that is Git's bash, and Git's usr/bin goes on PATH because Git bash does
+# not put its coreutils there when make starts it from PowerShell. Set
+# GIT_BASH if Git is installed elsewhere. Every other host uses /bin/bash.
+ifeq ($(OS),Windows_NT)
+  GIT_BASH ?= C:/PROGRA~1/Git/usr/bin/bash.exe
+  SHELL := $(GIT_BASH)
+  export PATH := $(dir $(GIT_BASH)):$(PATH)
+else
+  SHELL := /bin/bash
+endif
+.SHELLFLAGS := -eu -o pipefail -c
+
 MOD_VERSION := 1.27.2
 BINARY_NAME=prepare-commit-msg
 DIST_DIR=dist
@@ -14,7 +27,7 @@ FLEET_LINT_CFG := .golangci.yml
 .PHONY: all build clean test coverage test-coverage run install version build-all \
 	linux linux-amd64 linux-arm64 darwin-arm64 darwin-amd64 windows-amd64 windows-arm64 \
 	help tools fmt fmt-check mod-check vet lint vuln workflow-lint verify verify-staged \
-	hooks-install hooks-uninstall hooks-test
+	hooks-install hooks-uninstall hooks-test check-records markdownlint
 
 all: help build-all
 
@@ -103,7 +116,13 @@ verify: tools mod-check fmt-check lint vet test coverage vuln workflow-lint buil
 verify-staged: tools ## Checks the exact staged Go snapshot
 	$(PYTHON) scripts/go-precheck.py
 
-hooks-install: ## Installs composable repository-local Git hook wrappers
+check-records:
+	python3 scripts/check_records.py --check-all
+
+markdownlint:
+	npx --yes markdownlint-cli2@0.23.2
+
+hooks-install: ## Installs repository pre-push while preserving host hooks
 	./scripts/install-hooks.sh
 
 hooks-uninstall: ## Restores the hooks-path state from before installation

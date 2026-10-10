@@ -1,7 +1,7 @@
 # CI/CD Operations Runbook
 
 This runbook implements
-[`0003-MADR-layer-and-harden-ci-cd-quality-gates.md`](0003-MADR-layer-and-harden-ci-cd-quality-gates.md).
+[`0003-MADR-layer-and-harden-ci-cd-quality-gates.md`](../decisions/0003-MADR-layer-and-harden-ci-cd-quality-gates.md).
 The repository-owned commands are the source of truth; workflows and hooks
 invoke those commands instead of maintaining separate check lists.
 
@@ -18,7 +18,9 @@ make verify
 `make verify` checks module tidiness and checksums, formatting and imports,
 static analysis, race-enabled tests, the 80% aggregate coverage threshold,
 reachable vulnerabilities, shell and workflow syntax, and all six release
-cross-builds. Use `make verify-staged` for the exact staged Go snapshot.
+cross-builds. It is the deliberate local command and the contract run by the
+repository pre-push hook and CI. Use `make verify-staged` only when an
+on-demand diagnostic of the exact staged Go snapshot is useful.
 
 Install the composable local hooks with:
 
@@ -27,7 +29,10 @@ make hooks-install
 make hooks-test
 ```
 
-The installer preserves and invokes the previously effective hooks. To remove
+The installer preserves and invokes previously effective host hooks, including
+an existing host pre-commit. It installs the repository pre-push wrapper and
+does not install a repository pre-commit build hook. Existing clones should
+run `make hooks-install` once after updating from the legacy wrapper. To remove
 only the managed repository layer and restore the prior `core.hooksPath` state:
 
 ```bash
@@ -97,7 +102,7 @@ and after the change.
 
 ## Controlled release
 
-Releases are tag-driven and fully automated via [`.github/workflows/ci.yml`](../.github/workflows/ci.yml):
+Releases are tag-driven and fully automated via [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml):
 
 1. Ensure `main` is up to date and passes verification locally (`make verify`).
 2. Create and push a semantic version tag:
@@ -109,11 +114,12 @@ git push origin "$VERSION"
 ```
 
 The CI/CD pipeline triggers automatically on the `v*` tag push:
-* Runs the quality contract (`make verify`).
-* Compiles all six cross-platform binaries with embedded version metadata.
-* Executes native tests on Linux, macOS, and Windows.
-* Generates `SHA256SUMS`.
-* Creates the GitHub Release and attaches all binaries and checksums directly.
+
+- Runs the quality contract (`make verify`).
+- Compiles all six cross-platform binaries with embedded version metadata.
+- Executes native tests on Linux, macOS, and Windows.
+- Generates `SHA256SUMS`.
+- Creates the GitHub Release and attaches all binaries and checksums directly.
 
 Monitor release progress with:
 
@@ -130,12 +136,15 @@ Verify downloaded artifacts with:
 ## Failed-release recovery
 
 If a release tag fails verification or build before completion:
+
 1. Fix the underlying issue on `main` and run `make verify`.
 2. Delete the remote and local failed tag if unreleased:
+
    ```bash
    git push --delete origin "$VERSION"
    git tag -d "$VERSION"
    ```
+
 3. Re-tag the fixed commit and push the tag to trigger the pipeline again.
 
 If a release was already published to GitHub, increment the patch version (e.g. `v1.2.4`) rather than overwriting an existing release.

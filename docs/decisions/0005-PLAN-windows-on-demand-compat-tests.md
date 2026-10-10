@@ -1,10 +1,15 @@
 ---
-status: proposed
+status: rejected
 date: 2026-09-14
 ---
 <!-- markdownlint-disable MD013 MD024 MD033 MD036 MD060 -->
 
 # PLAN 0005 — Windows compatibility suite as a Python pre-commit hook
+
+> **Outcome:** Rejected by
+> [0013 D8](0013-MADR-align-repository-with-workspace-scaffolding.md#d8-retire-the-repository-owned-pre-commit-build-hook).
+> No phase of this plan was executed; its commands remain as historical
+> evidence.
 
 Implements [0005-MADR-windows-on-demand-compat-tests.md](0005-MADR-windows-on-demand-compat-tests.md)
 decisions D1–D11, closing findings F1–F11.

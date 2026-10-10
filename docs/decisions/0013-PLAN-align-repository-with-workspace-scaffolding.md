@@ -533,10 +533,12 @@ fails.
 
     Require `0014`, zero record/link errors, zero placement warnings, zero
     Markdown errors, and exit 0 from the hook and product checks. After
-    `make hooks-install`, inspect the active managed pre-commit in full: it
-    must delegate only to the saved host hook and contain no repository-hook
-    variable or `.githooks/pre-commit` path. The active pre-push must still
-    compose the previous hook with `.githooks/pre-push`. `make verify` is run
+    `make hooks-install`, inspect the managed hook inventory. If the saved
+    host directory has an executable pre-commit, the managed pre-commit must
+    delegate only to it and contain no repository-hook variable or
+    `.githooks/pre-commit` path. If the host pre-commit is absent, the managed
+    pre-commit must also be absent. The active pre-push must still compose the
+    previous hook with `.githooks/pre-push`. `make verify` is run
     here because this phase changes the Makefile and shell scripts; do not
     repeat it later unless a subsequent change affects its inputs or this run
     fails.
@@ -722,7 +724,7 @@ repository-owned documentation gates.
 | LF policy | Isolated checkout plant and `git ls-files --eol` | CRLF without the rule, LF with it; tracked text attributed LF; fixtures explicitly `-text`. |
 | Identifier hygiene | Environment-derived scan | Zero real-machine identifier hits in added or changed files. |
 | Product contract | `make verify` in Phase 2 | Exit 0 after the Makefile and hook-script changes. |
-| Repository pre-commit removal | File inventory and active-wrapper inspection | `.githooks/pre-commit` absent; installed pre-commit delegates only to the host hook. |
+| Repository pre-commit removal | File inventory and active-wrapper inspection | `.githooks/pre-commit` absent; managed pre-commit delegates only to an executable host hook and is otherwise absent. |
 | Hook composition | `make hooks-test` in Phase 2 | Exit 0; fresh install, v1 migration, host pre-commit, repository pre-push, refusal, and uninstall cases pass. |
 | Verification boundaries | Repository inventory | `verify-staged` remains on demand; `make verify` remains in pre-push and CI. |
 | Working tree | `git status --short` after Phase 4 | Empty. |
@@ -824,4 +826,58 @@ result.
   tracked paths with zero noncanonical results.
 * Template-prefix comparison, ignore-entry assertions, full-file review, and
   `git diff --check`: passed.
-* Phase 1 commit: pending.
+* Phase 1 commit: `013e650` (`chore(workspace): enforce LF checkouts and
+  ignore tool artifacts`).
+
+### 2026-10-10 — Approved Phase 2 deviation
+
+* Evidence: the saved previous hooks directory is
+  `/Users/<user>/.global-git-hooks`, where no executable `pre-commit` exists.
+  The legacy managed wrapper had existed only to call the retired repository
+  entrypoint.
+* Resolution approved by the owner: preserve an executable host pre-commit
+  through host-only delegation; when none exists, leave the managed
+  pre-commit absent. Never create a replacement or no-op repository
+  pre-commit.
+* Consequence: this clone correctly has no managed pre-commit after migration;
+  the managed pre-push still composes the saved host and repository hooks.
+
+### 2026-10-10 — Phase 2
+
+* Canonical copies: `.markdownlint-cli2.jsonc` and
+  `scripts/check_records.py` each matched its pinned template with `cmp` exit
+  0.
+* Documentation structure: nine `git mv` operations placed all numbered
+  records under `docs/decisions/` and the runbook under `docs/guides/`;
+  `docs/reports/` contains the real 0013 GATES record. The records table
+  contains all 27 records.
+* Link and record gates: `scripts/check_records.py --next` exited 0 with
+  `0014`; `--check-all` and `make check-records` exited 0 with no errors or
+  placement warnings. The scratch missing-link plant exited 1 with
+  `broken relative link:`.
+* Historical-path review: residual old paths occur only in earlier records
+  describing the former tree, rejected 0005 work, or commands that actually
+  ran. The 0004 PLAN's old runbook text is a link label whose target is the
+  repaired guide path. Live script and guide references use the new paths.
+* Markdown: the pinned linter and `make markdownlint` each exited 0 with five
+  files linted and zero issues. The Make wrapper required registry access
+  because npm had no offline cache entry; the installed local v0.23.2 binary
+  independently produced the same zero-issue result.
+* Hooks: `bash -n` and `shellcheck` exited 0. `make hooks-test` exited 0 and
+  covered fresh and repeated installs, host pre-commit delegation, legacy
+  migration, the no-host-pre-commit case, refusal cases, pre-push input replay,
+  and uninstall restoration. The scratch retired-call plant exited 1 with
+  `repository hook is not executable:`. A scratch installer with the generic
+  wrapper comparison removed exited 1 with `installer overwrote a modified
+  carried-forward hook`; planting a managed pre-commit in the no-host case
+  exited 1 with `installer created a managed pre-commit without a host
+  pre-commit`. `make hooks-install` exited 0 on this clone; managed pre-commit
+  is absent under the approved conditional behavior, and managed pre-push
+  delegates to both saved-host and repository hooks.
+* Product contract: the first sandboxed `make verify` stopped at `go mod
+  tidy -diff` because the sandbox denied the external Go build cache. The
+  authorized command exited 0: modules verified, golangci-lint reported zero
+  issues, vet and race tests passed, aggregate coverage was 81.7% against an
+  80.0% minimum, govulncheck found no vulnerabilities, script/workflow checks
+  passed, and all six release targets built.
+* Phase 2 commit: pending.

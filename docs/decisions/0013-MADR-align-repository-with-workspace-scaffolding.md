@@ -240,8 +240,9 @@ managed wrapper and replace it with host-only delegation. A wrapper that
 differs from the known legacy and host-only forms remains protected by the
 existing refuse-to-overwrite behavior. Keep the installer's generic
 carry-forward loop: when a host already has an executable pre-commit hook, the
-managed hooks directory still delegates to it. Do not create a replacement
-repository pre-commit hook.
+managed hooks directory still delegates to it. When no executable host
+pre-commit exists, the managed directory has no pre-commit file. Do not create
+a replacement or no-op repository pre-commit hook.
 
 Update `scripts/test-hooks.sh` to prove all of these outcomes in an isolated
 repository:
@@ -249,6 +250,7 @@ repository:
 * installation succeeds without `.githooks/pre-commit`;
 * an existing host pre-commit hook runs exactly once through the managed
   directory, with no repository pre-commit invocation;
+* a fresh install with no host pre-commit creates no managed pre-commit file;
 * an exact legacy managed wrapper migrates to host-only delegation, while a
   modified managed wrapper is refused;
 * the previous and repository pre-push hooks still receive the same input in
@@ -263,10 +265,10 @@ must describe those boundaries precisely.
 
 This decision supersedes only the repository pre-commit requirement in
 accepted
-[`0003-MADR-layer-and-harden-ci-cd-quality-gates.md`](../0003-MADR-layer-and-harden-ci-cd-quality-gates.md).
+[`0003-MADR-layer-and-harden-ci-cd-quality-gates.md`](0003-MADR-layer-and-harden-ci-cd-quality-gates.md).
 Its pre-push, CI, release, and repository-settings decisions remain in force.
 It rejects the unimplemented pre-commit trigger and implementation plan in
-[`0005-MADR-windows-on-demand-compat-tests.md`](../0005-MADR-windows-on-demand-compat-tests.md);
+[`0005-MADR-windows-on-demand-compat-tests.md`](0005-MADR-windows-on-demand-compat-tests.md);
 any future Windows-only local suite needs a new trigger decision.
 
 ### Consequences
@@ -308,8 +310,8 @@ The decision is implemented only when all of the following are true:
 * the records, Markdown, line-ending, and identifier gates pass on the real
   tree and have produced the expected failures on scratch plants;
 * `.githooks/pre-commit` is absent, the hook installer succeeds without it,
-  and the hook composition test proves host pre-commit preservation plus the
-  unchanged repository pre-push sequence;
+  and the hook composition test proves conditional host pre-commit
+  preservation plus the unchanged repository pre-push sequence;
 * the repository's existing product checks still pass in the phases that touch
   their inputs;
 * the associated PLAN records the actual output, deviations, and anything

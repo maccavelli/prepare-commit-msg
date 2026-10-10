@@ -63,6 +63,8 @@ install_wrapper() {
 		exit 1
 	}
 
+	# Literal dollars are emitted into the generated hook script.
+	# shellcheck disable=SC2016
 	{
 		printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail'
 		printf 'PREVIOUS_HOOK=%q\n' "$previous_hook"
@@ -98,23 +100,81 @@ install_wrapper() {
 	fi
 }
 
-install_wrapper pre-commit
+write_passthrough_candidate() {
+	local previous_hook="$1"
+	local candidate="$2"
+
+	# Literal dollars are emitted into the generated hook script.
+	# shellcheck disable=SC2016
+	{
+		printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail'
+		printf 'PREVIOUS_HOOK=%q\n' "$previous_hook"
+		printf '%s\n' 'exec "$PREVIOUS_HOOK" "$@"'
+	} > "$candidate"
+	chmod +x "$candidate"
+}
+
+retire_repository_precommit() {
+	local hook_name="pre-commit"
+	local target="$MANAGED_DIR/$hook_name"
+	local previous_hook="$PREVIOUS_HOOKS_DIR/$hook_name"
+	local repository_hook="$REPO_ROOT/.githooks/$hook_name"
+	local legacy_candidate="$MANAGED_DIR/.$hook_name.legacy.$$"
+	local passthrough_candidate="$MANAGED_DIR/.$hook_name.passthrough.$$"
+
+	[ -e "$target" ] || return 0
+
+	# Literal dollars are emitted into the generated legacy hook script.
+	# shellcheck disable=SC2016
+	{
+		printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail'
+		printf 'PREVIOUS_HOOK=%q\n' "$previous_hook"
+		printf 'REPOSITORY_HOOK=%q\n' "$repository_hook"
+		printf '%s\n' \
+			'if [ -x "$PREVIOUS_HOOK" ]; then' \
+			'  "$PREVIOUS_HOOK" "$@"' \
+			'fi' \
+			'"$REPOSITORY_HOOK" "$@"'
+	} > "$legacy_candidate"
+	chmod +x "$legacy_candidate"
+	write_passthrough_candidate "$previous_hook" "$passthrough_candidate"
+
+	if cmp -s "$legacy_candidate" "$target"; then
+		rm -f "$target"
+	elif cmp -s "$passthrough_candidate" "$target"; then
+		if [ ! -x "$previous_hook" ]; then
+			rm -f "$target"
+		fi
+	else
+		rm -f "$legacy_candidate" "$passthrough_candidate"
+		echo "refusing to overwrite modified managed hook: $target" >&2
+		exit 1
+	fi
+
+	rm -f "$legacy_candidate" "$passthrough_candidate"
+}
+
+retire_repository_precommit
 install_wrapper pre-push
 
 if [ -d "$PREVIOUS_HOOKS_DIR" ]; then
 	for hook_file in "$PREVIOUS_HOOKS_DIR"/*; do
 		[ -f "$hook_file" ] && [ -x "$hook_file" ] || continue
 		hook_name="$(basename "$hook_file")"
-		[ ! -e "$MANAGED_DIR/$hook_name" ] || continue
+		[ "$hook_name" != "pre-push" ] || continue
 		candidate="$MANAGED_DIR/.$hook_name.candidate.$$"
 		target="$MANAGED_DIR/$hook_name"
-		{
-			printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail'
-			printf 'PREVIOUS_HOOK=%q\n' "$hook_file"
-			printf '%s\n' 'exec "$PREVIOUS_HOOK" "$@"'
-		} > "$candidate"
-		chmod +x "$candidate"
-		mv "$candidate" "$target"
+		write_passthrough_candidate "$hook_file" "$candidate"
+		if [ -e "$target" ]; then
+			if ! cmp -s "$candidate" "$target"; then
+				rm -f "$candidate"
+				echo "refusing to overwrite modified managed hook: $target" >&2
+				exit 1
+			fi
+			rm -f "$candidate"
+		else
+			mv "$candidate" "$target"
+		fi
 	done
 fi
 

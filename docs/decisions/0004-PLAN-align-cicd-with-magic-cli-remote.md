@@ -7,7 +7,7 @@ Replaces the fragmented and broken CI/CD workflows (`quality.yml`, `release.yml`
 
 ## Phase 1: Author Unified `ci.yml` Workflow
 
-### 1. Update [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
+### 1. Update [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)
 Define the complete pipeline in a single workflow:
 * **Triggers**:
   - `push` on `branches: [main]`
@@ -47,8 +47,8 @@ Define the complete pipeline in a single workflow:
 * Remove [`.github/workflows/release.yml`](https://github.com/maccavelli/prepare-commit-msg/blob/7b91a1ae38be006ffd0779aefe159bba1d597b59/.github/workflows/release.yml).
 
 ### 2. Update Documentation
-* Update [`docs/README.md`](../docs/README.md) to index MADR-0004 and PLAN-0004.
-* Update [`docs/cicd-operations.md`](../docs/cicd-operations.md) to document the simplified tag-and-push release model.
+* Update [`docs/README.md`](../README.md) to index MADR-0004 and PLAN-0004.
+* Update [`docs/cicd-operations.md`](../guides/cicd-operations.md) to document the simplified tag-and-push release model.
 
 ---
 
