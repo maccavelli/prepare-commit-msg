@@ -666,3 +666,16 @@ The owner committed Phase 3 as `12b612d`. Deviation D1, above, came first.
    `make verify-staged` on the staged snapshot: exit 0, both libraries
    resolved from GitHub, `0 issues.`, `No vulnerabilities found.`
 6. **Step 5,** the owner's `--apply`, waits for Phase 5 step 1's push.
+
+### Phase 5, step 1: the first push through the pipeline (2026-10-10)
+
+* The owner committed Phase 4 as `1cafc4b`, and pushed `main` from
+  `332bb70` to `1cafc4b`.
+* CI run 38057642183 on `1cafc4b` passed:
+  * Go (quality contract), and Native Tests on Linux, macOS and Windows;
+  * Build release / build, and five identity legs, each reporting
+    `rehearsal-1cafc4b1e601 (local) 1cafc4b1e601`:
+    `prepare-commit-msg-linux-amd64`, `-linux-arm64`, `-darwin-arm64`,
+    `-windows-amd64.exe` and `-windows-arm64.exe`;
+  * Publish GitHub Release: skipped, as on any push that is not a tag.
+  * The run's log names `install.sh` and `install.ps1`.
