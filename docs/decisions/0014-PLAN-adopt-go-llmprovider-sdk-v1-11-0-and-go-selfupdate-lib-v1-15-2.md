@@ -36,6 +36,7 @@ Done means every item under Verification holds.
 | 0 | agent, then owner | this pair and the index; the owner approves |
 | 1 | agent | D1, D2, D7 (catalog drift), D9 (the README table): both modules, green |
 | 2 | agent | D3, D4: configure's prompter and `--yes` |
+| 2a | agent | MADR Amendment 1: go-llmprovider-sdk `v1.12.0` |
 | 3 | agent | D6: key rule, base URL, provider list, help text |
 | 4 | agent | D5, D8, D7 (`llmtest` fake), `session.Store` |
 | 5 | agent | D9: the README section and `docs/architecture.md` |
@@ -143,6 +144,20 @@ Done means every item under Verification holds.
    wording.
 6. Phase gate; stage; the owner commits.
 
+### Phase 2a: go-llmprovider-sdk v1.12.0 (MADR Amendment 1)
+
+Added 2026-10-13, after the owner asked for the most current releases.
+Runs after the owner commits Phase 2, and before Phase 3.
+
+1. `go get github.com/maccavelli/go-llmprovider-sdk@v1.12.0`, then `go mod
+   tidy`. Assert `git diff --stat` touches only `go.mod` and `go.sum`.
+2. Re-run the curated-model dump; if any static catalog differs from
+   `v1.11.0`'s, update the README table and examples as in Phase 1 step 5
+   (`TestReadmeCuratedModels` decides).
+3. `Request.Cache` is not set (Amendment 1, A2).
+4. Phase gate, plus `make verify-staged` (go-precheck resolves `v1.12.0`
+   from GitHub); stage; the owner commits.
+
 ### Phase 3: provider facts from the registry (D6)
 
 1. `internal/config`:
@@ -221,7 +236,8 @@ Done means every item under Verification holds.
 
 ## Verification
 
-* `go.mod` names `v1.11.0` and `v1.15.2`; `go mod tidy -diff` is empty;
+* `go.mod` names go-llmprovider-sdk `v1.12.0` (MADR Amendment 1) and
+  go-selfupdate-lib `v1.15.2`; `go mod tidy -diff` is empty;
   `scripts/go-precheck.py` passes.
 * `ci.yml`'s two `uses:` name `436a7f5…`; `make workflow-lint` passes.
 * `go test -race -count=1 ./...` passes on all five packages, including
@@ -404,5 +420,49 @@ The 403 control passes both with and without the fix, as it should.
 | `CGO_ENABLED=0 GOOS={linux,darwin,windows} go vet ./...` | 0 each |
 | `go mod tidy -diff` | 0, empty |
 | `make verify` | 0; `golangci-lint run`: `0 issues.`; total coverage 82.2% (minimum 80.0%); `govulncheck`: `No vulnerabilities found.` |
+
+Staged for the owner's commit.
+
+### Amendment 2 (2026-10-13): Phase 2a, go-llmprovider-sdk v1.12.0
+
+The owner asked that the most current releases be pinned.
+go-llmprovider-sdk `v1.12.0` was tagged after this pair was written; the
+MADR's Amendment 1 records what it is and the measurements. Phase 2a is
+added between Phase 2 and Phase 3; nothing already done changes.
+
+Phase 2 was committed by the owner as `8df87c7`, with Amendment 2 left out
+of that commit. The owner then said "committed, proceed", approving the
+MADR's Amendment 1 and Phase 2a.
+
+### Phase 2a: go-llmprovider-sdk v1.12.0 (2026-10-13)
+
+**Step 1.** `go get github.com/maccavelli/go-llmprovider-sdk@v1.12.0`
+(exit 0: `upgraded … v1.11.0 => v1.12.0`), then `go mod tidy` (exit 0).
+Outside the two records, `git diff --stat` names only `go.mod` (1 line)
+and `go.sum` (the SDK's 2 lines); go-selfupdate-lib stays at `v1.15.2`.
+
+**Step 2.** The curated-model dump (each registered provider's
+`catalog.Static`, encoded as JSON) was run on scratch copies at `v1.11.0`
+and `v1.12.0`: both outputs are 1,136 bytes and `cmp` exits 0. The README
+table and examples therefore do not change, and `TestReadmeCuratedModels`
+passes.
+
+**Step 3.** `Request.Cache` is not set: a grep of the repository's `.go`
+files for `Cache`, `CacheShort`, `CacheLong` and `CacheRetention` finds
+nothing (exit 1).
+
+**Fail-first:** not applicable; the phase adds no gate, assertion or test.
+
+**Phase gate,** each exit status captured before any filter:
+
+| Check | Result |
+| :--- | :--- |
+| `go test -race -count=1 ./...` | 0; 5 packages ok |
+| `CGO_ENABLED=0 GOOS={linux,darwin,windows} go vet ./...` | 0 each |
+| `go mod tidy -diff` | 0, empty |
+| `go test -count=1 -run TestReadmeCuratedModels ./...` | 0; PASS |
+| `make verify` | 0; `golangci-lint run`: `0 issues.`; total coverage 82.2% (minimum 80.0%); `govulncheck`: `No vulnerabilities found.` |
+| `make verify-staged` | 0; go-precheck resolves go-llmprovider-sdk `v1.12.0` and go-selfupdate-lib `v1.15.2` from GitHub; `0 issues.`; `No vulnerabilities found.` |
+| `make check-records`, `make markdownlint` | 0 each |
 
 Staged for the owner's commit.

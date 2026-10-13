@@ -200,7 +200,8 @@ equivalent.
 ### D1. Both modules move, and the workflows follow
 
 * `go.mod` requires `go-llmprovider-sdk v1.11.0` and `go-selfupdate-lib
-  v1.15.2`; nothing else in the graph moves.
+  v1.15.2`; nothing else in the graph moves. *(Amended 2026-10-13: the SDK
+  moves on to `v1.12.0`; see Amendment 1 under More Information.)*
 * `ci.yml`'s two `uses:` name `@436a7f5976a6815491c7384527fef90869574a1b #
   v1.15.2`. The comment above them names `v1.15.2` and keeps its reasoning:
   the publish path is unchanged from `v1.11.0`'s, which has published live.
@@ -364,6 +365,57 @@ stands as written, and this record is `accepted`.
 * **Q5 (D10).** Release `v1.9.0` (recommended), or `v1.8.1`?
 
 ## More Information
+
+### Amendment 1 (2026-10-13): go-llmprovider-sdk v1.12.0
+
+**Status: accepted** by the owner on 2026-10-13 ("committed, proceed",
+in answer to the request to approve it). D1 to D10 otherwise stand.
+
+The owner asked that the most current releases be pinned. Checked on
+2026-10-13 against both the module proxy and the repositories' tags
+**[read]**:
+
+| Library | Pinned (Phase 1) | Newest | Tagged |
+| :--- | :--- | :--- | :--- |
+| go-selfupdate-lib | `v1.15.2` | `v1.15.2` | 2026-10-13 00:46 UTC |
+| go-llmprovider-sdk | `v1.11.0` | `v1.12.0` | 2026-10-13 19:32 UTC, after this record |
+
+**What `v1.12.0` is [read].** One record, the SDK's
+`0039-MADR-request-side-prompt-caching.md`. Its only exported change is
+`llmprovider.CacheRetention` (`CacheShort`, `CacheLong`) and the field
+`Request.Cache`; `Request.Validate` refuses any other value. "The zero
+value asks for nothing: the request is sent as it would be without the
+field" (`llmprovider/contract.go`; 0039-MADR D1). Its `go.mod` is
+unchanged from `v1.11.0`'s.
+
+**Measured on a scratch copy of the tree with Phases 1 and 2 [probed]:**
+`go get …@v1.12.0` and `go mod tidy` change only the SDK's lines in
+`go.mod` and `go.sum`; `go build`, `CGO_ENABLED=0 go vet` for linux,
+darwin and windows, `go test -race -count=1 ./...` (5 packages) and `go
+mod tidy -diff` all exit 0.
+
+**A1.** `go.mod` requires `go-llmprovider-sdk v1.12.0`. go-selfupdate-lib
+and the workflow pins stay at `v1.15.2`, its newest.
+
+**A2. `Request.Cache` is left at its zero value.** The SDK's own record
+names this repository as the caller that would only pay for it: one
+request per commit, each with a new diff, so "a write it never reads costs
+a quarter more" on Anthropic (0039-MADR, "What the consumers need" and
+option D). The prompt's fixed prefix (`main.go:457-458`) is two sentences,
+far below the 512 to 4,096 tokens below which a prompt "will be processed
+without caching" (0039-MADR, Anthropic). This is the one new API the
+release adds, and it is not used, deliberately.
+
+**A3. A cost the SDK cannot switch off [read].** OpenAI caches
+automatically on GPT-5.6 and later, at 1.25 times the input price for a
+write (0039-MADR, OpenAI). D2's catalog makes `gpt-6-luna` OpenAI's
+default where `v1.3.2` made `gpt-4.1-mini`, which has no write charge. The
+SDK sends no field that turns this off (0039-MADR D3), so a user on
+OpenAI's default pays it on each commit's prompt. The README's changes
+section says so (D9).
+
+**Confirmation** is D1's, at `v1.12.0`; `scripts/go-precheck.py` resolves
+`v1.12.0` from GitHub.
 
 * go-llmprovider-sdk records, by full filename in that repository:
   `docs/decisions/0028-MADR-heuristics-and-performance-from-the-research-pass.md`,
