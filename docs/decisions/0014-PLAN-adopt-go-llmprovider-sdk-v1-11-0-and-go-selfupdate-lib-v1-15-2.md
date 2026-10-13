@@ -466,3 +466,102 @@ nothing (exit 1).
 | `make check-records`, `make markdownlint` | 0 each |
 
 Staged for the owner's commit.
+
+Committed by the owner as `ea1ff9c`. Before the next phase the agent ran
+the disclosure guard over the four commits not yet on `origin/main`
+(`703ea27`, `bd5d46d`, `8df87c7`, `ea1ff9c`): exit 0, no output. The owner
+then said "proceed".
+
+### Phase 3: provider facts from the registry (2026-10-13)
+
+The SDK's registry (`providers.Default().Descriptors()`, at `v1.12.0`)
+lists 10 providers. Only Ollama has `RequiresAPIKey` false; OpenCode Zen,
+OpenCode Go, Hugging Face, Kilo, Together and Ollama have
+`SupportsBaseURL` and a `DefaultBaseURL` **[probed]**.
+
+**Step 1 (`internal/config`).** `SupportedProviders` is built once from
+the registry's descriptor IDs, in its order. `ValidateActive` looks the
+provider up, refuses an unknown one by name (`unsupported provider %q
+(known: …)`), and requires a key only when `RequiresAPIKey` is true.
+`ProviderConfig` gains `BaseURL` (`json:"base_url,omitempty"`).
+
+**Step 2 (`internal/ui/setup.go`).** `existing.BaseURL` is the saved
+`base_url`; after the wizard, `savedBaseURL` keeps `res.BaseURL` only when
+it differs from the descriptor's `DefaultBaseURL`, and clears it otherwise.
+
+**Step 3 (`main.go`).** `providerOptions` adds
+`llmprovider.WithBaseURL(pc.BaseURL)` when it is set, before the Kilo
+organization option. The help text's `--provider` line joins the
+registry's IDs with `|`, and the flag's usage with `, `.
+
+**Step 4 (tests).**
+
+* `TestValidateActive_KeylessProvider`: Ollama with no key passes, Gemini
+  with no key fails, and an unknown provider is refused by name.
+* `TestNewActiveProvider_BaseURL` runs `runAnalyzer` against an Ollama
+  config whose `base_url` is an `httptest` server answering
+  `/v1/chat/completions`, and requires the request and the written
+  message. It covers the hook's key rule too: Ollama reaches the server
+  with no key.
+* `TestRunSetupInteractive_SavesBaseURL` (Ollama, its requests redirected
+  to a fixture answering `/api/version` and `/api/tags`): a typed endpoint
+  is saved; accepting the default saves none.
+  * **Noted, within the step:** a third case, "saved endpoint kept", seeds
+    a saved `base_url` and accepts the offered default. It is the only case
+    that tests `existing.BaseURL`.
+* `TestApplyDefaults_EveryRegistryProvider`: every descriptor ID has a
+  template, holding `DefaultModelForProvider`'s model.
+
+**Fail-first,** each on a scratch copy of the tree with one step undone;
+the tree was not touched:
+
+```text
+key rule undone (every provider needs a key, no unknown-provider check):
+--- FAIL: TestNewActiveProvider_BaseURL
+    provider_test.go:198: runAnalyzer: no API key for provider "ollama"; run 'prepare-commit-msg configure'
+--- FAIL: TestValidateActive_KeylessProvider
+    config_test.go:569: Ollama without a key: no API key for provider "ollama"; run 'prepare-commit-msg configure'; want nil, its descriptor needs no key
+    config_test.go:576: unknown provider: <nil>; want it refused by name
+provider list undone (the four hard-coded providers):
+--- FAIL: TestApplyDefaults_EveryRegistryProvider
+    config_test.go:588: no template for opencode-zen
+    (likewise opencode-go, huggingface, kilo, together, ollama)
+step 2 undone (endpoint neither offered back nor saved):
+    --- FAIL: TestRunSetupInteractive_SavesBaseURL/typed_endpoint
+        setup_test.go:766: base_url = ""; want "http://ollama.test:11434"
+existing.BaseURL alone undone:
+    --- FAIL: TestRunSetupInteractive_SavesBaseURL/saved_endpoint_kept
+        setup_test.go:766: base_url = ""; want "http://ollama.test:11434"
+step 3 undone (no WithBaseURL):
+--- FAIL: TestNewActiveProvider_BaseURL
+    provider_test.go:198: runAnalyzer: all models for ollama failed, last error: model llama3.3 failed: llmprovider: invalid request: ollama HTTP 404 not_found_error: model 'llama3.3' not found
+```
+
+With step 2 wholly undone, "saved endpoint kept" passes, because the old
+`base_url` is never overwritten; the `existing.BaseURL` run is the one
+that shows that case failing. With step 3 undone, the request went to the
+default `localhost:11434`, where an Ollama on the test machine answered
+404; with no Ollama running, the request is refused instead. Either way,
+the fixture gets no request.
+
+**Phase gate,** each exit status captured before any filter:
+
+| Check | Result |
+| :--- | :--- |
+| `gofmt -l` on the six changed `.go` files | 0, no output |
+| `go test -race -count=1 ./...` | 0; 5 packages ok |
+| `CGO_ENABLED=0 GOOS={linux,darwin,windows} go vet ./...` | 0 each |
+| `go mod tidy -diff` | 0, empty |
+| `make verify` | 0; `golangci-lint run`: `0 issues.`; total coverage 82.5% (minimum 80.0%); `govulncheck`: `No vulnerabilities found.` |
+| `make verify-staged` | 0; `0 issues.`; `No vulnerabilities found.` |
+| `make check-records`, `make markdownlint` | 0 each |
+
+**Found, out of scope, not done.** `configure --yes` still requires a key
+for every provider: `runSetupNonInteractive` returns `API key required:
+pass --api-key or set ` with an empty variable name for Ollama
+(`internal/ui/setup.go`, the `apiKey == ""` check), and it neither takes
+nor saves a base URL. D6 names the hook's key rule and the wizard's
+endpoint, not the `--yes` path, so this phase leaves it as it was. It
+waits for an amendment and the owner's approval.
+
+Staged for the owner's commit.

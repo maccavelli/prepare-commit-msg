@@ -695,3 +695,76 @@ func TestRunSetupNonInteractive_RefusedKey(t *testing.T) {
 		})
 	}
 }
+
+// ollamaServer answers Ollama's reachability check and model listing, and
+// redirects configure's requests to itself, whatever endpoint is typed.
+func ollamaServer(t *testing.T) *redirectTransport {
+	t.Helper()
+	isolate(t)
+	t.Setenv("LLMPROVIDER_DISABLE_MODELS_METADATA", "1")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/version":
+			_, _ = w.Write([]byte(`{"version":"0.12.0"}`))
+		case "/api/tags":
+			_, _ = w.Write([]byte(`{"models":[{"name":"llama3.3"},{"name":"qwen3"}]}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	to, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	redirect := &redirectTransport{to: to}
+	listingClient = &http.Client{Transport: redirect}
+	return redirect
+}
+
+// TestRunSetupInteractive_SavesBaseURL: a typed endpoint that is not the
+// provider's default is saved as base_url; accepting the default saves none;
+// a saved one is offered again and kept (0014-MADR D6).
+func TestRunSetupInteractive_SavesBaseURL(t *testing.T) {
+	ollama := llmprovider.ProviderOllama
+	d, ok := registry.Descriptor(ollama)
+	if !ok || d.DefaultBaseURL == "" {
+		t.Fatal("the registry offers no Ollama endpoint default")
+	}
+	pos := slices.IndexFunc(registry.Descriptors(), func(x llmprovider.Descriptor) bool { return x.ID == ollama }) + 1
+	for _, tc := range []struct {
+		name, saved, typed, want string
+	}{
+		{"typed endpoint", "", "http://ollama.test:11434", "http://ollama.test:11434"},
+		{"default endpoint", "", "", ""},
+		{"saved endpoint kept", "http://ollama.test:11434", "", "http://ollama.test:11434"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			redirect := ollamaServer(t)
+			conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
+			config.ApplyDefaults(conf)
+			if tc.saved != "" {
+				pc := conf.Providers[string(ollama)]
+				pc.BaseURL = tc.saved
+				conf.Providers[string(ollama)] = pc
+				conf.ActiveProvider = string(ollama)
+			}
+			// provider, endpoint, search blank, the first model, fallback
+			// search blank, none, the four operational defaults
+			input := strconv.Itoa(pos) + "\n" + tc.typed + "\n\n1\n\n\n\n\n\n\n"
+			if err := runSetupInteractive(context.Background(), conf, SetupOptions{NoEnv: true}, strings.NewReader(input)); err != nil {
+				t.Fatalf("runSetupInteractive: %v", err)
+			}
+			if redirect.requests.Load() == 0 {
+				t.Fatal("configure never reached the Ollama fixture")
+			}
+			if conf.ActiveProvider != string(ollama) {
+				t.Fatalf("active provider = %q; want ollama", conf.ActiveProvider)
+			}
+			if got := conf.Providers[string(ollama)].BaseURL; got != tc.want {
+				t.Errorf("base_url = %q; want %q", got, tc.want)
+			}
+		})
+	}
+}

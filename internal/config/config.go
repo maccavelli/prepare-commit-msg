@@ -11,6 +11,7 @@ import (
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider"
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/auth"
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/catalog"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/providers"
 )
 
 // Operational defaults applied whenever a config is loaded or created.
@@ -23,12 +24,21 @@ const (
 	MaxFallbacks = 3
 )
 
-// SupportedProviders is the canonical ordered list of LLM providers.
-var SupportedProviders = []string{
-	string(llmprovider.ProviderGemini),
-	string(llmprovider.ProviderOpenAI),
-	string(llmprovider.ProviderClaude),
-	string(llmprovider.ProviderGrok),
+// registry is the SDK's provider set; it decides which providers exist, which
+// need a key, and where each one's endpoint is (0014-MADR D6).
+var registry = providers.Default()
+
+// SupportedProviders is every provider the SDK registers, in its order, so a
+// provider added there gets a template here with no change (0014-MADR D6).
+var SupportedProviders = registeredIDs()
+
+func registeredIDs() []string {
+	descriptors := registry.Descriptors()
+	ids := make([]string, 0, len(descriptors))
+	for _, d := range descriptors {
+		ids = append(ids, string(d.ID))
+	}
+	return ids
 }
 
 // Config holds the application configuration including the active LLM provider,
@@ -65,6 +75,9 @@ type ProviderConfig struct {
 	// Organization is the Kilo organization a device login chose. Generation
 	// sends it; empty is the personal account.
 	Organization string `json:"organization,omitempty"`
+	// BaseURL is the endpoint configure saved when it differs from the
+	// provider's default; empty uses the default (0014-MADR D6).
+	BaseURL string `json:"base_url,omitempty"`
 }
 
 var (
@@ -295,13 +308,18 @@ func ResolveAPIKey(pc ProviderConfig, provider string, useEnv bool, getenv func(
 	return ""
 }
 
-// ValidateActive checks that the active provider has a usable key and model.
-// apiKey should already be resolved (config + optional env).
+// ValidateActive checks that the active provider is registered and has a
+// model, and a key when its descriptor requires one (0014-MADR D6). apiKey
+// should already be resolved (config + optional env).
 func ValidateActive(provider string, pc ProviderConfig, apiKey string) error {
 	if strings.TrimSpace(provider) == "" {
 		return fmt.Errorf("no active provider configured; please run 'prepare-commit-msg configure'")
 	}
-	if strings.TrimSpace(apiKey) == "" {
+	d, ok := registry.Descriptor(llmprovider.ProviderID(provider))
+	if !ok {
+		return fmt.Errorf("unsupported provider %q (known: %s); run 'prepare-commit-msg configure'", provider, strings.Join(SupportedProviders, ", "))
+	}
+	if d.RequiresAPIKey && strings.TrimSpace(apiKey) == "" {
 		envHint := ""
 		if v, ok := llmprovider.ProviderEnvVars()[llmprovider.ProviderID(provider)]; ok {
 			envHint = fmt.Sprintf(" or set %s", v)

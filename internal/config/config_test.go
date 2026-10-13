@@ -15,6 +15,7 @@ import (
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider"
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/auth"
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/catalog"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/providers"
 )
 
 func isolateHome(t *testing.T) string {
@@ -556,6 +557,39 @@ func TestApplyDefaults_KeepsVendorCLILogin(t *testing.T) {
 	for _, want := range []string{`"auth_kind":"vendor_cli"`, `"vendor_auth_path":"/x/grok/auth.json"`} {
 		if !bytes.Contains(out, []byte(want)) {
 			t.Errorf("grok config = %s, want %s", out, want)
+		}
+	}
+}
+
+// TestValidateActive_KeylessProvider: a provider whose descriptor needs no key
+// is valid without one; one that needs a key is not; an unknown provider is
+// refused by name (0014-MADR D6).
+func TestValidateActive_KeylessProvider(t *testing.T) {
+	if err := ValidateActive(string(llmprovider.ProviderOllama), ProviderConfig{Model: "llama3.3"}, ""); err != nil {
+		t.Errorf("Ollama without a key: %v; want nil, its descriptor needs no key", err)
+	}
+	if err := ValidateActive(string(llmprovider.ProviderGemini), ProviderConfig{Model: "m"}, ""); err == nil {
+		t.Error("Gemini without a key: nil; want the missing-key error")
+	}
+	err := ValidateActive("no-such-provider", ProviderConfig{Model: "m"}, "key")
+	if err == nil || !strings.Contains(err.Error(), `"no-such-provider"`) {
+		t.Errorf("unknown provider: %v; want it refused by name", err)
+	}
+}
+
+// TestApplyDefaults_EveryRegistryProvider: a template exists for every
+// provider the SDK registers, with its catalog's default model (0014-MADR D6).
+func TestApplyDefaults_EveryRegistryProvider(t *testing.T) {
+	conf := &Config{}
+	ApplyDefaults(conf)
+	for _, d := range providers.Default().Descriptors() {
+		pc, ok := conf.Providers[string(d.ID)]
+		if !ok {
+			t.Errorf("no template for %s", d.ID)
+			continue
+		}
+		if want := DefaultModelForProvider(string(d.ID)); pc.Model != want {
+			t.Errorf("%s model = %q, want %q", d.ID, pc.Model, want)
 		}
 	}
 }

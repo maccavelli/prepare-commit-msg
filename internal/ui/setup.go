@@ -218,6 +218,7 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 	if pc, ok := conf.Providers[defProvider]; ok {
 		existing.Model = pc.Model
 		existing.Organization = pc.Organization
+		existing.BaseURL = pc.BaseURL
 		if config.IsOAuth(pc) {
 			session, loadErr := store.Load(ctx, llmprovider.ProviderID(defProvider))
 			if loadErr != nil {
@@ -268,6 +269,7 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 	pc.Model = res.Model
 	pc.FallbackModels = res.Fallbacks
 	pc.Organization = res.Organization
+	pc.BaseURL = savedBaseURL(res)
 	pc.VendorAuthPath = ""
 	switch res.Kind {
 	case wizard.CredOAuth:
@@ -321,6 +323,16 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 		fmt.Printf("Fallbacks: %s\n", strings.Join(pc.FallbackModels, ", "))
 	}
 	return nil
+}
+
+// savedBaseURL is the wizard's endpoint when it is not the provider's
+// default, which needs no saving (0014-MADR D6).
+func savedBaseURL(res wizard.Result) string {
+	d, _ := registry.Descriptor(res.Provider)
+	if res.BaseURL == d.DefaultBaseURL {
+		return ""
+	}
+	return res.BaseURL
 }
 
 func runSetupNonInteractive(ctx context.Context, conf *config.Config, opts SetupOptions) error {

@@ -50,7 +50,7 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  %s help                           - show this help\n", AppTitle)
 	fmt.Fprintf(os.Stderr, "  %s <commit_msg_file> [source] [sha] - run as git prepare-commit-msg hook\n", AppTitle)
 	fmt.Fprintf(os.Stderr, "\nConfigure flags:\n")
-	fmt.Fprintf(os.Stderr, "  --provider string         gemini|openai|claude|grok\n")
+	fmt.Fprintf(os.Stderr, "  --provider string         %s\n", strings.Join(config.SupportedProviders, "|"))
 	fmt.Fprintf(os.Stderr, "  --model string            primary model name\n")
 	fmt.Fprintf(os.Stderr, "  --api-key string          API key (or use provider env var)\n")
 	fmt.Fprintf(os.Stderr, "  --fallback string         fallback model (repeatable, max %d)\n", config.MaxFallbacks)
@@ -113,7 +113,7 @@ func runConfigure(args []string) error {
 	fs := flag.NewFlagSet("configure", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 
-	provider := fs.String("provider", "", "LLM provider: gemini, openai, or claude")
+	provider := fs.String("provider", "", "LLM provider: "+strings.Join(config.SupportedProviders, ", "))
 	model := fs.String("model", "", "primary model name")
 	apiKey := fs.String("api-key", "", "API key (optional if env var or config exists)")
 	timeout := fs.Int("timeout-seconds", 0, "LLM timeout in seconds")
@@ -342,12 +342,17 @@ func newActiveProvider(conf *config.Config, pc config.ProviderConfig, model stri
 }
 
 // providerOptions are the options a provider's saved configuration adds: the
-// Kilo organization a device login chose.
+// endpoint configure saved (0014-MADR D6), and the Kilo organization a device
+// login chose.
 func providerOptions(id llmprovider.ProviderID, pc config.ProviderConfig) []llmprovider.Option {
-	if id == llmprovider.ProviderKilo && strings.TrimSpace(pc.Organization) != "" {
-		return []llmprovider.Option{kilo.WithOrganization(strings.TrimSpace(pc.Organization))}
+	var opts []llmprovider.Option
+	if baseURL := strings.TrimSpace(pc.BaseURL); baseURL != "" {
+		opts = append(opts, llmprovider.WithBaseURL(baseURL))
 	}
-	return nil
+	if id == llmprovider.ProviderKilo && strings.TrimSpace(pc.Organization) != "" {
+		opts = append(opts, kilo.WithOrganization(strings.TrimSpace(pc.Organization)))
+	}
+	return opts
 }
 
 // newKeyProvider builds provider id on an API key.

@@ -5,7 +5,10 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -14,6 +17,7 @@ import (
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/llmtest"
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/providers"
 	"github.com/maccavelli/prepare-commit-msg/internal/config"
+	"github.com/maccavelli/prepare-commit-msg/internal/git"
 )
 
 // TestGenerateText_ResponsesRefusal: a real OpenAI provider whose Responses
@@ -157,5 +161,50 @@ func TestNewActiveProvider_KiloOrganization(t *testing.T) {
 	// Another provider never gets the Kilo option.
 	if opts := providerOptions(llmprovider.ProviderOpenAI, config.ProviderConfig{Organization: "org-1"}); len(opts) != 0 {
 		t.Fatalf("OpenAI got %d options", len(opts))
+	}
+}
+
+// TestNewActiveProvider_BaseURL: a saved base_url is where the hook sends its
+// request; Ollama also needs no key to get there (0014-MADR D6).
+func TestNewActiveProvider_BaseURL(t *testing.T) {
+	isolateUserDirs(t)
+	t.Setenv("LLMPROVIDER_DISABLE_MODELS_METADATA", "1")
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/chat/completions" {
+			http.NotFound(w, r)
+			return
+		}
+		hits.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"c1","object":"chat.completion","model":"llama3.3","choices":[` +
+			`{"index":0,"message":{"role":"assistant","content":"feat: reach the saved endpoint"},"finish_reason":"stop"}]}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	ollama := string(llmprovider.ProviderOllama)
+	conf := &config.Config{
+		ActiveProvider: ollama,
+		Providers:      map[string]config.ProviderConfig{ollama: {Model: "llama3.3", BaseURL: srv.URL}},
+		TimeoutSeconds: 5,
+	}
+	config.ApplyDefaults(conf)
+	msgPath := filepath.Join(t.TempDir(), "COMMIT_EDITMSG")
+	if err := os.WriteFile(msgPath, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	info := &git.Info{Files: []string{"app.go"}, Additions: 1, Deletions: 1}
+	if err := runAnalyzer(msgPath, conf, info); err != nil {
+		t.Fatalf("runAnalyzer: %v", err)
+	}
+	if hits.Load() == 0 {
+		t.Fatal("the saved base_url received no request")
+	}
+	got, err := os.ReadFile(msgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(string(got), "feat: reach the saved endpoint\n") {
+		t.Errorf("commit message = %q; want the endpoint's answer", got)
 	}
 }
