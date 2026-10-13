@@ -143,7 +143,7 @@ func TestNewActiveProvider_KiloOrganization(t *testing.T) {
 	var gotOpts int
 	newProviderWithSource = func(_ llmprovider.ProviderID, _ llmprovider.TokenSource, _ string, opts ...llmprovider.Option) (llmprovider.Provider, error) {
 		gotOpts = len(opts)
-		return analyzerTestProvider{}, nil
+		return llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).ReplyText("feat: use OAuth session"), nil
 	}
 	for _, tc := range []struct {
 		org  string
@@ -206,5 +206,30 @@ func TestNewActiveProvider_BaseURL(t *testing.T) {
 	}
 	if !strings.HasPrefix(string(got), "feat: reach the saved endpoint\n") {
 		t.Errorf("commit message = %q; want the endpoint's answer", got)
+	}
+}
+
+// TestProvider_UserAgentNamesApp: the hook's requests name this program and
+// its build in User-Agent, not the SDK (0014-MADR D5).
+func TestProvider_UserAgentNamesApp(t *testing.T) {
+	t.Setenv("LLMPROVIDER_DISABLE_MODELS_METADATA", "1")
+	var agent atomic.Value
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		agent.Store(r.UserAgent())
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"c1","object":"chat.completion","model":"llama3.3","choices":[` +
+			`{"index":0,"message":{"role":"assistant","content":"feat: name the app"},"finish_reason":"stop"}]}`))
+	}))
+	t.Cleanup(srv.Close)
+	p, err := newSourceProvider(llmprovider.ProviderOllama, llmprovider.NewStaticToken(""), "llama3.3", llmprovider.WithBaseURL(srv.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := generateText(context.Background(), p, "prompt", 0, 0); err != nil {
+		t.Fatalf("generateText: %v", err)
+	}
+	got, _ := agent.Load().(string)
+	if want := AppTitle + "/" + buildIdentity().Current() + " ("; !strings.HasPrefix(got, want) {
+		t.Errorf("User-Agent = %q; want it to begin %q", got, want)
 	}
 }

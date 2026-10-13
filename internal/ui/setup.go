@@ -53,6 +53,9 @@ type SetupOptions struct {
 	NoEnv bool
 	// Yes runs non-interactively; missing required fields become errors or defaults.
 	Yes bool
+	// ClientOptions name the application in configure's SDK requests; none
+	// leaves the SDK naming itself (0014-MADR D5).
+	ClientOptions []llmprovider.Option
 }
 
 // RunSetup runs the interactive configuration wizard.
@@ -145,9 +148,11 @@ func promptOperational(p wizard.Prompter, conf *config.Config, opts SetupOptions
 // this exists for the non-interactive --yes path, which takes flags rather
 // than prompts. A key the service refuses is an error, as in the wizard; any
 // other failed listing gives the static catalog (0014-MADR D4). A non-empty
-// baseURL is the endpoint listed (0014-MADR Amendment 2, B3).
-func discoverModels(ctx context.Context, provider, apiKey, baseURL string) ([]string, error) {
+// baseURL is the endpoint listed (0014-MADR Amendment 2, B3); extra carries
+// the application's name (0014-MADR D5).
+func discoverModels(ctx context.Context, provider, apiKey, baseURL string, extra ...llmprovider.Option) ([]string, error) {
 	opts := append(catalog.OptionsFromEnv(), catalog.WithLimit(catalog.MaxListed))
+	opts = append(opts, extra...)
 	if baseURL != "" {
 		opts = append(opts, llmprovider.WithBaseURL(baseURL))
 	}
@@ -265,7 +270,7 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 		ModelLimit:      catalog.MaxListed,
 		HTTPClient:      listingClient,
 		Registry:        registry,
-		ProviderOptions: catalog.OptionsFromEnv(),
+		ProviderOptions: append(catalog.OptionsFromEnv(), opts.ClientOptions...),
 		NeedFallbacks:   true,
 		TokenStore:      store,
 		OpenURL:         openBrowser,
@@ -434,7 +439,7 @@ func runSetupNonInteractive(ctx context.Context, conf *config.Config, opts Setup
 
 	model := strings.TrimSpace(opts.Model)
 	if model == "" {
-		models, err := discoverModels(ctx, provider, apiKey, baseURL)
+		models, err := discoverModels(ctx, provider, apiKey, baseURL, opts.ClientOptions...)
 		if err != nil {
 			return refusedKeyError(provider, err)
 		}
@@ -451,7 +456,7 @@ func runSetupNonInteractive(ctx context.Context, conf *config.Config, opts Setup
 	if len(opts.Fallbacks) > 0 {
 		pc.FallbackModels = config.ClampFallbacks(opts.Fallbacks)
 	} else if len(pc.FallbackModels) == 0 {
-		models, err := discoverModels(ctx, provider, apiKey, baseURL)
+		models, err := discoverModels(ctx, provider, apiKey, baseURL, opts.ClientOptions...)
 		if err != nil {
 			return refusedKeyError(provider, err)
 		}

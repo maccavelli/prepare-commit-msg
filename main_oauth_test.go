@@ -11,6 +11,7 @@ import (
 
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider"
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/auth"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/llmtest"
 	"github.com/maccavelli/prepare-commit-msg/internal/config"
 	"github.com/maccavelli/prepare-commit-msg/internal/git"
 )
@@ -92,7 +93,7 @@ func TestRunAnalyzer_OAuthDoesNotCallNewProviderWithAccessToken(t *testing.T) {
 		_ ...llmprovider.Option,
 	) (llmprovider.Provider, error) {
 		capturedSource = source
-		return analyzerTestProvider{}, nil
+		return llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).ReplyText("feat: use OAuth session"), nil
 	}
 	generateWithRetry = func(context.Context, llmprovider.Provider, string, int, time.Duration) (string, error) {
 		return "feat: use OAuth session", nil
@@ -152,7 +153,7 @@ func TestRunAnalyzer_VendorCLIReadsThrough(t *testing.T) {
 		_ ...llmprovider.Option,
 	) (llmprovider.Provider, error) {
 		capturedSource = source
-		return analyzerTestProvider{}, nil
+		return llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).ReplyText("feat: use OAuth session"), nil
 	}
 	generateWithRetry = func(context.Context, llmprovider.Provider, string, int, time.Duration) (string, error) {
 		return "feat: use the Grok CLI login", nil
@@ -213,16 +214,4 @@ func TestRunAnalyzer_VendorCLIWithoutPathFails(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "no CLI login path") {
 		t.Fatalf("runAnalyzer() error = %v, want the missing CLI login path", err)
 	}
-}
-
-type analyzerTestProvider struct{}
-
-func (analyzerTestProvider) ID() llmprovider.ProviderID { return llmprovider.ProviderOpenAI }
-
-func (analyzerTestProvider) Capabilities() llmprovider.Capabilities {
-	return llmprovider.Capabilities{}
-}
-
-func (analyzerTestProvider) Generate(context.Context, *llmprovider.Request) (*llmprovider.Response, error) {
-	return &llmprovider.Response{Output: []llmprovider.Item{llmprovider.MessageItem{Role: llmprovider.RoleAssistant, Text: "feat: use OAuth session"}}}, nil
 }

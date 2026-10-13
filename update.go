@@ -18,18 +18,37 @@ import (
 //go:embed selfupdate-release.json
 var releaseSpec []byte
 
-// releaseAssets is the asset selector the embedded spec decides. It fails
-// when the spec does not name this program, so a spec and a program that
-// disagree fail in the tests, before any release.
-func releaseAssets() (selfupdate.AssetSelector, error) {
+// embeddedSpec is the embedded release spec. It fails when the spec does not
+// name this program, so a spec and a program that disagree fail in the
+// tests, before any release.
+func embeddedSpec() (releasespec.Spec, error) {
 	spec, err := releasespec.Parse(releaseSpec)
+	if err != nil {
+		return releasespec.Spec{}, err
+	}
+	if _, err := spec.Product(AppTitle); err != nil {
+		return releasespec.Spec{}, err
+	}
+	return spec, nil
+}
+
+// releaseAssets is the asset selector the embedded spec decides.
+func releaseAssets() (selfupdate.AssetSelector, error) {
+	spec, err := embeddedSpec()
 	if err != nil {
 		return nil, err
 	}
-	if _, err := spec.Product(AppTitle); err != nil {
+	return spec.AssetSelector()
+}
+
+// releaseUnpacker is the unpacker the embedded spec's packaging needs: nil
+// for binary releases, an archive unpacker for archives (0014-MADR D8).
+func releaseUnpacker() (selfupdate.Unpacker, error) {
+	spec, err := embeddedSpec()
+	if err != nil {
 		return nil, err
 	}
-	return spec.AssetSelector()
+	return spec.Unpacker()
 }
 
 // updateTimeout bounds each GitHub request. cli.Run bounds the whole run.
@@ -58,6 +77,10 @@ func defaultNewUpdateUpdater() (*selfupdate.Updater, error) {
 	if err != nil {
 		return nil, err
 	}
+	unpacker, err := releaseUnpacker()
+	if err != nil {
+		return nil, err
+	}
 	installer, err := selfupdate.NewStandaloneInstaller(selfupdate.InstallOptions{})
 	if err != nil {
 		return nil, err
@@ -67,6 +90,7 @@ func defaultNewUpdateUpdater() (*selfupdate.Updater, error) {
 		Source:    src,
 		Versions:  selfupdate.NewStrictVersionPolicy(),
 		Assets:    selector,
+		Unpacker:  unpacker,
 		Installer: installer,
 		Reporter:  selfupdate.DiscardReporter(),
 		Confirmer: selfupdate.NonInteractiveConfirmer(),

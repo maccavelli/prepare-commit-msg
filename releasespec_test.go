@@ -36,6 +36,11 @@ func TestReleaseSpec(t *testing.T) {
 	if _, err := releaseAssets(); err != nil {
 		t.Fatalf("releaseAssets: %v", err)
 	}
+	// Binary releases need no unpacker; the updater takes whatever the spec's
+	// packaging needs (0014-MADR D8).
+	if unpacker, err := releaseUnpacker(); err != nil || unpacker != nil {
+		t.Fatalf("releaseUnpacker() = %v, %v; want nil for %q packaging", unpacker, err, spec.Packaging)
+	}
 	// Every release carries both installers, which install into the
 	// directory the user names and leave core.hooksPath alone (0012-MADR I1).
 	if got := spec.InstallerScripts(); !slices.Equal(got, []string{"install.sh", "install.ps1"}) {

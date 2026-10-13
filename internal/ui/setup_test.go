@@ -697,16 +697,24 @@ func TestRunSetupNonInteractive_RefusedKey(t *testing.T) {
 	}
 }
 
-// hostLog records the Host each fixture request named.
+// hostLog records the Host and the User-Agent of each fixture request.
 type hostLog struct {
-	mu    sync.Mutex
-	hosts []string
+	mu     sync.Mutex
+	hosts  []string
+	agents []string
 }
 
-func (h *hostLog) add(host string) {
+func (h *hostLog) add(host, agent string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.hosts = append(h.hosts, host)
+	h.agents = append(h.agents, agent)
+}
+
+func (h *hostLog) userAgents() []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return slices.Clone(h.agents)
 }
 
 func (h *hostLog) all() []string {
@@ -724,7 +732,7 @@ func ollamaServer(t *testing.T) (*redirectTransport, *hostLog) {
 	t.Setenv("LLMPROVIDER_DISABLE_MODELS_METADATA", "1")
 	log := &hostLog{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.add(r.Host)
+		log.add(r.Host, r.UserAgent())
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/api/version":
@@ -931,5 +939,47 @@ func TestRunSetupNonInteractive_BaseURLRefused(t *testing.T) {
 	}
 	if got := conf.Providers[together].BaseURL; got != "http://127.0.0.1:8080/v1" {
 		t.Errorf("base_url = %q; want the loopback endpoint", got)
+	}
+}
+
+// TestSetup_UserAgentNamesApp: every request configure sends, through the
+// wizard and through --yes, names the application main passes (0014-MADR D5).
+func TestSetup_UserAgentNamesApp(t *testing.T) {
+	ollama := llmprovider.ProviderOllama
+	pos := slices.IndexFunc(registry.Descriptors(), func(x llmprovider.Descriptor) bool { return x.ID == ollama }) + 1
+	named := []llmprovider.Option{llmprovider.WithClientInfo("prepare-commit-msg", "v0.0.0-test")}
+	for _, tc := range []struct {
+		name string
+		run  func(*config.Config) error
+	}{
+		{"wizard", func(conf *config.Config) error {
+			// provider, endpoint (default), search blank, the first model,
+			// fallback search blank, none, the four operational defaults
+			input := strconv.Itoa(pos) + "\n\n\n1\n\n\n\n\n\n\n"
+			return runSetupInteractive(context.Background(), conf, SetupOptions{NoEnv: true, ClientOptions: named}, strings.NewReader(input))
+		}},
+		{"--yes", func(conf *config.Config) error {
+			return runSetupNonInteractive(context.Background(), conf, SetupOptions{
+				Provider: string(ollama), NoEnv: true, Yes: true, ClientOptions: named,
+			})
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, log := ollamaServer(t)
+			conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
+			config.ApplyDefaults(conf)
+			if err := tc.run(conf); err != nil {
+				t.Fatalf("configure: %v", err)
+			}
+			agents := log.userAgents()
+			if len(agents) == 0 {
+				t.Fatal("configure sent no request to the fixture")
+			}
+			for _, a := range agents {
+				if !strings.HasPrefix(a, "prepare-commit-msg/v0.0.0-test (") {
+					t.Errorf("User-Agent = %q; want it to name prepare-commit-msg/v0.0.0-test", a)
+				}
+			}
+		})
 	}
 }

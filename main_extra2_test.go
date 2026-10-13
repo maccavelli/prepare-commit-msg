@@ -1,9 +1,12 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/maccavelli/prepare-commit-msg/internal/config"
@@ -187,5 +190,44 @@ func TestMain_RunConfigure_BaseURL(t *testing.T) {
 	}
 	if usage := captureStderr(t, printUsage); !strings.Contains(usage, "--base-url string") {
 		t.Errorf("help does not list --base-url:\n%s", usage)
+	}
+}
+
+// TestMain_RunConfigure_UserAgentNamesApp: configure --yes lists models under
+// this program's name and build, which main passes in (0014-MADR D5).
+func TestMain_RunConfigure_UserAgentNamesApp(t *testing.T) {
+	isolateUserDirs(t)
+	t.Setenv("LLMPROVIDER_DISABLE_MODELS_METADATA", "1")
+	var agents []string
+	var mu sync.Mutex
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		agents = append(agents, r.UserAgent())
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"models":[{"name":"llama3.3"}]}`))
+	}))
+	t.Cleanup(srv.Close)
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+	os.Args = []string{"prepare-commit-msg", "configure", "--yes", "--provider=ollama", "--base-url=" + srv.URL}
+	oldExit := osExit
+	defer func() { osExit = oldExit }()
+	osExit = func(code int) {
+		t.Fatalf("configure unexpectedly called osExit(%d)", code)
+	}
+
+	main()
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(agents) == 0 {
+		t.Fatal("configure --yes listed no models from the fixture")
+	}
+	want := AppTitle + "/" + buildIdentity().Current() + " ("
+	for _, a := range agents {
+		if !strings.HasPrefix(a, want) {
+			t.Errorf("User-Agent = %q; want it to begin %q", a, want)
+		}
 	}
 }

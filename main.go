@@ -152,6 +152,7 @@ func runConfigure(args []string) error {
 		RetryDelaySeconds: *retryDelay,
 		NoEnv:             *noEnv,
 		Yes:               *yes,
+		ClientOptions:     []llmprovider.Option{clientInfo()},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
@@ -328,7 +329,6 @@ func newActiveProvider(conf *config.Config, pc config.ProviderConfig, model stri
 		if session == nil {
 			return nil, fmt.Errorf("no OAuth session for provider %q; run 'prepare-commit-msg configure'", conf.ActiveProvider)
 		}
-		session.Store = store
 		return newProviderWithSource(id, session, model, opts...)
 	}
 	if config.IsVendorCLI(pc) {
@@ -366,8 +366,14 @@ func newKeyProvider(id llmprovider.ProviderID, apiKey, model string, opts ...llm
 // newSourceProvider builds provider id on a credential source. The model
 // metadata variables apply only because they are passed here.
 func newSourceProvider(id llmprovider.ProviderID, src llmprovider.TokenSource, model string, opts ...llmprovider.Option) (llmprovider.Provider, error) {
-	all := append([]llmprovider.Option{llmprovider.WithTokenSource(src), llmprovider.WithModel(model)}, catalog.OptionsFromEnv()...)
+	all := append([]llmprovider.Option{llmprovider.WithTokenSource(src), llmprovider.WithModel(model), clientInfo()}, catalog.OptionsFromEnv()...)
 	return providers.New(id, append(all, opts...)...)
+}
+
+// clientInfo names this program and its build in every SDK request, where the
+// SDK would otherwise name itself (0014-MADR D5).
+func clientInfo() llmprovider.Option {
+	return llmprovider.WithClientInfo(AppTitle, buildIdentity().Current())
 }
 
 // errRefused marks an answer the model refused to give, so the run loop

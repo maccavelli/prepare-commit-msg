@@ -749,3 +749,103 @@ of an Ollama running on the test machine at the default endpoint.
 | `make check-records`, `make markdownlint` | 0 each |
 
 Staged for the owner's commit.
+
+Committed by the owner as `7a2b7b4`. The owner then said "committed,
+proceed".
+
+### Phase 4: client info, unpacker, SDK test fakes (2026-10-13)
+
+**Step 1 (D5).** `main.clientInfo()` returns
+`llmprovider.WithClientInfo(AppTitle, buildIdentity().Current())`.
+`newSourceProvider` passes it on every provider the hook builds.
+`runConfigure` hands it to `internal/ui` as
+`SetupOptions.ClientOptions`, which the wizard's `ProviderOptions` and
+both `--yes` listings (`discoverModels`, now variadic in extra options)
+carry. `internal/ui` imports nothing from `main`.
+
+* **Noted, within the step:** the step named `clientInfo` an
+  `llmprovider.Option` passed through `SetupOptions`. `llmprovider.Option`
+  is a struct (`llmprovider/settings.go:19`), so a single field cannot be
+  left unset; the field is a slice, `ClientOptions []llmprovider.Option`,
+  and none leaves the SDK naming itself.
+
+**Step 2.** `TestProvider_UserAgentNamesApp` builds the hook's provider
+on an `httptest` server and requires a User-Agent beginning
+`prepare-commit-msg/<build> (`.
+
+* **Noted, within the step:** step 1 reaches three call sites and step 2
+  tested one. Two more tests cover the rest:
+  `TestSetup_UserAgentNamesApp` (`internal/ui`: the wizard's and `--yes`'s
+  requests to Phase 3's Ollama fixture, which now records each request's
+  User-Agent) and `TestMain_RunConfigure_UserAgentNamesApp` (`configure
+  --yes --provider=ollama --base-url=<fixture>`, which shows that `main`
+  passes the name).
+
+**Step 3 (D8).** `update.go`: `embeddedSpec()` parses the spec and
+requires it to name this program; `releaseAssets()` and the new
+`releaseUnpacker()` (`spec.Unpacker()`) are built on it, and
+`defaultNewUpdateUpdater` passes `Unpacker:` to `selfupdate.Config`.
+`TestReleaseSpec` requires `releaseUnpacker()` to be nil for the
+embedded spec.
+
+* **Not tested, and why:** that `defaultNewUpdateUpdater` passes the
+  unpacker it gets is visible only when an update runs against GitHub.
+  `TestDefaultNewUpdateUpdater` still builds the updater, and the
+  assertion covers the value it passes.
+
+**Step 4.** `session.Store = store` is gone from `newActiveProvider`;
+`auth.FileTokenStore.Load` sets it (`auth/tokenstore_file.go:86`). The
+OAuth tests pass.
+
+**Step 5 (D7).** `analyzerTestProvider` is gone; its three uses (two in
+`main_oauth_test.go`, one in `provider_test.go`) are
+`llmtest.NewFake(llmprovider.ProviderOpenAI,
+llmprovider.Capabilities{}).ReplyText("feat: use OAuth session")`. A grep
+of the Go sources for `analyzerTestProvider` and `session.Store` finds
+nothing.
+
+**Fail-first,** each on a scratch copy of the tree; the tree was not
+touched:
+
+```text
+the hook without clientInfo():
+--- FAIL: TestProvider_UserAgentNamesApp
+    provider_test.go:233: User-Agent = "go-llmprovider-sdk/v1.12.0 (darwin; arm64) go-llmprovider-sdk/v1.12.0"; want it to begin "prepare-commit-msg/dev ("
+main not passing ClientOptions:
+--- FAIL: TestMain_RunConfigure_UserAgentNamesApp
+    main_extra2_test.go:230: User-Agent = "go-llmprovider-sdk/v1.12.0 (darwin; arm64) go-llmprovider-sdk/v1.12.0"; want it to begin "prepare-commit-msg/dev ("
+the wizard's ProviderOptions without them:
+    --- FAIL: TestSetup_UserAgentNamesApp/wizard
+        setup_test.go:980: User-Agent = "go-llmprovider-sdk/v1.12.0 (darwin; arm64) go-llmprovider-sdk/v1.12.0"; want it to name prepare-commit-msg/v0.0.0-test
+discoverModels dropping them:
+    --- FAIL: TestSetup_UserAgentNamesApp/--yes
+        setup_test.go:980: (as above)
+--- FAIL: TestMain_RunConfigure_UserAgentNamesApp
+    main_extra2_test.go:230: (as above)
+the embedded spec's packaging set to "archive" (a broken input):
+--- FAIL: TestReleaseSpec
+    releasespec_test.go:42: releaseUnpacker() = &{ 4096}, <nil>; want nil for "archive" packaging
+```
+
+**Phase gate,** each exit status captured before any filter:
+
+| Check | Result |
+| :--- | :--- |
+| `gofmt -l` on the eight changed `.go` files | 0, no output |
+| `go test -race -count=1 ./...` | 0; 5 packages ok |
+| `CGO_ENABLED=0 GOOS={linux,darwin,windows} go vet ./...` | 0 each |
+| `go mod tidy -diff` | 0, empty |
+| `make verify` | 0; `golangci-lint run`: `0 issues.`; total coverage 83.5% (minimum 80.0%); `govulncheck`: `No vulnerabilities found.` |
+| `make verify-staged` | 0; `0 issues.`; `No vulnerabilities found.` |
+| `make check-records`, `make markdownlint` | 0 each |
+
+**Found, from Phase 2, not done.** MADR D3 says "`readLine`, `promptInt`
+and the private `bufio.Reader` go", and Phase 2 step 1 says to delete
+them. Phase 2 (`8df87c7`) deleted `readLine` and the reader but kept
+`promptInt`, rewired to read through `wizard.Prompter.Input`, and its
+record describes the rewiring without naming it a deviation. The
+Verification grep for `promptInt` therefore still finds it
+(`internal/ui/setup.go:85`). It waits for the owner's choice of
+resolution.
+
+Staged for the owner's commit.
