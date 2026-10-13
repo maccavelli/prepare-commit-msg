@@ -159,3 +159,33 @@ func TestMain_RunUpdate_Help(t *testing.T) {
 
 	main()
 }
+
+// TestMain_RunConfigure_BaseURL: configure passes --base-url through and its
+// help lists it (0014-MADR Amendment 2, B2).
+func TestMain_RunConfigure_BaseURL(t *testing.T) {
+	isolateUserDirs(t)
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+	os.Args = []string{
+		"prepare-commit-msg", "configure", "--yes", "--provider=ollama",
+		"--model=m", "--fallback=f", "--base-url=http://ollama.test:11434",
+	}
+	oldExit := osExit
+	defer func() { osExit = oldExit }()
+	osExit = func(code int) {
+		t.Fatalf("configure unexpectedly called osExit(%d)", code)
+	}
+
+	main()
+
+	conf, err := config.Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if got := conf.Providers["ollama"].BaseURL; got != "http://ollama.test:11434" {
+		t.Errorf("base_url = %q; want the flag's", got)
+	}
+	if usage := captureStderr(t, printUsage); !strings.Contains(usage, "--base-url string") {
+		t.Errorf("help does not list --base-url:\n%s", usage)
+	}
+}

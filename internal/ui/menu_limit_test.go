@@ -55,7 +55,7 @@ func longZenListing(t *testing.T) *redirectTransport {
 // list from a longer live listing.
 func TestDiscoverModels_ShortList(t *testing.T) {
 	redirect := longZenListing(t)
-	got, err := discoverModels(context.Background(), string(llmprovider.ProviderOpencodeZen), "test-key")
+	got, err := discoverModels(context.Background(), string(llmprovider.ProviderOpencodeZen), "test-key", "")
 	if err != nil {
 		t.Fatalf("discoverModels: %v", err)
 	}

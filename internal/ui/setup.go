@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -36,8 +38,11 @@ var listingClient *http.Client
 // SetupOptions holds non-interactive / flag-driven configure settings.
 // Zero values mean "unset" and interactive mode will prompt (unless Yes is set).
 type SetupOptions struct {
-	Provider          string
-	APIKey            string
+	Provider string
+	APIKey   string
+	// BaseURL is the provider's endpoint; empty keeps the saved one, else the
+	// default (0014-MADR Amendment 2, B2).
+	BaseURL           string
 	Model             string
 	Fallbacks         []string
 	TimeoutSeconds    int
@@ -139,9 +144,13 @@ func promptOperational(p wizard.Prompter, conf *config.Config, opts SetupOptions
 // the listing itself. The interactive path goes through wizard.ConfigureLLM;
 // this exists for the non-interactive --yes path, which takes flags rather
 // than prompts. A key the service refuses is an error, as in the wizard; any
-// other failed listing gives the static catalog (0014-MADR D4).
-func discoverModels(ctx context.Context, provider, apiKey string) ([]string, error) {
+// other failed listing gives the static catalog (0014-MADR D4). A non-empty
+// baseURL is the endpoint listed (0014-MADR Amendment 2, B3).
+func discoverModels(ctx context.Context, provider, apiKey, baseURL string) ([]string, error) {
 	opts := append(catalog.OptionsFromEnv(), catalog.WithLimit(catalog.MaxListed))
+	if baseURL != "" {
+		opts = append(opts, llmprovider.WithBaseURL(baseURL))
+	}
 	if listingClient != nil {
 		opts = append(opts, llmprovider.WithHTTPClient(listingClient))
 	}
@@ -241,6 +250,9 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 	if opts.Model != "" {
 		existing.Model = opts.Model
 	}
+	if opts.BaseURL != "" {
+		existing.BaseURL = opts.BaseURL
+	}
 
 	// Provider menu, key precedence, model discovery and fallback selection all
 	// live in go-llmprovider-sdk now, so a provider added there appears here with no change
@@ -269,7 +281,7 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 	pc.Model = res.Model
 	pc.FallbackModels = res.Fallbacks
 	pc.Organization = res.Organization
-	pc.BaseURL = savedBaseURL(res)
+	pc.BaseURL = savedBaseURL(res.Provider, res.BaseURL)
 	pc.VendorAuthPath = ""
 	switch res.Kind {
 	case wizard.CredOAuth:
@@ -325,14 +337,52 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 	return nil
 }
 
-// savedBaseURL is the wizard's endpoint when it is not the provider's
+// savedBaseURL is the endpoint configure chose when it is not the provider's
 // default, which needs no saving (0014-MADR D6).
-func savedBaseURL(res wizard.Result) string {
-	d, _ := registry.Descriptor(res.Provider)
-	if res.BaseURL == d.DefaultBaseURL {
+func savedBaseURL(id llmprovider.ProviderID, baseURL string) string {
+	d, _ := registry.Descriptor(id)
+	if baseURL == d.DefaultBaseURL {
 		return ""
 	}
-	return res.BaseURL
+	return baseURL
+}
+
+// checkBaseURL checks configure --yes's --base-url by the wizard's rule for a
+// typed endpoint, which the SDK does not export (go-llmprovider-sdk
+// wizard/base_url.go, 0021-MADR Z7): http or https with a host, no user name
+// or password, no query and no fragment. --yes cannot ask the wizard's
+// confirmation, so plain http to a host that is not loopback is refused
+// where a key would travel over it (0014-MADR Amendment 2, B2). No error
+// quotes a URL that could carry a password.
+func checkBaseURL(d llmprovider.Descriptor, raw string) (string, error) {
+	const plain, secure = "http", "https"
+	if !d.SupportsBaseURL {
+		return "", fmt.Errorf("%s takes no --base-url", d.ID)
+	}
+	u, err := url.Parse(raw)
+	switch {
+	case err != nil:
+		return "", errors.New("--base-url is not a URL")
+	case u.User != nil:
+		return "", errors.New("--base-url carries no user name or password")
+	case u.Scheme != plain && u.Scheme != secure || u.Host == "":
+		return "", fmt.Errorf("--base-url %s needs http:// or https:// and a host", raw)
+	case u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || strings.Contains(raw, "#"):
+		return "", fmt.Errorf("--base-url %s has a query or a fragment", raw)
+	case u.Scheme == plain && d.RequiresAPIKey && !loopbackHost(u.Hostname()):
+		return "", fmt.Errorf("--base-url %s is plain http to a remote host, so the key would travel unencrypted; use https", raw)
+	}
+	return raw, nil
+}
+
+// loopbackHost reports localhost or a loopback IP address, as the wizard's
+// own check does.
+func loopbackHost(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 func runSetupNonInteractive(ctx context.Context, conf *config.Config, opts SetupOptions) error {
@@ -343,7 +393,8 @@ func runSetupNonInteractive(ctx context.Context, conf *config.Config, opts Setup
 	if provider == "" {
 		provider = providerGemini
 	}
-	if _, ok := registry.Descriptor(llmprovider.ProviderID(provider)); !ok {
+	d, ok := registry.Descriptor(llmprovider.ProviderID(provider))
+	if !ok {
 		descriptors := registry.Descriptors()
 		known := make([]string, 0, len(descriptors))
 		for _, d := range descriptors {
@@ -361,18 +412,29 @@ func runSetupNonInteractive(ctx context.Context, conf *config.Config, opts Setup
 	if apiKey == "" {
 		apiKey = config.ResolveAPIKey(pc, provider, !opts.NoEnv, osGetenv)
 	}
-	if apiKey == "" {
+	// Only a provider whose descriptor needs a key is refused without one
+	// (0014-MADR Amendment 2, B1).
+	if apiKey == "" && d.RequiresAPIKey {
 		envName := providerEnvVar(provider)
 		return fmt.Errorf("API key required: pass --api-key or set %s", envName)
 	}
+	baseURL := pc.BaseURL
+	if raw := strings.TrimSpace(opts.BaseURL); raw != "" {
+		checked, err := checkBaseURL(d, raw)
+		if err != nil {
+			return err
+		}
+		baseURL = checked
+	}
 	pc.APIKey = apiKey
+	pc.BaseURL = savedBaseURL(d.ID, baseURL)
 	pc.AuthKind = ""
 	pc.VendorAuthPath = ""
 	pc.Organization = ""
 
 	model := strings.TrimSpace(opts.Model)
 	if model == "" {
-		models, err := discoverModels(ctx, provider, apiKey)
+		models, err := discoverModels(ctx, provider, apiKey, baseURL)
 		if err != nil {
 			return refusedKeyError(provider, err)
 		}
@@ -389,7 +451,7 @@ func runSetupNonInteractive(ctx context.Context, conf *config.Config, opts Setup
 	if len(opts.Fallbacks) > 0 {
 		pc.FallbackModels = config.ClampFallbacks(opts.Fallbacks)
 	} else if len(pc.FallbackModels) == 0 {
-		models, err := discoverModels(ctx, provider, apiKey)
+		models, err := discoverModels(ctx, provider, apiKey, baseURL)
 		if err != nil {
 			return refusedKeyError(provider, err)
 		}

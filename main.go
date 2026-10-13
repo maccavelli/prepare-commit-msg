@@ -53,6 +53,7 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  --provider string         %s\n", strings.Join(config.SupportedProviders, "|"))
 	fmt.Fprintf(os.Stderr, "  --model string            primary model name\n")
 	fmt.Fprintf(os.Stderr, "  --api-key string          API key (or use provider env var)\n")
+	fmt.Fprintf(os.Stderr, "  --base-url string         provider endpoint, where the provider takes one\n")
 	fmt.Fprintf(os.Stderr, "  --fallback string         fallback model (repeatable, max %d)\n", config.MaxFallbacks)
 	fmt.Fprintf(os.Stderr, "  --timeout-seconds int     LLM overall timeout (default %d)\n", config.DefaultTimeoutSeconds)
 	fmt.Fprintf(os.Stderr, "  --max-diff-bytes int      max staged diff bytes (default %d)\n", config.DefaultMaxDiffBytes)
@@ -116,6 +117,7 @@ func runConfigure(args []string) error {
 	provider := fs.String("provider", "", "LLM provider: "+strings.Join(config.SupportedProviders, ", "))
 	model := fs.String("model", "", "primary model name")
 	apiKey := fs.String("api-key", "", "API key (optional if env var or config exists)")
+	baseURL := fs.String("base-url", "", "provider endpoint, where the provider takes one")
 	timeout := fs.Int("timeout-seconds", 0, "LLM timeout in seconds")
 	maxDiff := fs.Int("max-diff-bytes", 0, "max diff bytes for the prompt")
 	retryCount := fs.Int("retry-count", 0, "retries per model")
@@ -141,6 +143,7 @@ func runConfigure(args []string) error {
 	opts := ui.SetupOptions{
 		Provider:          *provider,
 		APIKey:            *apiKey,
+		BaseURL:           *baseURL,
 		Model:             *model,
 		Fallbacks:         config.ClampFallbacks([]string(fallbacks)),
 		TimeoutSeconds:    *timeout,

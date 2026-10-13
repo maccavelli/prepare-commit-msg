@@ -251,6 +251,8 @@ equivalent.
   `providers.Default().Descriptors()`, in the registry's order, so
   `ApplyDefaults` writes a template for each of the 10 providers. The help
   text and `--provider`'s usage list the registry's IDs.
+* *(Amended 2026-10-13: D6 reached the hook and the wizard, not
+  `configure --yes`; Amendment 2 under More Information extends it there.)*
 
 ### D7. Tests follow the SDK's data
 
@@ -416,6 +418,107 @@ section says so (D9).
 
 **Confirmation** is D1's, at `v1.12.0`; `scripts/go-precheck.py` resolves
 `v1.12.0` from GitHub.
+
+### Amendment 2 (2026-10-13): `configure --yes` follows the registry
+
+**Status: accepted** by the owner on 2026-10-13, option A ("follow
+recommendations", answering Q6). D1 to D10 and Amendment 1 otherwise
+stand.
+
+**Found in Phase 3 [read, probed].** D6 made the hook's key rule and the
+wizard's endpoint follow the registry. `configure --yes` follows neither:
+
+* `runSetupNonInteractive` (`internal/ui/setup.go`) returns `API key
+  required` whenever no key resolves, whatever the provider's
+  `RequiresAPIKey`. Ollama, the one provider that needs no key, has no
+  entry in `llmprovider.ProviderEnvVars()`, so the message names no
+  variable.
+* `configure` has no endpoint flag, and `discoverModels` lists each
+  provider's default endpoint, so a `--yes` run can neither set
+  `base_url` nor list an endpoint saved by the wizard.
+* The README documents the failing case as working: its "Non-Interactive
+  CLI Flags" Example 2, `configure --yes --provider ollama --model
+  qwen2.5-coder:7b`, "Local Ollama (no API key needed)". A scratch build
+  of the Phase 3 tree, with an empty configuration, prints `Setup failed:
+  API key required: pass --api-key or set ` and exits 1. With `--base-url`
+  it prints `flag provided but not defined: -base-url` and exits 1.
+
+**What the SDK offers [read].** `llmprovider.WithBaseURL` reaches
+`catalog.List` as it reaches a provider. The wizard checks a typed remote
+endpoint in `validateBaseURL` (`wizard/base_url.go`, the SDK's 0021-MADR
+Z7): `http` or `https` with a host, no user name or password, no query and
+no fragment, and plain `http` to a host that is not loopback only after
+the user confirms. That check is unexported. `catalog.ValidateOllamaURLWith`
+is exported, but it checks only that Ollama answers.
+
+**Options.**
+
+* **A. `--yes` follows the registry, and checks `--base-url` by the
+  wizard's rule, repeated here.** As `refusedCredential` already repeats
+  the wizard's unexported refusal rule (D4).
+* **B. As A, but first ask the SDK to export its check, then call it.**
+  The same owner maintains the SDK.
+* **C. The key rule only, with no `--base-url`.** An Ollama on another host
+  stays interactive-only.
+* **D. Correct the README instead.** `--yes` stays unable to configure
+  Ollama.
+
+**Chosen option, proposed: A**, because it makes the documented example
+work and keeps D6's single source of provider facts, without waiting on a
+release. The repeated check is about fifteen lines, one function, and it
+cites the SDK rule it repeats. B removes those lines at the cost of an SDK
+record, release and pin before this can land; C and D leave a documented
+command failing.
+
+* Good, because README's Example 2 then works as written.
+* Good, because `--yes` and the wizard save the same `base_url` by the
+  same rule.
+* Neutral, because the check is repeated, not called; it follows the SDK's
+  rule only until that rule changes.
+* Bad, because a new flag is one more thing to document (Phase 5).
+
+**B1. The key rule.** `--yes` requires a key only when the provider's
+`Descriptor.RequiresAPIKey` is true. A provider that needs none is saved
+with whatever key resolves, usually none.
+
+**B2. `--base-url`.** `configure` takes `--base-url`. Under `--yes`:
+
+* it is refused for a provider whose `SupportsBaseURL` is false;
+* it is checked as the wizard checks a remote endpoint: `http` or `https`
+  with a host, no user name or password, no query, no fragment. A user
+  name or password is refused for every provider, since a flag's value is
+  a command-line argument (org ADR 007, no secrets in CLI arguments);
+* plain `http` to a host that is not loopback is refused when the provider
+  requires a key, since `--yes` cannot ask the wizard's confirmation and
+  the key would travel unencrypted. Ollama, which sends no key, may use it;
+* the endpoint is the flag's, else the provider's saved `base_url`, else
+  its default; it is saved by D6's rule (only when it differs from
+  `DefaultBaseURL`).
+
+Without `--yes`, the flag seeds the wizard's endpoint default, as
+`--model` seeds the model, and the wizard's own check applies.
+
+**B3. The listing uses the endpoint.** `discoverModels` passes
+`llmprovider.WithBaseURL` when an endpoint is set, so the listing, and
+D4's refused-key check with it, reach the endpoint that will be saved.
+
+**B4. No reachability check.** As for every provider, `--model` skips the
+listing, so `--yes --model` configures an Ollama that is not yet running.
+Without `--model` the listing is the check: Ollama has no static catalog,
+so an unreachable one ends in `no live models listed for ollama; pass
+--model`.
+
+**B5. Documents.** Phase 5 adds `--base-url` to the README's flag table.
+
+**Confirmation.** New tests, each seen to fail without its step: README's
+Example 2 arguments succeed with no key, and Gemini with no key still
+fails; a typed `--base-url` is where the listing goes and is saved, the
+default saves none, and an absent flag keeps the saved one; each refused
+`--base-url` form fails with nothing saved; `main` passes the flag through
+and its help lists it. A scratch build runs Example 2 with exit 0.
+
+**Owner question Q6 (Amendment 2).** A, the check repeated with a citation
+(recommended); or B, an SDK export first?
 
 * go-llmprovider-sdk records, by full filename in that repository:
   `docs/decisions/0028-MADR-heuristics-and-performance-from-the-research-pass.md`,

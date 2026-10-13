@@ -15,6 +15,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -125,7 +126,7 @@ func TestRunSetupInteractive_ListingUsesInjectedClient(t *testing.T) {
 // through listingClient too.
 func TestDiscoverModels_UsesInjectedClient(t *testing.T) {
 	offline := isolate(t)
-	if _, err := discoverModels(context.Background(), providerGemini, "test-key"); err != nil {
+	if _, err := discoverModels(context.Background(), providerGemini, "test-key", ""); err != nil {
 		t.Fatalf("an offline listing is not a refused key: %v", err)
 	}
 	if offline.requests.Load() == 0 {
@@ -175,7 +176,7 @@ func TestDiscoverModels_EmptyRecommendationFallsBack(t *testing.T) {
 	redirect := &redirectTransport{to: to}
 	listingClient = &http.Client{Transport: redirect}
 
-	got, err := discoverModels(context.Background(), string(llmprovider.ProviderKilo), "test-key")
+	got, err := discoverModels(context.Background(), string(llmprovider.ProviderKilo), "test-key", "")
 	if err != nil {
 		t.Fatalf("discoverModels(kilo): %v", err)
 	}
@@ -696,13 +697,34 @@ func TestRunSetupNonInteractive_RefusedKey(t *testing.T) {
 	}
 }
 
+// hostLog records the Host each fixture request named.
+type hostLog struct {
+	mu    sync.Mutex
+	hosts []string
+}
+
+func (h *hostLog) add(host string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.hosts = append(h.hosts, host)
+}
+
+func (h *hostLog) all() []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return slices.Clone(h.hosts)
+}
+
 // ollamaServer answers Ollama's reachability check and model listing, and
-// redirects configure's requests to itself, whatever endpoint is typed.
-func ollamaServer(t *testing.T) *redirectTransport {
+// redirects configure's requests to itself, whatever endpoint is typed. The
+// log holds the host each request was addressed to.
+func ollamaServer(t *testing.T) (*redirectTransport, *hostLog) {
 	t.Helper()
 	isolate(t)
 	t.Setenv("LLMPROVIDER_DISABLE_MODELS_METADATA", "1")
+	log := &hostLog{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.add(r.Host)
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/api/version":
@@ -720,12 +742,13 @@ func ollamaServer(t *testing.T) *redirectTransport {
 	}
 	redirect := &redirectTransport{to: to}
 	listingClient = &http.Client{Transport: redirect}
-	return redirect
+	return redirect, log
 }
 
 // TestRunSetupInteractive_SavesBaseURL: a typed endpoint that is not the
 // provider's default is saved as base_url; accepting the default saves none;
-// a saved one is offered again and kept (0014-MADR D6).
+// a saved one is offered again and kept (0014-MADR D6); --base-url, without
+// --yes, is the offered default (0014-MADR Amendment 2, B2).
 func TestRunSetupInteractive_SavesBaseURL(t *testing.T) {
 	ollama := llmprovider.ProviderOllama
 	d, ok := registry.Descriptor(ollama)
@@ -734,14 +757,15 @@ func TestRunSetupInteractive_SavesBaseURL(t *testing.T) {
 	}
 	pos := slices.IndexFunc(registry.Descriptors(), func(x llmprovider.Descriptor) bool { return x.ID == ollama }) + 1
 	for _, tc := range []struct {
-		name, saved, typed, want string
+		name, saved, flag, typed, want string
 	}{
-		{"typed endpoint", "", "http://ollama.test:11434", "http://ollama.test:11434"},
-		{"default endpoint", "", "", ""},
-		{"saved endpoint kept", "http://ollama.test:11434", "", "http://ollama.test:11434"},
+		{"typed endpoint", "", "", "http://ollama.test:11434", "http://ollama.test:11434"},
+		{"default endpoint", "", "", "", ""},
+		{"saved endpoint kept", "http://ollama.test:11434", "", "", "http://ollama.test:11434"},
+		{"flag seeds the endpoint", "", "http://ollama.test:11434", "", "http://ollama.test:11434"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			redirect := ollamaServer(t)
+			redirect, _ := ollamaServer(t)
 			conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
 			config.ApplyDefaults(conf)
 			if tc.saved != "" {
@@ -753,7 +777,11 @@ func TestRunSetupInteractive_SavesBaseURL(t *testing.T) {
 			// provider, endpoint, search blank, the first model, fallback
 			// search blank, none, the four operational defaults
 			input := strconv.Itoa(pos) + "\n" + tc.typed + "\n\n1\n\n\n\n\n\n\n"
-			if err := runSetupInteractive(context.Background(), conf, SetupOptions{NoEnv: true}, strings.NewReader(input)); err != nil {
+			opts := SetupOptions{NoEnv: true}
+			if tc.flag != "" {
+				opts.Provider, opts.BaseURL = string(ollama), tc.flag
+			}
+			if err := runSetupInteractive(context.Background(), conf, opts, strings.NewReader(input)); err != nil {
 				t.Fatalf("runSetupInteractive: %v", err)
 			}
 			if redirect.requests.Load() == 0 {
@@ -766,5 +794,142 @@ func TestRunSetupInteractive_SavesBaseURL(t *testing.T) {
 				t.Errorf("base_url = %q; want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+// assertNotSaved fails when configure wrote a config file.
+func assertNotSaved(t *testing.T) {
+	t.Helper()
+	path, err := config.GetConfigPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("config was saved to %s (stat: %v)", path, err)
+	}
+}
+
+// TestRunSetupNonInteractive_KeylessProvider: README's Example 2, Ollama with
+// no key, is saved; Gemini with no key is still refused (0014-MADR
+// Amendment 2, B1).
+func TestRunSetupNonInteractive_KeylessProvider(t *testing.T) {
+	isolate(t)
+	conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
+	config.ApplyDefaults(conf)
+	ollama := string(llmprovider.ProviderOllama)
+	if err := runSetupNonInteractive(context.Background(), conf, SetupOptions{
+		Provider: ollama, Model: "qwen2.5-coder:7b", NoEnv: true, Yes: true,
+	}); err != nil {
+		t.Fatalf("Ollama with no key: %v; want it saved", err)
+	}
+	loaded, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pc := loaded.Providers[ollama]; loaded.ActiveProvider != ollama || pc.Model != "qwen2.5-coder:7b" || pc.APIKey != "" {
+		t.Errorf("saved %q (%q, key set %t); want ollama (qwen2.5-coder:7b), no key", loaded.ActiveProvider, pc.Model, pc.APIKey != "")
+	}
+
+	isolate(t)
+	conf = &config.Config{Providers: make(map[string]config.ProviderConfig)}
+	config.ApplyDefaults(conf)
+	err = runSetupNonInteractive(context.Background(), conf, SetupOptions{
+		Provider: providerGemini, Model: "m", NoEnv: true, Yes: true,
+	})
+	if err == nil || !strings.Contains(err.Error(), "API key required") {
+		t.Errorf("Gemini with no key: %v; want API key required", err)
+	}
+	assertNotSaved(t)
+}
+
+// TestRunSetupNonInteractive_BaseURL: --base-url is where configure --yes
+// lists, and is saved unless it is the default; with no flag a saved
+// endpoint is listed and kept (0014-MADR Amendment 2, B2, B3).
+func TestRunSetupNonInteractive_BaseURL(t *testing.T) {
+	ollama := llmprovider.ProviderOllama
+	d, ok := registry.Descriptor(ollama)
+	if !ok || d.DefaultBaseURL == "" {
+		t.Fatal("the registry offers no Ollama endpoint default")
+	}
+	defaultHost := strings.TrimPrefix(d.DefaultBaseURL, "http://")
+	for _, tc := range []struct {
+		name, saved, flag, host, want string
+	}{
+		{"flag", "", "http://ollama.test:11434", "ollama.test:11434", "http://ollama.test:11434"},
+		{"default flag", "", d.DefaultBaseURL, defaultHost, ""},
+		{"saved endpoint kept", "http://ollama.test:11434", "", "ollama.test:11434", "http://ollama.test:11434"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, hosts := ollamaServer(t)
+			conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
+			config.ApplyDefaults(conf)
+			if tc.saved != "" {
+				pc := conf.Providers[string(ollama)]
+				pc.BaseURL = tc.saved
+				conf.Providers[string(ollama)] = pc
+			}
+			if err := runSetupNonInteractive(context.Background(), conf, SetupOptions{
+				Provider: string(ollama), BaseURL: tc.flag, NoEnv: true, Yes: true,
+			}); err != nil {
+				t.Fatalf("runSetupNonInteractive: %v", err)
+			}
+			got := hosts.all()
+			if len(got) == 0 || slices.ContainsFunc(got, func(h string) bool { return h != tc.host }) {
+				t.Errorf("listing hosts = %q; want only %q", got, tc.host)
+			}
+			pc := conf.Providers[string(ollama)]
+			if pc.Model != "llama3.3" {
+				t.Errorf("model = %q; want the listing's first, llama3.3", pc.Model)
+			}
+			if pc.BaseURL != tc.want {
+				t.Errorf("base_url = %q; want %q", pc.BaseURL, tc.want)
+			}
+		})
+	}
+}
+
+// TestRunSetupNonInteractive_BaseURLRefused: each --base-url the wizard's rule
+// refuses, and plain http to a remote host for a provider that sends a key,
+// fails with nothing saved and no password quoted; plain http to loopback is
+// allowed (0014-MADR Amendment 2, B2).
+func TestRunSetupNonInteractive_BaseURLRefused(t *testing.T) {
+	together := string(llmprovider.ProviderTogether)
+	for _, tc := range []struct {
+		name, provider, baseURL, want string
+	}{
+		{"provider without an endpoint", providerGemini, "https://example.test/v1", "takes no --base-url"},
+		{"user name and password", together, "https://user:hunter2@example.test/v1", "no user name or password"},
+		{"query", together, "https://example.test/v1?x=1", "query or a fragment"},
+		{"fragment", together, "https://example.test/v1#x", "query or a fragment"},
+		{"ftp scheme", together, "ftp://example.test/v1", "needs http:// or https://"},
+		{"plain http to a remote host", together, "http://example.test/v1", "plain http to a remote host"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			isolate(t)
+			conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
+			config.ApplyDefaults(conf)
+			err := runSetupNonInteractive(context.Background(), conf, SetupOptions{
+				Provider: tc.provider, APIKey: "test-key", Model: "m", Fallbacks: []string{"f"}, BaseURL: tc.baseURL, Yes: true,
+			})
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v; want %q", err, tc.want)
+			}
+			if strings.Contains(err.Error(), "hunter2") {
+				t.Errorf("err quotes the password: %v", err)
+			}
+			assertNotSaved(t)
+		})
+	}
+
+	isolate(t)
+	conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
+	config.ApplyDefaults(conf)
+	if err := runSetupNonInteractive(context.Background(), conf, SetupOptions{
+		Provider: together, APIKey: "test-key", Model: "m", Fallbacks: []string{"f"}, BaseURL: "http://127.0.0.1:8080/v1", Yes: true,
+	}); err != nil {
+		t.Fatalf("plain http to loopback: %v; want it allowed", err)
+	}
+	if got := conf.Providers[together].BaseURL; got != "http://127.0.0.1:8080/v1" {
+		t.Errorf("base_url = %q; want the loopback endpoint", got)
 	}
 }

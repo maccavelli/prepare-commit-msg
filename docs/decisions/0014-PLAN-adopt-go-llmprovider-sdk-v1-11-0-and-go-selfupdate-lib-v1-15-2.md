@@ -38,6 +38,7 @@ Done means every item under Verification holds.
 | 2 | agent | D3, D4: configure's prompter and `--yes` |
 | 2a | agent | MADR Amendment 1: go-llmprovider-sdk `v1.12.0` |
 | 3 | agent | D6: key rule, base URL, provider list, help text |
+| 3a | agent | MADR Amendment 2: `configure --yes` key rule and `--base-url` |
 | 4 | agent | D5, D8, D7 (`llmtest` fake), `session.Store` |
 | 5 | agent | D9: the README section and `docs/architecture.md` |
 | 6 | owner, then agent | CI on `main`, tag `v1.9.0`, live checks |
@@ -184,6 +185,51 @@ Runs after the owner commits Phase 2, and before Phase 3.
    * Fail-first: each on a scratch copy without its step.
 5. Phase gate; stage; the owner commits.
 
+### Phase 3a: `configure --yes` follows the registry (MADR Amendment 2)
+
+Added 2026-10-13, after Phase 3 found `--yes` still requiring a key of
+every provider. Runs after the owner commits Phase 3, and before Phase 4.
+
+1. `main.go`: a `--base-url` flag, in `runConfigure` and in
+   `printUsage`, passed as `ui.SetupOptions.BaseURL`.
+2. `internal/ui/setup.go`:
+   * `SetupOptions` gains `BaseURL`.
+   * `runSetupNonInteractive`: take the descriptor already looked up;
+     return `API key required` only when `RequiresAPIKey` (B1).
+   * The endpoint (B2): `opts.BaseURL`, else the saved `pc.BaseURL`, else
+     none. A flag value is checked by `checkBaseURL(d, raw)`, one function
+     citing the SDK's `wizard/base_url.go` (0021-MADR Z7), which refuses a
+     provider without `SupportsBaseURL`, a scheme other than `http` or
+     `https`, a missing host, a user name or password, a query or a
+     fragment, and plain `http` to a non-loopback host when the provider
+     requires a key.
+   * `discoverModels(ctx, provider, apiKey, baseURL)` appends
+     `llmprovider.WithBaseURL(baseURL)` when it is set (B3); both `--yes`
+     call sites and the tests pass it.
+   * `savedBaseURL` takes the provider and the URL, so both paths save by
+     D6's rule.
+   * `runSetupInteractive`: `opts.BaseURL`, when set, seeds
+     `existing.BaseURL`.
+3. Tests:
+   * `TestRunSetupNonInteractive_KeylessProvider`: README's Example 2
+     arguments (`ollama`, `qwen2.5-coder:7b`, `NoEnv`, no key) save the
+     configuration; Gemini with no key still fails.
+   * `TestRunSetupNonInteractive_BaseURL`, on Phase 3's Ollama fixture,
+     which records each request's `Host`: a typed `--base-url` is the
+     listing's host and is saved with the listed model; the default URL
+     saves none; with no flag, a saved `base_url` is listed and kept.
+   * `TestRunSetupNonInteractive_BaseURLRefused`: a provider without
+     `SupportsBaseURL`, a user name and password, a query, an `ftp` scheme
+     and plain `http` to a remote host for a key-requiring provider each
+     fail, and nothing is saved.
+   * `TestMain_RunConfigure_BaseURL`: `configure --yes --provider ollama
+     --model m --base-url <url>` saves `base_url`; `printUsage` lists
+     `--base-url`.
+   * Fail-first: each on a scratch copy without its step.
+4. A scratch build runs README's Example 2 with an empty configuration:
+   exit 0, `ollama` saved with no key.
+5. Phase gate; stage; the owner commits.
+
 ### Phase 4: client info, unpacker, SDK test fakes (D5, D8, D7)
 
 1. Add one helper, `clientInfo() llmprovider.Option`, returning
@@ -210,7 +256,8 @@ Runs after the owner commits Phase 2, and before Phase 3.
    go-selfupdate-lib v1.15.2" after the `v1.13.0` section, covering D2 to
    D6 and SDK 0028's user-visible behaviour; add it to the table of
    contents; document `base_url` under "Configuration File"; make the
-   `--provider` row match the registry.
+   `--provider` row match the registry; add a `--base-url` row to the flag
+   table (MADR Amendment 2, B5).
 2. `docs/architecture.md`: the registry-driven provider list and the base
    URL.
 3. `make markdownlint`, `make check-records`; stage; the owner commits.
@@ -244,6 +291,9 @@ Runs after the owner commits Phase 2, and before Phase 3.
   the nine new tests (eight as planned, with Deviation 1's two in place of
   one), each recorded failing on a scratch copy without its
   fix.
+* Phase 3a's four tests (MADR Amendment 2) pass, each recorded failing on
+  a scratch copy without its step, and README's Example 2 runs from a
+  scratch build.
 * `TestMigrationByteForByte`, the `update` tests and
   `TestReadmeCuratedModels` pass.
 * `grep -n 'DiscoveryTimeout\|promptInt\|analyzerTestProvider'` over the Go
@@ -563,5 +613,139 @@ pass --api-key or set ` with an empty variable name for Ollama
 nor saves a base URL. D6 names the hook's key rule and the wizard's
 endpoint, not the `--yes` path, so this phase leaves it as it was. It
 waits for an amendment and the owner's approval.
+
+Staged for the owner's commit.
+
+### Amendment 3 (2026-10-13): Phase 3a, `configure --yes` follows the registry
+
+The owner asked that the plan and the MADR be amended with the fix for
+`--yes` found in Phase 3. The MADR's Amendment 2 records the evidence
+(README's Example 2 failing on a scratch build of the Phase 3 tree), the
+options and the proposed choice. Phase 3a is added between Phase 3 and
+Phase 4, and Phase 5 step 1 gains the `--base-url` row. Nothing already
+done changes.
+
+Phase 3 was committed by the owner as `a4d929a`, with Amendment 3 left out
+of that commit. The owner then said "follow recommendations. committed,
+proceed", approving the MADR's Amendment 2 with option A and Phase 3a.
+
+### Phase 3a: `configure --yes` follows the registry (2026-10-13)
+
+**Step 1 (`main.go`).** `configure` takes `--base-url`, passed as
+`ui.SetupOptions.BaseURL`; `printUsage` lists it after `--api-key`.
+
+**Step 2 (`internal/ui/setup.go`).**
+
+* `SetupOptions` gains `BaseURL`.
+* `runSetupNonInteractive` keeps the descriptor it looks up and returns
+  `API key required` only when `RequiresAPIKey` (B1).
+* The endpoint is `opts.BaseURL`, else the saved `pc.BaseURL`; it is
+  saved through `savedBaseURL`, which now takes the provider and the URL
+  so both paths call it (B2).
+* `checkBaseURL(d, raw)` cites the SDK's `wizard/base_url.go` (0021-MADR
+  Z7). It refuses, in order: a provider without `SupportsBaseURL`; an
+  unparseable URL; a user name or password; a scheme other than `http` or
+  `https`, or no host; a query or fragment; plain `http` to a non-loopback
+  host when the provider requires a key. `loopbackHost` repeats the
+  wizard's. The user-name check comes before any check that quotes the URL,
+  so no error quotes a password.
+* `discoverModels` takes the endpoint and appends
+  `llmprovider.WithBaseURL` when it is set (B3); both `--yes` call sites
+  pass it, and the three existing test call sites pass `""`.
+* `runSetupInteractive`: `opts.BaseURL`, when set, seeds
+  `existing.BaseURL`.
+* **Noted, within the step:** `make verify` first failed on two goconst
+  findings: the literal `"http"` appeared three times in the package,
+  twice in `checkBaseURL` and once in `internal/ui/open.go:51`.
+  `checkBaseURL` now names the schemes as local constants (`plain`,
+  `secure`), and `open.go` is unchanged. The fail-first runs below were
+  made before this rename, which changes no behaviour; the tests passed
+  again after it.
+
+**Step 3 (tests).**
+
+* `TestRunSetupNonInteractive_KeylessProvider`: README's Example 2
+  arguments save `ollama` with no key; Gemini with no key fails with `API
+  key required` and saves nothing.
+* `TestRunSetupNonInteractive_BaseURL`, on Phase 3's Ollama fixture, which
+  now records each request's `Host` (`hostLog`): a typed `--base-url` is
+  the only host listed and is saved with the listed model; the default URL
+  saves none; with no flag, a saved `base_url` is listed and kept.
+* `TestRunSetupNonInteractive_BaseURLRefused`: a provider without an
+  endpoint, a user name and password, a query, a fragment, an `ftp` scheme
+  and plain `http` to a remote host for Together each fail with nothing
+  saved, and no error quotes the password. Its control saves plain `http`
+  to `127.0.0.1`.
+* `TestMain_RunConfigure_BaseURL`: `configure --yes --provider=ollama
+  --model=m --fallback=f --base-url=…` saves `base_url`, and `printUsage`
+  lists `--base-url`.
+* **Noted, within the step:** `TestRunSetupInteractive_SavesBaseURL`
+  (Phase 3) gains the case "flag seeds the endpoint", the one test of the
+  seeding bullet above. The plan named no test for it.
+
+**Fail-first,** each on a scratch copy of the tree with one step undone;
+the tree was not touched:
+
+```text
+key rule (B1) undone:
+--- FAIL: TestMain_RunConfigure_BaseURL
+    main_extra2_test.go:176: configure unexpectedly called osExit(1)
+--- FAIL: TestRunSetupNonInteractive_KeylessProvider
+    setup_test.go:823: Ollama with no key: API key required: pass --api-key or set ; want it saved
+    (and each TestRunSetupNonInteractive_BaseURL case: API key required)
+checkBaseURL accepting everything:
+    --- FAIL: TestRunSetupNonInteractive_BaseURLRefused/provider_without_an_endpoint
+        setup_test.go:915: err = <nil>; want "takes no --base-url"
+    (likewise the other five cases)
+the plain-http case removed:
+    --- FAIL: TestRunSetupNonInteractive_BaseURLRefused/plain_http_to_a_remote_host
+        setup_test.go:915: err = <nil>; want "plain http to a remote host"
+the user-name refusal quoting the URL:
+    --- FAIL: TestRunSetupNonInteractive_BaseURLRefused/user_name_and_password
+        setup_test.go:918: err quotes the password: --base-url https://user:<password>@example.test/v1 carries no user name or password
+the endpoint not saved:
+    main_extra2_test.go:186: base_url = ""; want the flag's
+    --- FAIL: TestRunSetupNonInteractive_BaseURL/flag
+        setup_test.go:885: base_url = ""; want "http://ollama.test:11434"
+    setup_test.go:933: base_url = ""; want the loopback endpoint
+the saved endpoint not used:
+    --- FAIL: TestRunSetupNonInteractive_BaseURL/saved_endpoint_kept
+        setup_test.go:878: listing hosts = ["localhost:11434"]; want only "ollama.test:11434"
+        setup_test.go:885: base_url = ""; want "http://ollama.test:11434"
+the listing without WithBaseURL (B3):
+    --- FAIL: TestRunSetupNonInteractive_BaseURL/flag
+        setup_test.go:878: listing hosts = ["localhost:11434"]; want only "ollama.test:11434"
+    (and saved_endpoint_kept, the same)
+the wizard not seeded:
+    --- FAIL: TestRunSetupInteractive_SavesBaseURL/flag_seeds_the_endpoint
+        setup_test.go:794: base_url = ""; want "http://ollama.test:11434"
+the flag removed from main:
+--- FAIL: TestMain_RunConfigure_BaseURL
+    main_extra2_test.go:176: configure unexpectedly called osExit(1)
+the help line alone removed:
+--- FAIL: TestMain_RunConfigure_BaseURL
+    main_extra2_test.go:189: help does not list --base-url:
+```
+
+The test's fixed password is replaced by `<password>` above.
+
+**Step 4.** A scratch build of the tree ran README's Example 2,
+`configure --yes --provider ollama --model qwen2.5-coder:7b`, with an
+empty configuration under a scratch home directory: exit 0, `Active
+provider: ollama (qwen2.5-coder:7b)`, saved with no key and no
+`base_url`. The three fallbacks it saved came from the fallback listing
+of an Ollama running on the test machine at the default endpoint.
+
+**Phase gate,** each exit status captured before any filter:
+
+| Check | Result |
+| :--- | :--- |
+| `gofmt -l` on the five changed `.go` files | 0, no output |
+| `go test -race -count=1 ./...` | 0; 5 packages ok |
+| `CGO_ENABLED=0 GOOS={linux,darwin,windows} go vet ./...` | 0 each |
+| `go mod tidy -diff` | 0, empty |
+| `make verify` | 0, after the goconst fix above; `golangci-lint run`: `0 issues.`; total coverage 83.7% (minimum 80.0%); `govulncheck`: `No vulnerabilities found.` |
+| `make verify-staged` | 0; `0 issues.`; `No vulnerabilities found.` |
+| `make check-records`, `make markdownlint` | 0 each |
 
 Staged for the owner's commit.
