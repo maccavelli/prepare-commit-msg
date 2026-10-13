@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: in-progress
 date: 2026-10-13
 associated-madr: "0014-MADR-adopt-go-llmprovider-sdk-v1-11-0-and-go-selfupdate-lib-v1-15-2.md"
 ---
@@ -105,10 +105,14 @@ Done means every item under Verification holds.
    * `TestRunSetupInteractive_Success` (and any other test typing a menu
      position): compute "Other" as
      `strconv.Itoa(min(len(catalog.Static(gemini)), catalog.MaxListed)+1)`.
-   * New `TestSetup_MenuIsShortList`: the offline interactive menu for a
+   * ~~New `TestSetup_MenuIsShortList`: the offline interactive menu for a
      provider whose static catalog exceeds `MaxListed` (pick one by
      iterating the registry) lists exactly `MaxListed` models before
-     "Other". Fail-first: a scratch copy without `ModelLimit`.
+     "Other". Fail-first: a scratch copy without `ModelLimit`.~~
+     Superseded by Deviation 1 (2026-10-13): `TestDiscoverModels_ShortList`
+     and `TestRunSetupInteractive_ShortList` in
+     `internal/ui/menu_limit_test.go`, over a live OpenCode Zen listing of
+     eight known models.
 5. `README.md:84-93`: each provider's models from `catalog.Static`, first
    marked "(recommended)"; fix the example models at `:72`, `:273-276`,
    `:292-293`. `TestReadmeCuratedModels` passes.
@@ -221,7 +225,8 @@ Done means every item under Verification holds.
   `scripts/go-precheck.py` passes.
 * `ci.yml`'s two `uses:` name `436a7f5…`; `make workflow-lint` passes.
 * `go test -race -count=1 ./...` passes on all five packages, including
-  the eight new tests, each recorded failing on a scratch copy without its
+  the nine new tests (eight as planned, with Deviation 1's two in place of
+  one), each recorded failing on a scratch copy without its
   fix.
 * `TestMigrationByteForByte`, the `update` tests and
   `TestReadmeCuratedModels` pass.
@@ -257,3 +262,79 @@ changed to match. No decision in the MADR changes.
 The pair and the index rows were written; the owner answered Q1 to Q5
 "follow recommendations", and the MADR is `accepted`. Staged for the
 owner's commit.
+
+Committed by the owner as `703ea27`. The owner then said "proceed".
+
+### Phase 1: both modules (2026-10-13)
+
+**Step 1.** `go get` of both versions, then `go mod tidy`: both exited 0;
+`go: upgraded github.com/maccavelli/go-llmprovider-sdk v1.3.2 => v1.11.0`
+and `go: upgraded github.com/maccavelli/go-selfupdate-lib v1.13.0 =>
+v1.15.2`. `git diff --stat`: `go.mod` (2 lines) and `go.sum` (4 lines)
+only.
+
+**Step 2.** Both `uses:` in `ci.yml` name
+`436a7f5976a6815491c7384527fef90869574a1b # v1.15.2`; the comment names
+`v1.15.2` and this MADR's D1. A grep of `.github/` for `5e199c8` and
+`v1.13.0` finds nothing. `make workflow-lint`: 0.
+
+**Step 3.** `wizard.Options` takes `ModelLimit: catalog.MaxListed` in
+place of `DiscoverLimit`; `discoverModels` passes
+`catalog.WithLimit(catalog.MaxListed)` and no longer wraps the context;
+`DiscoveryTimeout` and the `time` import are gone.
+
+**Step 4.** `TestConfig_TemplateDefaults` loops over gemini, openai and
+claude against `catalog.Static`; `TestRunSetupInteractive_Success` types
+"Other" at `min(len(catalog.Static(gemini)), catalog.MaxListed) + 1`. Of
+the other interactive inputs, none depended on the menu's length, and all
+pass unchanged.
+
+**Step 5.** The provider table's eight drifted rows (gemini, openai,
+claude, grok, kilo, opencode-zen, opencode-go, together) were rewritten
+from a dump of `catalog.Static` for every registry provider at `v1.11.0`,
+made by a scratch program. The example at `README.md:72`, the gemini and
+claude `--yes` examples, and the example `config.json`'s gemini, openai
+and claude entries follow the same catalog. The example `config.json` was
+not named in step 5; it is one of the "example models" of MADR D9.
+
+### Deviation 1 (2026-10-13): no static catalog exceeds `MaxListed`
+
+* **Found:** step 4's `TestSetup_MenuIsShortList` needs "a provider whose
+  static catalog exceeds `MaxListed`". There is none: `MaxListed` "also
+  bounds each static catalog" (go-llmprovider-sdk `v1.11.0`,
+  `llmprovider/catalog/models_catalog.go:26-29`). Offline, the menu is
+  never longer than six, with or without `ModelLimit`, so that test could
+  not fail. The error was in this PLAN, not the code.
+* **Decision (owner, "approve the deviation"):** two tests over a live
+  OpenCode Zen listing of eight models the SDK's catalog knows, routed to
+  a local server through the existing `redirectTransport`:
+  `TestDiscoverModels_ShortList` (`--yes` recommends exactly `MaxListed`)
+  and `TestRunSetupInteractive_ShortList` (choice `MaxListed + 1` is
+  "Other").
+* **Files added to the phase:** `internal/ui/menu_limit_test.go`.
+* **The MADR** is unchanged: D2 and its Confirmation hold.
+
+**Fail-first,** on a scratch copy of the tree with `ModelLimit` and
+`WithLimit` removed from `setup.go` (the tree was not touched):
+
+```text
+menu_limit_test.go:63: discoverModels recommends 8 models ["deepseek-v4.1-flash" "qwen3.8-flash" "glm-5.3-flash" "deepseek-v4-flash" "gemini-3.5-flash-lite" "gemini-3.8-flash" "claude-sonnet-5" "claude-opus-5"]; want catalog.MaxListed (6)
+--- FAIL: TestDiscoverModels_ShortList
+menu_limit_test.go:93: model = "claude-sonnet-5"; want my-custom-model, chosen as Other at 7
+--- FAIL: TestRunSetupInteractive_ShortList
+```
+
+The menu there ended `9) Other (enter a model id)`. With the fix, it
+lists six models and `7) Other (enter a model id)`, and both tests pass.
+
+**Phase gate,** each exit status captured before any filter:
+
+| Check | Result |
+| :--- | :--- |
+| `gofmt -l` on the changed `.go` files | 0, no output |
+| `go test -race -count=1 ./...` | 0; 5 packages ok |
+| `CGO_ENABLED=0 GOOS={linux,darwin,windows} go vet ./...` | 0 each |
+| `go mod tidy -diff` | 0, empty |
+| `make verify` | 0; `golangci-lint run`: `0 issues.`; total coverage 81.9% (minimum 80.0%); `govulncheck`: `No vulnerabilities found.`; `build-all` built six targets |
+
+Staged for the owner's commit.

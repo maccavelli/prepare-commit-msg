@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -68,11 +69,12 @@ func TestRunSetupInteractive_Success(t *testing.T) {
 	// 1: gemini
 	// y: use env key
 	// search: enter; the listing is offline, so the menu is the built-in
-	// catalog: 6 models, then 7 Other
-	// 7, then the custom model id
+	// catalog's short list, then Other
+	// Other, then the custom model id
 	// fallbacks: enter to search, enter for none
 	// operational: all enter (defaults)
-	input := "1\ny\n\n7\nmy-custom-model\n\n\n\n\n\n\n"
+	other := strconv.Itoa(min(len(catalog.Static(llmprovider.ProviderGemini)), catalog.MaxListed) + 1)
+	input := "1\ny\n\n" + other + "\nmy-custom-model\n\n\n\n\n\n\n"
 	r := strings.NewReader(input)
 
 	if err := runSetupInteractive(context.Background(), conf, SetupOptions{}, r); err != nil {

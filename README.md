@@ -69,7 +69,7 @@ Commit Editor Opens (Pre-populated & ready)
 ```
 
 - **Staged Diff Analysis:** Runs `git diff --cached --numstat -p` with UTF-8 path preservation and diff size limits (`max_diff_bytes`) to keep prompt sizes fast and deterministic.
-- **Curated Fast Models:** Prioritizes low-latency, high-throughput models (e.g., `gemini-3.7-flash`, `gpt-4.1-mini`, `claude-haiku-4-5`, `kilo-auto/free`) over slow reasoning tiers.
+- **Curated Fast Models:** Prioritizes low-latency, high-throughput models (e.g., `gemini-3.5-flash-lite`, `gpt-6-luna`, `claude-haiku-5-5`, `kilo-auto/free`) over slow reasoning tiers.
 - **Multi-Model Fallback Chain:** Automatically tries up to 3 configured fallback models if the primary model is rate-limited or unavailable.
 - **Soft-Fail Guarantee:** Any runtime error prints a diagnostic warning to `stderr` and exits with code `0`. Git continues normally and opens your editor.
 
@@ -81,16 +81,16 @@ Commit Editor Opens (Pre-populated & ready)
 
 | Provider ID | Provider Name | Type / Endpoint | Default / Curated Models | Notes |
 | :--- | :--- | :--- | :--- | :--- |
-| **`gemini`** | Google Gemini | Cloud API | `gemini-3.7-flash` (recommended), `gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-2.5-flash`, `gemini-2.5-flash-lite` | Frontier coding intelligence, sub-second latency. |
-| **`openai`** | OpenAI | Cloud API | `gpt-4.1-mini` (recommended), `gpt-4.1-nano`, `gpt-4o-mini`, `gpt-4.1`, `gpt-4o`, `o4-mini` | Responses API with structured output. |
-| **`claude`** | Anthropic Claude | Cloud API | `claude-haiku-4-5` (recommended), `claude-sonnet-5`, `claude-sonnet-4-6`, `claude-opus-4-8` | Messages API with low latency. |
-| **`grok`** | xAI Grok | Cloud API | `grok-4.6` (recommended), `grok-4.5`, `grok-3-mini-fast`, `grok-3-mini`, `grok-4`, `grok-4-fast-reasoning` | High-speed xAI Responses API. |
-| **`kilo`** | Kilo Gateway | Developer Gateway<br>`https://api.kilo.ai/api/gateway` | `deepseek/deepseek-v4.1-flash` (recommended), `z-ai/glm-5.3-flash`, `google/gemini-3.8-flash`, `google/gemini-3.6-flash`, `meta/muse-spark-1.2`, `thinkingmachines/inkling` | API behind the **Kilo Code** agent; free models & managed tiers. |
+| **`gemini`** | Google Gemini | Cloud API | `gemini-3.5-flash-lite` (recommended), `gemini-3.8-flash`, `gemini-3.6-flash` | Frontier coding intelligence, sub-second latency. |
+| **`openai`** | OpenAI | Cloud API | `gpt-6-luna` (recommended), `gpt-5.6-luna`, `gpt-4.1-mini`, `gpt-5.6-terra`, `gpt-6.1-sol`, `gpt-6-astra` | Responses API with structured output. |
+| **`claude`** | Anthropic Claude | Cloud API | `claude-haiku-5-5` (recommended), `claude-sonnet-5-5`, `claude-sonnet-5`, `claude-opus-5-5`, `claude-opus-4-8` | Messages API with low latency. |
+| **`grok`** | xAI Grok | Cloud API | `grok-4.6` (recommended), `grok-4.5`, `grok-4.7`, `grok-4.3`, `grok-build-0.1` | High-speed xAI Responses API. |
+| **`kilo`** | Kilo Gateway | Developer Gateway<br>`https://api.kilo.ai/api/gateway` | `deepseek/deepseek-v4.1-flash` (recommended), `z-ai/glm-5.3-flash`, `google/gemini-3.8-flash`, `google/gemini-3.6-flash`, `meta/muse-spark-1.2`, `openai/gpt-6.1-sol` | API behind the **Kilo Code** agent; free models & managed tiers. |
 | **`ollama`** | Ollama | **Local / Offline**<br>`http://localhost:11434` | Dynamically discovered from local installation (e.g. `qwen2.5-coder`, `llama3.2`, `mistral`) | **Runs 100% locally on your machine.** No API key required. |
-| **`opencode-zen`** | OpenCode Zen | Gateway<br>`https://opencode.ai/zen/v1` | `deepseek-v4.1-flash` (recommended), `qwen3.8-flash`, `glm-5.3-flash`, `deepseek-v4-flash`, `gemini-3.5-flash-lite`, `gemini-3.8-flash` | Pay-as-you-go gateway; multi-protocol dispatch. |
-| **`opencode-go`** | OpenCode Go | Gateway<br>`https://opencode.ai/zen/go/v1` | `mimo-v2.6-flash` (recommended), `qwen3.8-flash`, `glm-5.3-flash`, `gpt-6-luna`, `mimo-v2.6-pro`, `hy3` | Subscription gateway. |
+| **`opencode-zen`** | OpenCode Zen | Gateway<br>`https://opencode.ai/zen/v1` | `claude-haiku-5-5` (recommended), `deepseek-v4.1-flash`, `qwen3.8-flash`, `glm-5.3-flash`, `deepseek-v4-flash`, `gemini-3.5-flash-lite` | Pay-as-you-go gateway; multi-protocol dispatch. |
+| **`opencode-go`** | OpenCode Go | Gateway<br>`https://opencode.ai/zen/go/v1` | `claude-haiku-5-5` (recommended), `mimo-v2.6-flash`, `qwen3.8-flash`, `glm-5.3-flash`, `gpt-6-luna`, `space-bunny` | Subscription gateway. |
 | **`huggingface`** | Hugging Face | Router Proxy<br>`https://router.huggingface.co/v1` | `deepseek-ai/DeepSeek-V4-Flash-0731` (recommended), `zai-org/GLM-5.3-Flash`, `deepseek-ai/DeepSeek-V4.1-Flash`, `thinkingmachines/Inkling-Small`, `stepfun-ai/Step-3.7-Flash`, `stepfun-ai/Step-3.5-Flash` | Routing proxy across 18 partner inference backends. |
-| **`together`** | Together AI | Cloud API<br>`https://api.together.ai/v1` | `deepseek-ai/DeepSeek-V4.1-Flash` (recommended), `zai-org/GLM-5.3`, `moonshotai/Kimi-K3`, `MiniMaxAI/MiniMax-M3`, `Qwen/Qwen3.6-Plus`, `openai/gpt-oss-120b` | Pay-as-you-go. |
+| **`together`** | Together AI | Cloud API<br>`https://api.together.ai/v1` | `zai-org/GLM-5.3-Flash` (recommended), `deepseek-ai/DeepSeek-V4-Flash-0731`, `deepseek-ai/DeepSeek-V4.1-Flash`, `MiniMaxAI/MiniMax-M3`, `Qwen/Qwen3.6-Plus`, `openai/gpt-oss-120b` | Pay-as-you-go. |
 
 ---
 
@@ -271,9 +271,9 @@ Configure settings directly or in automated scripts using `--yes`:
 # Example 1: Google Gemini (default cloud)
 prepare-commit-msg configure --yes \
   --provider gemini \
-  --model gemini-3.7-flash \
-  --fallback gemini-3.6-flash \
-  --fallback gemini-3.5-flash
+  --model gemini-3.5-flash-lite \
+  --fallback gemini-3.8-flash \
+  --fallback gemini-3.6-flash
 
 # Example 2: Local Ollama (no API key needed)
 prepare-commit-msg configure --yes \
@@ -289,8 +289,8 @@ prepare-commit-msg configure --yes \
 # Example 4: Anthropic Claude
 prepare-commit-msg configure --yes \
   --provider claude \
-  --model claude-haiku-4-5 \
-  --fallback claude-sonnet-5
+  --model claude-haiku-5-5 \
+  --fallback claude-sonnet-5-5
 ```
 
 | Flag | Type | Default | Description |
@@ -326,8 +326,8 @@ The configuration is saved as JSON with secure permissions (`0600`) at standard 
   "providers": {
     "gemini": {
       "api_key": "",
-      "model": "gemini-3.7-flash",
-      "fallback_models": ["gemini-3.6-flash", "gemini-3.5-flash"]
+      "model": "gemini-3.5-flash-lite",
+      "fallback_models": ["gemini-3.8-flash", "gemini-3.6-flash"]
     },
     "kilo": {
       "api_key": "",
@@ -341,13 +341,13 @@ The configuration is saved as JSON with secure permissions (`0600`) at standard 
     },
     "openai": {
       "api_key": "",
-      "model": "gpt-4.1-mini",
-      "fallback_models": ["gpt-4o-mini"]
+      "model": "gpt-6-luna",
+      "fallback_models": ["gpt-5.6-luna"]
     },
     "claude": {
       "api_key": "",
-      "model": "claude-haiku-4-5",
-      "fallback_models": ["claude-sonnet-5"]
+      "model": "claude-haiku-5-5",
+      "fallback_models": ["claude-sonnet-5-5"]
     }
   },
   "timeout_seconds": 120,

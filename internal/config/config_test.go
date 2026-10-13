@@ -8,11 +8,13 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider"
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/auth"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/catalog"
 )
 
 func isolateHome(t *testing.T) string {
@@ -266,22 +268,20 @@ func TestConfig_TemplateDefaults(t *testing.T) {
 		t.Errorf("expected default active provider 'gemini', got %q", loaded.ActiveProvider)
 	}
 
-	g := loaded.Providers["gemini"]
-	if g.Model != "gemini-3.7-flash" {
-		t.Errorf("expected gemini model 'gemini-3.7-flash', got %q", g.Model)
-	}
-	if len(g.FallbackModels) < 2 || g.FallbackModels[0] != "gemini-3.6-flash" {
-		t.Errorf("expected gemini fallbacks, got %v", g.FallbackModels)
-	}
-
-	o := loaded.Providers["openai"]
-	if o.Model != "gpt-4.1-mini" {
-		t.Errorf("expected openai model 'gpt-4.1-mini', got %q", o.Model)
-	}
-
-	c := loaded.Providers["claude"]
-	if c.Model != "claude-haiku-4-5" {
-		t.Errorf("expected claude model 'claude-haiku-4-5', got %q", c.Model)
+	// The templates follow the SDK's curated catalog: its first model, then
+	// the next MaxFallbacks.
+	for _, id := range []llmprovider.ProviderID{llmprovider.ProviderGemini, llmprovider.ProviderOpenAI, llmprovider.ProviderClaude} {
+		models := catalog.Static(id)
+		if len(models) == 0 {
+			t.Fatalf("the SDK ships no static catalog for %s", id)
+		}
+		pc := loaded.Providers[string(id)]
+		if pc.Model != models[0] {
+			t.Errorf("%s model = %q, want %q", id, pc.Model, models[0])
+		}
+		if want := models[1:min(len(models), MaxFallbacks+1)]; !slices.Equal(pc.FallbackModels, want) {
+			t.Errorf("%s fallbacks = %v, want %v", id, pc.FallbackModels, want)
+		}
 	}
 }
 

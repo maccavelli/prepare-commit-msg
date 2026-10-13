@@ -9,7 +9,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider"
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/catalog"
@@ -23,9 +22,6 @@ const (
 	providerOpenAI = string(llmprovider.ProviderOpenAI)
 	providerClaude = string(llmprovider.ProviderClaude)
 	providerGrok   = string(llmprovider.ProviderGrok)
-
-	// DiscoveryTimeout bounds model list API calls during configure.
-	DiscoveryTimeout = 45 * time.Second
 )
 
 var osGetenv = os.Getenv
@@ -141,17 +137,16 @@ func promptOperational(reader *bufio.Reader, conf *config.Config, opts SetupOpti
 	return nil
 }
 
-// discoverModels lists a provider's models, bounded by DiscoveryTimeout.
-// The interactive path goes through wizard.ConfigureLLM; this exists for the
-// non-interactive --yes path, which takes flags rather than prompts.
+// discoverModels lists a provider's short list of models; catalog.List bounds
+// the listing itself. The interactive path goes through wizard.ConfigureLLM;
+// this exists for the non-interactive --yes path, which takes flags rather
+// than prompts.
 func discoverModels(ctx context.Context, provider, apiKey string) []string {
-	dCtx, cancel := context.WithTimeout(ctx, DiscoveryTimeout)
-	defer cancel()
-	opts := catalog.OptionsFromEnv()
+	opts := append(catalog.OptionsFromEnv(), catalog.WithLimit(catalog.MaxListed))
 	if listingClient != nil {
 		opts = append(opts, llmprovider.WithHTTPClient(listingClient))
 	}
-	cat, err := catalog.List(dCtx, llmprovider.ProviderID(provider), llmprovider.NewStaticToken(apiKey), opts...)
+	cat, err := catalog.List(ctx, llmprovider.ProviderID(provider), llmprovider.NewStaticToken(apiKey), opts...)
 	if err != nil {
 		return nil
 	}
@@ -233,7 +228,7 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 		AllowEnv:        !opts.NoEnv,
 		LookupEnv:       config.LookupEnv(osGetenv),
 		Discover:        true,
-		DiscoverLimit:   DiscoveryTimeout,
+		ModelLimit:      catalog.MaxListed,
 		HTTPClient:      listingClient,
 		Registry:        registry,
 		ProviderOptions: catalog.OptionsFromEnv(),

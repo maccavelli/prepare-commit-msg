@@ -43,7 +43,7 @@ This tree holds three kinds of document:
 | 0013 | PLAN | [Implement the fleet workspace scaffold](decisions/0013-PLAN-align-repository-with-workspace-scaffolding.md) | complete |
 | 0013 | GATES | [Workspace-scaffolding verification](reports/0013-GATES-workspace-scaffolding.md) | complete |
 | 0014 | MADR | [Adopt provider SDK v1.11.0 and self-update library v1.15.2](decisions/0014-MADR-adopt-go-llmprovider-sdk-v1-11-0-and-go-selfupdate-lib-v1-15-2.md) | accepted |
-| 0014 | PLAN | [Implement provider SDK v1.11.0 and self-update library v1.15.2](decisions/0014-PLAN-adopt-go-llmprovider-sdk-v1-11-0-and-go-selfupdate-lib-v1-15-2.md) | proposed |
+| 0014 | PLAN | [Implement provider SDK v1.11.0 and self-update library v1.15.2](decisions/0014-PLAN-adopt-go-llmprovider-sdk-v1-11-0-and-go-selfupdate-lib-v1-15-2.md) | in-progress |
 
 ## I want to…
 
