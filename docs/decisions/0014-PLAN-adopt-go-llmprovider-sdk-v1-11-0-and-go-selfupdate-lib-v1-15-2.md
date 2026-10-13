@@ -338,3 +338,71 @@ lists six models and `7) Other (enter a model id)`, and both tests pass.
 | `make verify` | 0; `golangci-lint run`: `0 issues.`; total coverage 81.9% (minimum 80.0%); `govulncheck`: `No vulnerabilities found.`; `build-all` built six targets |
 
 Staged for the owner's commit.
+
+Committed by the owner as `bd5d46d`. The owner then said "proceed".
+
+### Phase 2: configure reads through one prompter (2026-10-13)
+
+**Step 1 (D3).** `runSetupInteractive` builds one `wizard.TextPrompter`
+and passes it to `wizard.ConfigureLLM` and to `promptOperational`.
+`promptInt` takes a `wizard.Prompter` and reads with `Input(label,
+strconv.Itoa(current))`. `readLine`, the private `bufio.Reader` and the
+`bufio` import are gone; a grep of `internal/ui` for `readLine` and
+`bufio` finds nothing.
+
+* **Noted, within the step:** the SDK's prompter returns an error wrapping
+  `io.EOF` once input is exhausted (`errExhausted`,
+  `wizard/text_prompter.go:63`). The old `readLine` answered end of input
+  with a blank, which kept the current value. `promptInt` keeps that: an
+  `io.EOF` keeps the current value, so a piped run that stops after the
+  wizard's answers still saves the defaults. `TestPromptInt` gains the
+  case "end of input keeps current".
+
+**Step 2.** `TestRunSetupInteractive_OperationalTyped` pipes `99`,
+`12345`, `7`, `9` and requires all four saved.
+
+**Step 3 (D4).** `discoverModels` returns `([]string, error)`: a refused
+credential, from `List`'s error or `cat.Err`, by the wizard's rule
+(`refusedCredential`, the SDK's unexported two-clause check repeated);
+any other failure keeps the static fallback. Both `--yes` call sites
+return `refusedKeyError` and save nothing.
+
+* **Noted, within the step:** the message is `<provider> refused the API
+  key: <err>`, without the step's `configure:` prefix, because `main`
+  already prints configure's errors as `Setup failed: <err>`.
+
+**Step 4.** `TestRunSetupNonInteractive_RefusedKey` serves Gemini's
+`API_KEY_INVALID` refusal (the SDK's captured fixture, unwrapped from the
+Interactions API's array) with HTTP 400, and requires `ErrAuthFailure`,
+the message, and no `config.json`. Its control case serves a 403
+(`PERMISSION_DENIED`) and requires the static catalog's first model
+saved.
+
+**Step 5.** No existing test asserted the `[N]` wording, so none changed.
+The three `discoverModels` call sites in the tests take its error.
+
+**Fail-first,** on a scratch copy of the tree with D3 undone (the
+operational prompts on a second `TextPrompter` over `in`) and D4 undone
+(`cat.Err` ignored); the tree was not touched:
+
+```text
+setup_test.go:623: operational values = [120 32000 3 3]; want the typed [99 12345 7 9]
+--- FAIL: TestRunSetupInteractive_OperationalTyped
+setup_test.go:679: err = <nil>; want gemini's refusal, ErrAuthFailure
+--- FAIL: TestRunSetupNonInteractive_RefusedKey/invalid_key
+--- PASS: TestRunSetupNonInteractive_RefusedKey/not_permitted
+```
+
+The 403 control passes both with and without the fix, as it should.
+
+**Phase gate,** each exit status captured before any filter:
+
+| Check | Result |
+| :--- | :--- |
+| `gofmt -l` on the changed `.go` files | 0, no output |
+| `go test -race -count=1 ./...` | 0; 5 packages ok |
+| `CGO_ENABLED=0 GOOS={linux,darwin,windows} go vet ./...` | 0 each |
+| `go mod tidy -diff` | 0, empty |
+| `make verify` | 0; `golangci-lint run`: `0 issues.`; total coverage 82.2% (minimum 80.0%); `govulncheck`: `No vulnerabilities found.` |
+
+Staged for the owner's commit.

@@ -1,8 +1,8 @@
 package ui
 
 import (
-	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -64,14 +64,6 @@ func RunSetupWithOptions(ctx context.Context, conf *config.Config, opts SetupOpt
 	return runSetupInteractive(ctx, conf, opts, in)
 }
 
-func readLine(reader *bufio.Reader) (string, error) {
-	line, err := reader.ReadString('\n')
-	if err != nil && err != io.EOF {
-		return "", err
-	}
-	return strings.TrimSpace(line), nil
-}
-
 func providerEnvVar(provider string) string {
 	if v, ok := llmprovider.ProviderEnvVars()[llmprovider.ProviderID(provider)]; ok {
 		return v
@@ -79,12 +71,18 @@ func providerEnvVar(provider string) string {
 	return ""
 }
 
-func promptInt(reader *bufio.Reader, label string, current int) (int, error) {
-	fmt.Printf("%s [%d]: ", label, current)
-	line, err := readLine(reader)
+// promptInt asks for a positive integer on the wizard's prompter, so the
+// wizard and these prompts share one buffered input (0014-MADR D3). A blank
+// answer, the end of input, or anything but a positive integer keeps current.
+func promptInt(p wizard.Prompter, label string, current int) (int, error) {
+	line, err := p.Input(label, strconv.Itoa(current))
+	if errors.Is(err, io.EOF) {
+		return current, nil
+	}
 	if err != nil {
 		return current, fmt.Errorf("read %s: %w", label, err)
 	}
+	line = strings.TrimSpace(line)
 	if line == "" {
 		return current, nil
 	}
@@ -96,14 +94,14 @@ func promptInt(reader *bufio.Reader, label string, current int) (int, error) {
 	return current, nil
 }
 
-func promptOperational(reader *bufio.Reader, conf *config.Config, opts SetupOptions) error {
+func promptOperational(p wizard.Prompter, conf *config.Config, opts SetupOptions) error {
 	fmt.Println("\n--- Operational settings (Enter keeps current) ---")
 	var err error
 	timeout := conf.TimeoutSeconds
 	if opts.TimeoutSeconds > 0 {
 		timeout = opts.TimeoutSeconds
 	}
-	conf.TimeoutSeconds, err = promptInt(reader, "Timeout seconds", timeout)
+	conf.TimeoutSeconds, err = promptInt(p, "Timeout seconds", timeout)
 	if err != nil {
 		return err
 	}
@@ -112,7 +110,7 @@ func promptOperational(reader *bufio.Reader, conf *config.Config, opts SetupOpti
 	if opts.MaxDiffBytes > 0 {
 		maxDiff = opts.MaxDiffBytes
 	}
-	conf.MaxDiffBytes, err = promptInt(reader, "Max diff bytes", maxDiff)
+	conf.MaxDiffBytes, err = promptInt(p, "Max diff bytes", maxDiff)
 	if err != nil {
 		return err
 	}
@@ -121,7 +119,7 @@ func promptOperational(reader *bufio.Reader, conf *config.Config, opts SetupOpti
 	if opts.RetryCount > 0 {
 		retry = opts.RetryCount
 	}
-	conf.RetryCount, err = promptInt(reader, "Retry count", retry)
+	conf.RetryCount, err = promptInt(p, "Retry count", retry)
 	if err != nil {
 		return err
 	}
@@ -130,7 +128,7 @@ func promptOperational(reader *bufio.Reader, conf *config.Config, opts SetupOpti
 	if opts.RetryDelaySeconds > 0 {
 		delay = opts.RetryDelaySeconds
 	}
-	conf.RetryDelaySeconds, err = promptInt(reader, "Retry delay seconds", delay)
+	conf.RetryDelaySeconds, err = promptInt(p, "Retry delay seconds", delay)
 	if err != nil {
 		return err
 	}
@@ -140,23 +138,44 @@ func promptOperational(reader *bufio.Reader, conf *config.Config, opts SetupOpti
 // discoverModels lists a provider's short list of models; catalog.List bounds
 // the listing itself. The interactive path goes through wizard.ConfigureLLM;
 // this exists for the non-interactive --yes path, which takes flags rather
-// than prompts.
-func discoverModels(ctx context.Context, provider, apiKey string) []string {
+// than prompts. A key the service refuses is an error, as in the wizard; any
+// other failed listing gives the static catalog (0014-MADR D4).
+func discoverModels(ctx context.Context, provider, apiKey string) ([]string, error) {
 	opts := append(catalog.OptionsFromEnv(), catalog.WithLimit(catalog.MaxListed))
 	if listingClient != nil {
 		opts = append(opts, llmprovider.WithHTTPClient(listingClient))
 	}
 	cat, err := catalog.List(ctx, llmprovider.ProviderID(provider), llmprovider.NewStaticToken(apiKey), opts...)
 	if err != nil {
-		return nil
+		if refusedCredential(err) {
+			return nil, err
+		}
+		return nil, nil
+	}
+	if refusedCredential(cat.Err) {
+		return nil, cat.Err
 	}
 	// A live listing that curates to nothing keeps Recommended empty, so the
 	// wizard can open its search; this path has no search, so it takes the
 	// curated catalog, as the SDK itself did before v1.2.0 (0009-MADR D3).
 	if len(cat.Recommended) == 0 {
-		return defaultModels(provider)
+		return defaultModels(provider), nil
 	}
-	return cat.Recommended
+	return cat.Recommended, nil
+}
+
+// refusedKeyError is configure --yes's error for a key the service refused;
+// nothing is saved.
+func refusedKeyError(provider string, err error) error {
+	return fmt.Errorf("%s refused the API key: %w", provider, err)
+}
+
+// refusedCredential reports whether err is the service refusing the
+// credential: an authentication failure that is not a refusal to permit
+// something. It is the wizard's own rule, which the SDK does not export
+// (go-llmprovider-sdk wizard/configure.go, 0028-MADR D-H2).
+func refusedCredential(err error) bool {
+	return errors.Is(err, llmprovider.ErrAuthFailure) && !errors.Is(err, llmprovider.ErrNotPermitted)
 }
 
 // defaultModels returns the curated catalog the SDK ships for a provider. It is
@@ -182,7 +201,9 @@ func recommendedFallbacks(models []string, primary string) []string {
 }
 
 func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOptions, in io.Reader) error {
-	reader := bufio.NewReader(in)
+	// One prompter reads the whole run: a second reader on in would find the
+	// prompter's buffer had already drained it (0014-MADR D3).
+	prompter := &wizard.TextPrompter{In: in, Out: os.Stdout}
 	fmt.Println("--- prepare-commit-msg Setup ---")
 	store, err := config.NewOAuthStore()
 	if err != nil {
@@ -223,7 +244,7 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 	// Provider menu, key precedence, model discovery and fallback selection all
 	// live in go-llmprovider-sdk now, so a provider added there appears here with no change
 	// to this file. TestSetup_OffersEveryDescriptor guards that.
-	res, err := wizard.ConfigureLLM(ctx, &wizard.TextPrompter{In: in, Out: os.Stdout}, wizard.Options{
+	res, err := wizard.ConfigureLLM(ctx, prompter, wizard.Options{
 		Existing:        existing,
 		AllowEnv:        !opts.NoEnv,
 		LookupEnv:       config.LookupEnv(osGetenv),
@@ -279,7 +300,7 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 		}
 	}
 
-	if err := promptOperational(reader, conf, opts); err != nil {
+	if err := promptOperational(prompter, conf, opts); err != nil {
 		return err
 	}
 
@@ -339,7 +360,10 @@ func runSetupNonInteractive(ctx context.Context, conf *config.Config, opts Setup
 
 	model := strings.TrimSpace(opts.Model)
 	if model == "" {
-		models := discoverModels(ctx, provider, apiKey)
+		models, err := discoverModels(ctx, provider, apiKey)
+		if err != nil {
+			return refusedKeyError(provider, err)
+		}
 		if len(models) == 0 {
 			return fmt.Errorf("no live models listed for %s; pass --model", provider)
 		}
@@ -353,7 +377,11 @@ func runSetupNonInteractive(ctx context.Context, conf *config.Config, opts Setup
 	if len(opts.Fallbacks) > 0 {
 		pc.FallbackModels = config.ClampFallbacks(opts.Fallbacks)
 	} else if len(pc.FallbackModels) == 0 {
-		pc.FallbackModels = config.ClampFallbacks(recommendedFallbacks(discoverModels(ctx, provider, apiKey), model))
+		models, err := discoverModels(ctx, provider, apiKey)
+		if err != nil {
+			return refusedKeyError(provider, err)
+		}
+		pc.FallbackModels = config.ClampFallbacks(recommendedFallbacks(models, model))
 	} else {
 		pc.FallbackModels = config.ClampFallbacks(pc.FallbackModels)
 	}

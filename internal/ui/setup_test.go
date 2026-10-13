@@ -1,12 +1,12 @@
 package ui
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -21,6 +21,7 @@ import (
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider"
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/auth"
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/catalog"
+	"github.com/maccavelli/go-llmprovider-sdk/wizard"
 
 	"github.com/maccavelli/prepare-commit-msg/internal/config"
 )
@@ -124,7 +125,9 @@ func TestRunSetupInteractive_ListingUsesInjectedClient(t *testing.T) {
 // through listingClient too.
 func TestDiscoverModels_UsesInjectedClient(t *testing.T) {
 	offline := isolate(t)
-	discoverModels(context.Background(), providerGemini, "test-key")
+	if _, err := discoverModels(context.Background(), providerGemini, "test-key"); err != nil {
+		t.Fatalf("an offline listing is not a refused key: %v", err)
+	}
 	if offline.requests.Load() == 0 {
 		t.Fatal("discoverModels listed models without the injected client")
 	}
@@ -172,7 +175,10 @@ func TestDiscoverModels_EmptyRecommendationFallsBack(t *testing.T) {
 	redirect := &redirectTransport{to: to}
 	listingClient = &http.Client{Transport: redirect}
 
-	got := discoverModels(context.Background(), string(llmprovider.ProviderKilo), "test-key")
+	got, err := discoverModels(context.Background(), string(llmprovider.ProviderKilo), "test-key")
+	if err != nil {
+		t.Fatalf("discoverModels(kilo): %v", err)
+	}
 	if redirect.requests.Load() == 0 {
 		t.Fatal("discoverModels did not list through the injected client")
 	}
@@ -517,11 +523,13 @@ func TestPromptInt(t *testing.T) {
 		{name: "positive replaces current", input: "42\n", current: 10, want: 42},
 		{name: "text keeps current", input: "nope\n", current: 10, want: 10},
 		{name: "zero keeps current", input: "0\n", current: 10, want: 10},
+		{name: "end of input keeps current", input: "", current: 10, want: 10},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := promptInt(bufio.NewReader(strings.NewReader(tt.input)), "value", tt.current)
+			p := &wizard.TextPrompter{In: strings.NewReader(tt.input), Out: io.Discard}
+			got, err := promptInt(p, "value", tt.current)
 			if err != nil {
 				t.Fatalf("promptInt() error = %v", err)
 			}
@@ -586,5 +594,104 @@ func TestSetup_OffersEveryDescriptor(t *testing.T) {
 	}
 	if len(descriptors) <= 3 {
 		t.Errorf("expected more than the 3 originally hard-coded providers, got %d", len(descriptors))
+	}
+}
+
+// TestRunSetupInteractive_OperationalTyped: operational values typed after
+// the wizard's answers are saved. A second reader on the same input found the
+// wizard's buffer had drained it, so piped values were lost (0014-MADR D3).
+func TestRunSetupInteractive_OperationalTyped(t *testing.T) {
+	isolate(t)
+	conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
+	config.ApplyDefaults(conf)
+	oldEnv := osGetenv
+	defer func() { osGetenv = oldEnv }()
+	osGetenv = func(k string) string {
+		if k == "GEMINI_API_KEY" {
+			return "test-key"
+		}
+		return ""
+	}
+	// 1: gemini; y: the env key; search blank; model 1; fallback search
+	// blank; none; then the four operational values
+	input := "1\ny\n\n1\n\n\n99\n12345\n7\n9\n"
+	if err := runSetupInteractive(context.Background(), conf, SetupOptions{}, strings.NewReader(input)); err != nil {
+		t.Fatalf("runSetupInteractive: %v", err)
+	}
+	got := []int{conf.TimeoutSeconds, conf.MaxDiffBytes, conf.RetryCount, conf.RetryDelaySeconds}
+	if want := []int{99, 12345, 7, 9}; !slices.Equal(got, want) {
+		t.Errorf("operational values = %v; want the typed %v", got, want)
+	}
+}
+
+// geminiKeyInvalid is Gemini's refusal of an invalid key, the body of
+// go-llmprovider-sdk's own fixture (geminiInteractionsKeyInvalid) without the
+// array the Interactions API wraps it in.
+const geminiKeyInvalid = `{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.",` +
+	`"status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo",` +
+	`"reason":"API_KEY_INVALID","domain":"googleapis.com"}]}}`
+
+// TestRunSetupNonInteractive_RefusedKey: configure --yes fails, and saves
+// nothing, when the listing refuses the key; a 403, which refuses a
+// permission rather than the key, still saves with the static catalog
+// (0014-MADR D4).
+func TestRunSetupNonInteractive_RefusedKey(t *testing.T) {
+	for _, c := range []struct {
+		name    string
+		status  int
+		body    string
+		refused bool
+	}{
+		{"invalid key", http.StatusBadRequest, geminiKeyInvalid, true},
+		{"not permitted", http.StatusForbidden, `{"error":{"code":403,"message":"denied","status":"PERMISSION_DENIED"}}`, false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			isolate(t)
+			t.Setenv("LLMPROVIDER_DISABLE_MODELS_METADATA", "1")
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(c.status)
+				_, _ = w.Write([]byte(c.body))
+			}))
+			t.Cleanup(srv.Close)
+			to, err := url.Parse(srv.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			redirect := &redirectTransport{to: to}
+			listingClient = &http.Client{Transport: redirect}
+
+			conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
+			config.ApplyDefaults(conf)
+			err = runSetupNonInteractive(context.Background(), conf, SetupOptions{
+				Provider: providerGemini, APIKey: "bad-key", NoEnv: true, Yes: true,
+			})
+			if redirect.requests.Load() == 0 {
+				t.Fatal("configure --yes did not list through the injected client")
+			}
+			path, pathErr := config.GetConfigPath()
+			if pathErr != nil {
+				t.Fatal(pathErr)
+			}
+			_, statErr := os.Stat(path)
+			if c.refused {
+				if err == nil || !errors.Is(err, llmprovider.ErrAuthFailure) || !strings.Contains(err.Error(), "gemini refused the API key") {
+					t.Fatalf("err = %v; want gemini's refusal, ErrAuthFailure", err)
+				}
+				if !errors.Is(statErr, os.ErrNotExist) {
+					t.Errorf("a refused key was saved to %s (stat: %v)", path, statErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("a 403 is not a refused key: %v", err)
+			}
+			if statErr != nil {
+				t.Fatalf("config not saved: %v", statErr)
+			}
+			if want := catalog.Static(llmprovider.ProviderGemini)[0]; conf.Providers[providerGemini].Model != want {
+				t.Errorf("model = %q; want the static catalog's %q", conf.Providers[providerGemini].Model, want)
+			}
+		})
 	}
 }
