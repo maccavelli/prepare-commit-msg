@@ -1,6 +1,6 @@
 ---
-status: in-progress
-date: 2026-10-13
+status: complete
+date: 2026-10-14
 associated-madr: "0014-MADR-adopt-go-llmprovider-sdk-v1-11-0-and-go-selfupdate-lib-v1-15-2.md"
 ---
 # Implement the move to go-llmprovider-sdk v1.11.0 and go-selfupdate-lib v1.15.2, and the API adoption
@@ -1133,3 +1133,85 @@ recommended: hand-rolled, where the owner asked for the libraries' APIs).
 verify-staged` and `go test -count=1 -run TestReadmeCuratedModels .`.
 
 Staged for the owner's commit.
+
+Committed by the owner as `fccb05c`.
+
+### Phase 6: release `v1.9.0` (2026-10-14)
+
+**Step 1.** Before the push, the disclosure guard from `AGENTS.md` over
+the eleven outgoing commits (`703ea27` to `fccb05c`): exit 0, no output.
+The owner pushed `main`.
+
+**Step 2.** CI on `main` at `fccb05c` (run `38490230245`): success. Go
+(quality contract), Native Tests on Linux, macOS and Windows, Build
+release, and the identity check on linux/amd64, linux/arm64,
+windows/amd64, windows/arm64 and darwin/arm64 all passed; Publish was
+skipped, as on any untagged push. The run's referenced workflows are
+go-selfupdate-lib's build and publish workflows at
+`436a7f5976a6815491c7384527fef90869574a1b`.
+
+**Step 3.** The owner tagged `v1.9.0` on `fccb05c` and pushed the tag. The
+tag's run (`38491161883`) passed every job, Publish GitHub Release
+included. The release `v1.9.0` is published, not a draft or a
+prerelease, and marked Latest.
+
+**Step 4, release assets:** six binaries, `install.sh`, `install.ps1` and
+`SHA256SUMS`.
+
+* `shasum -a 256 -c SHA256SUMS`: all six binaries `OK`, exit 0.
+* `gh attestation verify … --signer-workflow
+  maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml`:
+  exit 0 for each of the six binaries, `install.sh`, `install.ps1` and
+  `SHA256SUMS`.
+* The darwin/arm64 binary: `prepare-commit-msg version v1.9.0 (release)
+  fccb05c07e97`; `go version -m` names go-llmprovider-sdk `v1.12.0`,
+  go-selfupdate-lib `v1.15.2` and `vcs.revision=fccb05c…`.
+
+**Step 4, the installed hook on the macOS host:**
+
+* Before: `v1.8.0 (release) 69d4efc65a48`. `update --check` reported
+  `update available: v1.8.0 -> v1.9.0` and exited 10.
+* `update --yes`: exit 0, `release asset integrity verified`, `updated
+  v1.8.0 -> v1.9.0`. `version` then reads `v1.9.0 (release)
+  fccb05c07e97`, and the installed file's SHA-256 equals the release's
+  darwin/arm64 binary's.
+* A real commit message: the installed hook, run on one staged Go file in
+  a scratch repository with the host's own configuration, printed
+  `generating via openai (gpt-5.6-terra)...`, exited 0, and wrote `feat:
+  add integer addition helper` with one bullet. No commit was made.
+* A keyless Ollama run: the release binary, with `HOME` pointed at a
+  scratch directory, `configure --yes --provider ollama --model
+  llama3.2:latest --fallback qwen3:8b` exited 0, and the hook then
+  generated through `ollama (llama3.2:latest)` and exited 0. The message
+  it wrote, `type Chores: Updated add.go file …`, is not in Conventional
+  Commit form; that is the 3B model's answer, which the hook passes
+  through as it did before this PLAN.
+
+Phase 7 follows.
+
+### Phase 7: close-out (2026-10-14)
+
+Each Verification item, checked on 2026-10-14:
+
+| Item | Holds | Evidence |
+| :--- | :--- | :--- |
+| `go.mod` names SDK `v1.12.0` and go-selfupdate-lib `v1.15.2`; tidy-diff empty; `scripts/go-precheck.py` passes | yes | `go.mod:6-7`; Phase 5's gate; `make verify-staged` at each phase |
+| `ci.yml`'s two `uses:` name `436a7f5…`; `make workflow-lint` passes | yes | `ci.yml:99`, `:114`; `make verify` (which runs it) at each phase; the runs' referenced workflows |
+| the tests pass on all five packages, each new one recorded failing on a scratch copy | yes | Phases 1 to 4 (Deviation 1's two in place of one) |
+| Phase 3a's four tests and README's Example 2 from a scratch build | yes | Phase 3a; again on the Windows host in Phase 5a |
+| `TestMigrationByteForByte`, the `update` tests, `TestReadmeCuratedModels` pass | yes | every phase gate; CI runs `38490230245`, `38491161883` |
+| `grep -n 'DiscoveryTimeout\|analyzerTestProvider'` finds nothing; `bufio` and `readLine` are gone from `internal/ui/setup.go` (Deviation 2) | yes | both greps exit 1 |
+| CI green on `main` and on the tag; `v1.9.0` published through `436a7f5` with attestations | yes | Phase 6, steps 2 to 4 |
+| the installed hook reports `v1.9.0` and writes a commit message | yes | Phase 6, step 4 |
+| Phase 5a's item (Amendment 4) | yes | Phase 5a |
+
+**Not done, and outside this PLAN:**
+
+* Deviation 3's follow-up: a go-llmprovider-sdk record and release that
+  drop embedding models from an Ollama listing, then a pin bump here.
+* F2: the README's sample message shows `# Go: 2, JSON: 1` where the hook
+  writes `# Scripts: N` for Go files.
+* The MADR's "Not decided here" items stand as written.
+
+This PLAN is `complete`; `docs/README.md` says so. Staged for the owner's
+commit, with Phase 6's record above.
