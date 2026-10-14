@@ -1100,3 +1100,36 @@ committed.
   outside this PLAN.
 
 Staged for the owner's commit.
+
+Committed by the owner as `b4212c5`.
+
+### Deviation 3 (2026-10-13): F1, a README note now; the fix in the SDK
+
+**Found** in Phase 5a (F1 above): `configure --yes` can save an Ollama
+embedding model as the model or a fallback, because the SDK passes
+Ollama's installed models through unfiltered.
+
+**Options put to the owner:** ship `v1.9.0` with a README note and fix the
+listing in the SDK afterwards (recommended); hold the release for an SDK
+record, release and pin phase first; filter by name in this repository (not
+recommended: hand-rolled, where the owner asked for the libraries' APIs).
+
+**Decision.** The owner chose the first ("follow recommendations",
+2026-10-13):
+
+* `README.md`, in "Changes with go-llmprovider-sdk v1.12.0 and
+  go-selfupdate-lib v1.15.2", gains the bullet "With Ollama, name the
+  models": `--yes` takes Ollama's models in its listing's order, embedding
+  models included, so pass `--model` and `--fallback`, or use the wizard.
+  `README.md` is added to this deviation's commit.
+* **Follow-up, outside this PLAN:** a go-llmprovider-sdk record and release
+  that drop embedding models from an Ollama listing, from what Ollama
+  reports of each model's capabilities; then a pin bump here, under a new
+  pair or an amendment of this one. Neither is started.
+* F2 (the README's `# Go: 2` sample) is left for a separate change after
+  the release, as recommended.
+
+**Checks:** `make markdownlint`, `make check-records`, `make
+verify-staged` and `go test -count=1 -run TestReadmeCuratedModels .`.
+
+Staged for the owner's commit.

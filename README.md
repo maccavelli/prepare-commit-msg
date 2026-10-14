@@ -575,6 +575,10 @@ What you may notice:
   [Configuration File](#configuration-file)). `--base-url` refuses a user
   name or password, a query and a fragment, and refuses plain `http` to a
   remote host for any provider that needs a key.
+- **With Ollama, name the models.** `configure --yes` takes the models in
+  the order Ollama lists them, and Ollama lists embedding models too, which
+  cannot write a commit message. Pass `--model` and `--fallback`, or choose
+  them in the interactive wizard.
 - **`configure --yes` stops on a refused key.** When the provider's model
   listing refuses the key, it fails with `<provider> refused the API key`
   and saves nothing. Any other listing failure still falls back to the
