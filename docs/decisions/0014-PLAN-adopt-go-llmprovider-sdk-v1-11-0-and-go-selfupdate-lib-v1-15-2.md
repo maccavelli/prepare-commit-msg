@@ -44,6 +44,7 @@ Done means every item under Verification holds.
 | 5a | agent | Amendment 4: the unpushed `main` tested on a Windows and a Linux host |
 | 6 | owner, then agent | CI on `main`, tag `v1.9.0`, live checks |
 | 7 | agent | close-out |
+| 8 | agent | Amendment 5: F2, the README's sample stats line |
 
 ### Out of scope
 
@@ -331,6 +332,26 @@ across hosts, which depends on how the laptop's Ollama is bound.
 1. Execution Record complete; this PLAN `complete`; the index updated;
    stage; the owner commits and pushes.
 
+### Phase 8: the README's sample stats line (Amendment 5)
+
+Added 2026-10-14, after the owner asked for F2 (Phase 5a) to be fixed.
+Runs after the owner commits Phase 7.
+
+1. `README.md:393`, in "Daily Workflow & Hook Behavior": `# Go: 2, JSON:
+   1` becomes `# JSON: 1, Scripts: 2`. `GatherInfo`
+   (`internal/git/git.go:107-126`) writes the groups in the order YAML,
+   JSON, Terraform, CI/CD, Scripts, Other, joined by `, `, and counts `.go`
+   files under Scripts. The sample's message and its `# AI-generated (3
+   files: +84 -12)` line are unchanged.
+2. **Checked against the code:** in a scratch Git repository, stage two
+   `.go` files and one `.json` file and run `GatherInfo` from a scratch
+   clone; its `Stats` must equal the new line without `# `. Seen to fail
+   first: the old line, `Go: 2, JSON: 1`, does not match.
+3. `make markdownlint`, `make check-records`, `go test -count=1 -run
+   TestReadmeCuratedModels .`; this PLAN `complete` again, and the index
+   with it; stage; the owner commits and pushes. No release: the README is
+   not in the binary.
+
 ## Verification
 
 * `go.mod` names go-llmprovider-sdk `v1.12.0` (MADR Amendment 1) and
@@ -356,6 +377,8 @@ across hosts, which depends on how the laptop's Ollama is bound.
 * Phase 5a (Amendment 4): the tests pass on the Windows and Linux hosts,
   README's Example 2 and a keyless Ollama hook run succeed on Windows, the
   refusals hold on both, and neither host's installed hook changed.
+* Phase 8 (Amendment 5): the README's sample stats line is the one
+  `GatherInfo` writes for two `.go` files and one `.json` file.
 
 ## Rollout and Rollback
 
@@ -1215,3 +1238,52 @@ Each Verification item, checked on 2026-10-14:
 
 This PLAN is `complete`; `docs/README.md` says so. Staged for the owner's
 commit, with Phase 6's record above.
+
+Committed by the owner as `4d93b7f` and pushed; CI on `main` (run
+`38492250294`) passed. The disclosure guard over `4d93b7f`, run after the
+push: exit 0, no output.
+
+### Amendment 5 (2026-10-14): Phase 8, the README's sample stats line
+
+The owner asked for two things after the close-out: an issue in the SDK
+for Deviation 3's follow-up, and the README fixed for F2.
+
+* **The issue** is
+  [maccavelli/go-llmprovider-sdk#1](https://github.com/maccavelli/go-llmprovider-sdk/issues/1),
+  "catalog: Ollama listing recommends embedding models". It cites
+  `ollamaCatalog` passing `/api/tags` through unchanged (the same in
+  `v1.3.2`), and Ollama `0.40.2`'s `/api/show` reporting `capabilities`
+  `["embedding"]` for `granite-embedding:30m` and `["completion", "tools",
+  "insert"]` for `qwen2.5-coder:7b`, read on the owner's Windows laptop.
+  It changes nothing in this repository.
+* **F2** was found in this PLAN's Phase 5a, so it is fixed here, as Phase
+  8. This PLAN returns to `in-progress` until Phase 8 is committed, and
+  `docs/README.md` says so. No decision in the MADR changes. The
+  amendment waits for the owner's approval.
+
+Approved by the owner on 2026-10-14 ("proceed").
+
+### Phase 8: the README's sample stats line (2026-10-14)
+
+**Step 1.** `README.md:393` reads `# JSON: 1, Scripts: 2`, where it read
+`# Go: 2, JSON: 1`.
+
+**Step 2, checked against the code.** In a scratch clone, a scratch
+`cmd/stats` called `git.GatherInfo` in a scratch Git repository with
+`a.go`, `b.go` and `c.json` staged, and printed `3 files: +3 -0` and
+`JSON: 1, Scripts: 2`. A scratch script compared the README's line under
+`# AI-generated (3 files: +84 -12)` with that output:
+
+```text
+before the fix: README: 'Go: 2, JSON: 1'; GatherInfo: 'JSON: 1, Scripts: 2'   exit 1
+after the fix:  README: 'JSON: 1, Scripts: 2'; GatherInfo: 'JSON: 1, Scripts: 2'   exit 0
+```
+
+Neither the tool nor the script is committed.
+
+**Step 3.** `make markdownlint`, `make check-records` and `go test
+-count=1 -run TestReadmeCuratedModels .` exit 0. The Phase 7 table holds
+unchanged, and Phase 8's Verification item holds (step 2). This PLAN is
+`complete` again, and `docs/README.md` says so.
+
+Staged for the owner's commit, with Amendment 5.

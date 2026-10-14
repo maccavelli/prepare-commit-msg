@@ -390,7 +390,7 @@ git commit
    * Update unit tests covering expired token renewal
 
    # AI-generated (3 files: +84 -12)
-   # Go: 2, JSON: 1
+   # JSON: 1, Scripts: 2
    #
    # Please enter the commit message for your changes. Lines starting
    # with '#' will be ignored, and an empty message aborts the commit.
