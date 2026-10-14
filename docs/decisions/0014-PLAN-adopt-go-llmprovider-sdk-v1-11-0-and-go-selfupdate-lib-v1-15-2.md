@@ -1009,3 +1009,94 @@ login; both have Go 1.27.2, `git`, `make` and `gcc`; the laptop's Ollama
 answers on `localhost:11434` and lists `qwen2.5-coder:7b`, README's
 Example 2 model. No decision in the MADR changes. The amendment waits for
 the owner's approval.
+
+Approved and committed by the owner as `f90c8f7` ("accepted, committed,
+proceed").
+
+### Phase 5a: the unpushed `main` on Windows and Linux (2026-10-13)
+
+The hosts are as Amendment 4 describes them: the owner's Windows laptop
+and a Linux host.
+
+**Step 1.** `git bundle create` of `main`, copied by `scp` to
+`~/tmp/pcm-0014-5a/` on each host and cloned there.
+
+* **Noted, within the step:** the clones' `HEAD` is `f90c8f7`, not
+  Phase 5's `adee10a`; the owner committed Amendment 4 first, and `git diff
+  --stat adee10a f90c8f7` touches only this PLAN.
+
+**Step 2,** each exit status captured on the host before any filter:
+
+| Check | Windows | Linux |
+| :--- | :--- | :--- |
+| `go test -count=1 ./...` | 0; 5 packages ok | 0; 5 packages ok |
+| `go test -race -count=1 ./...` | 0; 5 packages ok | 0; 5 packages ok |
+| `go vet ./...` | 0 | 0 |
+| `make verify` | not run (Linux only, as CI) | 0; `0 issues.`; total coverage 83.5% (minimum 80.0%); `No vulnerabilities found.` |
+
+**Step 3.** Both scratch builds exit 0. Every live run set `APPDATA`,
+`USERPROFILE` and `LOCALAPPDATA` (Windows), or `HOME` and
+`XDG_CONFIG_HOME` (Linux), to a directory under the scratch directory.
+The installed hook's SHA-256 was taken on each host before step 1.
+
+**Step 4, both hosts:**
+
+* `version`: `prepare-commit-msg version v0.0.0-20261014000753-f90c8f7afc9f
+  (local) f90c8f7afc9f`; `help` lists the 10 IDs in registry order and
+  `--base-url`.
+* `--base-url http://user@127.0.0.1:11434` for Ollama: `Setup failed:
+  --base-url carries no user name or password`, exit 1, nothing saved.
+* `--provider gemini --base-url https://example.com`: the first Windows run
+  had no key, so it was refused by the key check (`API key required`)
+  before the endpoint was checked. **Noted, within the step:** rerun on
+  both hosts with a made-up `GEMINI_API_KEY` in the environment and
+  `--model` (so no listing, and nothing sent): `Setup failed: gemini takes
+  no --base-url`, exit 1, nothing saved.
+* Added within the step, on both: `--provider opencode-zen --base-url
+  http://example.com/zen/v1` with a made-up `OPENCODE_API_KEY`: `Setup
+  failed: --base-url http://example.com/zen/v1 is plain http to a remote
+  host, so the key would travel unencrypted; use https`, exit 1, nothing
+  saved.
+
+**Step 5, Windows, against its Ollama:**
+
+* README's Example 2 on an empty configuration: exit 0, `Active provider:
+  ollama (qwen2.5-coder:7b)`, saved with `api_key` empty and no `base_url`.
+* `--base-url http://127.0.0.1:11434` with no `--model`: exit 0; the live
+  listing answered, and `base_url` is saved. Example 2 run again keeps that
+  `base_url` and sets the model back (MADR Amendment 2, B2).
+* The hook, on one staged Go file in a scratch repository: exit 0 in 38 s,
+  `prepare-commit-msg: generating via ollama (qwen2.5-coder:7b)...`, and
+  the message file reads `` feat(greet): add new `greet` function ``, with
+  `# AI-generated (1 files: +4 -0)`. No key; no commit made.
+
+**Step 6, Linux:** a made-up `GEMINI_API_KEY` in the environment,
+`configure --yes --provider gemini`: `Setup failed: gemini refused the API
+key: llmprovider: authentication failed: gemini HTTP 400 API_KEY_INVALID:
+API key not valid. Please pass a valid API key.`, exit 1, nothing saved.
+
+**Step 7.** `rm -rf ~/tmp/pcm-0014-5a` on each host; `test -e` then exits
+1. Each installed hook's SHA-256 is the same as before step 1. The logs
+were copied to the agent's scratch directory first; they are not
+committed.
+
+**Found, not caused by this work, waiting for the owner:**
+
+* **F1. `--yes` can save an Ollama embedding model.** Example 2 saved
+  `granite-embedding:30m` as the first fallback, and `--base-url` with no
+  `--model` saved it as the model, because the laptop's Ollama lists it
+  first. For Ollama, `catalog.Static` is nil and the SDK passes the
+  installed models through as listed, in `v1.3.2` as in `v1.12.0`
+  (`llmprovider/catalog/models_catalog.go:276`); `--yes` takes the first
+  as the model when `--model` is absent and the next three as fallbacks
+  when `--fallback` is absent. Before Amendment 2, `--yes` could not
+  configure Ollama at all; the wizard shows the same list and lets the user
+  choose. What the hook does when it reaches an embedding model was not
+  tested.
+* **F2. The README's sample message is not what the hook writes.**
+  "Daily Workflow & Hook Behavior" shows `# Go: 2, JSON: 1`; the hook
+  counts `.go` files as `Scripts` (`internal/git/git.go:98`) and wrote
+  `# Scripts: 1`. That has been so since the code was imported; it is
+  outside this PLAN.
+
+Staged for the owner's commit.
