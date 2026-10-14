@@ -41,6 +41,7 @@ Done means every item under Verification holds.
 | 3a | agent | MADR Amendment 2: `configure --yes` key rule and `--base-url` |
 | 4 | agent | D5, D8, D7 (`llmtest` fake), `session.Store` |
 | 5 | agent | D9: the README section and `docs/architecture.md` |
+| 5a | agent | Amendment 4: the unpushed `main` tested on a Windows and a Linux host |
 | 6 | owner, then agent | CI on `main`, tag `v1.9.0`, live checks |
 | 7 | agent | close-out |
 
@@ -263,6 +264,54 @@ every provider. Runs after the owner commits Phase 3, and before Phase 4.
    URL.
 3. `make markdownlint`, `make check-records`; stage; the owner commits.
 
+### Phase 5a: the unpushed `main` on Windows and Linux (Amendment 4)
+
+Added 2026-10-13, after the owner asked for a test on two of their hosts
+before the push. Runs after the owner commits Phase 5, and before Phase 6.
+The hosts are the owner's Windows laptop (x86-64, Git Bash, Ollama
+running) and a Linux host (Ubuntu, x86-64), reached over `ssh`; both have
+Go 1.27.2, `git`, `make` and `gcc`. They are not named in any record.
+
+1. **Ship.** `git bundle create` of `main` into the scratch directory;
+   `scp` it to `~/tmp/pcm-0014-5a/` on each host; `git clone` it there.
+   Assert the clone's `HEAD` is the owner's Phase 5 commit.
+2. **Tests,** each exit status captured on the host before any filter:
+   * both hosts: `go test -count=1 ./...` (CI's native job), `go test
+     -race -count=1 ./...`, `go vet ./...`;
+   * Linux: `make verify` (CI's quality contract).
+3. **A scratch build** in the clone (`go build -o pcm`, `pcm.exe` on
+   Windows). Every live run below points the configuration at
+   `~/tmp/pcm-0014-5a/home`: `HOME` and `XDG_CONFIG_HOME` on Linux,
+   `APPDATA` and `USERPROFILE` on Windows. The hosts' own configuration,
+   OAuth sessions and installed hooks are not read or written; the
+   installed hook's SHA-256 is taken before and after, and must not change.
+4. **Live, both hosts:** `version`; `help` names the 10 providers and
+   `--base-url`; `configure --yes --provider gemini --base-url
+   https://example.com` and a `--base-url` carrying a user name are
+   refused, and nothing is saved.
+5. **Live, Windows, against its Ollama:**
+   * README's Example 2, `configure --yes --provider ollama --model
+     qwen2.5-coder:7b`, with an empty configuration: exit 0, `ollama`
+     saved with no key and no `base_url`;
+   * `configure --yes --provider ollama --base-url http://127.0.0.1:11434`
+     with no `--model`: the live listing answers, and `base_url` is saved;
+   * the hook: in a scratch Git repository under the scratch directory,
+     stage one small file and run the scratch binary as the hook on
+     `.git/COMMIT_EDITMSG`. It writes a Conventional Commit message from
+     Ollama with no key. No commit is made.
+6. **Live, Linux:** `GEMINI_API_KEY` set in the environment (never as an
+   argument) to a made-up value, `configure --yes --provider gemini`:
+   fails with `gemini refused the API key`, and nothing is saved (D4).
+7. **Clean up.** `rm -rf ~/tmp/pcm-0014-5a` on each host, by that literal
+   path; the installed hook's SHA-256 is unchanged.
+8. Record the results here, with the hosts described as above; stage this
+   PLAN alone; the owner commits. The agent runs the disclosure guard over
+   all outgoing commits before the owner pushes.
+
+Not done here: anything on a host's own configuration (Phase 6 does that
+after the release, through `update`); a remote `--base-url` to Ollama
+across hosts, which depends on how the laptop's Ollama is bound.
+
 ### Phase 6: release `v1.9.0` (owner, then agent)
 
 1. Before each of the owner's pushes, the agent runs the pre-push
@@ -304,6 +353,9 @@ every provider. Runs after the owner commits Phase 3, and before Phase 4.
 * CI green on `main` and on the tag; `v1.9.0` published through
   `436a7f5` with attestations.
 * The installed hook reports `v1.9.0` and writes a commit message.
+* Phase 5a (Amendment 4): the tests pass on the Windows and Linux hosts,
+  README's Example 2 and a keyless Ollama hook run succeed on Windows, the
+  refusals hold on both, and neither host's installed hook changed.
 
 ## Rollout and Rollback
 
@@ -942,3 +994,18 @@ nothing (exit 1).
 
 Phase 5, with the README line above and Deviation 2's records, is staged
 for the owner's commit.
+
+Committed by the owner as `adee10a`. The disclosure guard over the eight
+outgoing commits (`703ea27` to `adee10a`) exited 0 with no output.
+
+### Amendment 4 (2026-10-13): Phase 5a, the unpushed `main` on Windows and Linux
+
+The owner asked that the unpushed work be tested on their Windows laptop
+and on a Linux host, over `ssh`, before the push. The PLAN tested only on
+this macOS host before the push, leaving Windows and Linux to CI. Phase 5a
+is added between Phase 5 and Phase 6, and one Verification item with it.
+Read-only probes on 2026-10-13: both hosts answer `ssh` with key-only
+login; both have Go 1.27.2, `git`, `make` and `gcc`; the laptop's Ollama
+answers on `localhost:11434` and lists `qwen2.5-coder:7b`, README's
+Example 2 model. No decision in the MADR changes. The amendment waits for
+the owner's approval.
