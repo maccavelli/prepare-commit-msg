@@ -28,6 +28,7 @@ Commit](https://www.conventionalcommits.org/) messages.
 - [Changes with go-llmprovider-sdk v1.2.1](#changes-with-go-llmprovider-sdk-v121)
 - [Changes with go-llmprovider-sdk v1.3.2](#changes-with-go-llmprovider-sdk-v132)
 - [Changes with go-selfupdate-lib v1.13.0](#changes-with-go-selfupdate-lib-v1130)
+- [Changes with go-llmprovider-sdk v1.12.0 and go-selfupdate-lib v1.15.2](#changes-with-go-llmprovider-sdk-v1120-and-go-selfupdate-lib-v1152)
 - [CLI Reference](#cli-reference)
 - [Developer Experience](#developer-experience)
 - [Documentation](#documentation)
@@ -226,7 +227,9 @@ Run the interactive setup wizard:
 prepare-commit-msg configure
 ```
 
-Select your preferred provider (`gemini`, `openai`, `claude`, `grok`, `kilo`, `ollama`, `opencode-zen`, `opencode-go`, `huggingface`), detect or enter credentials, and pick primary and fallback models.
+Select your preferred provider (`gemini`, `openai`, `claude`, `grok`, `opencode-zen`, `opencode-go`,
+`huggingface`, `kilo`, `together`, `ollama`), detect or enter credentials, and pick primary and
+fallback models.
 
 ---
 
@@ -295,9 +298,10 @@ prepare-commit-msg configure --yes \
 
 | Flag | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `--provider` | `string` | `gemini` | `gemini`, `openai`, `claude`, `grok`, `kilo`, `ollama`, `opencode-zen`, `opencode-go`, `huggingface` |
+| `--provider` | `string` | `gemini` | `gemini`, `openai`, `claude`, `grok`, `opencode-zen`, `opencode-go`, `huggingface`, `kilo`, `together`, `ollama` |
 | `--model` | `string` | *Provider default* | Primary model name |
 | `--api-key` | `string` | `""` | Provider API key (uses existing config or env if omitted; ignored by `ollama`) |
+| `--base-url` | `string` | *Saved `base_url`, else the provider's* | Endpoint, for `opencode-zen`, `opencode-go`, `huggingface`, `kilo`, `together` and `ollama`. `http` or `https` with a host; no user name, password, query or fragment; plain `http` to a remote host only for `ollama`. Without `--yes`, it is the wizard's suggested endpoint. |
 | `--fallback` | `string` | *Curated fast models* | Fallback model (repeatable or comma-separated, max 3) |
 | `--timeout-seconds`| `int` | `120` | Total LLM request timeout |
 | `--max-diff-bytes` | `int` | `32000` (32 KB) | Maximum staged diff bytes sent in the prompt |
@@ -337,7 +341,8 @@ The configuration is saved as JSON with secure permissions (`0600`) at standard 
     "ollama": {
       "api_key": "",
       "model": "qwen2.5-coder:7b",
-      "fallback_models": ["llama3.2:latest"]
+      "fallback_models": ["llama3.2:latest"],
+      "base_url": "http://192.0.2.10:11434"
     },
     "openai": {
       "api_key": "",
@@ -356,6 +361,12 @@ The configuration is saved as JSON with secure permissions (`0600`) at standard 
   "retry_delay_seconds": 3
 }
 ```
+
+`base_url` is the endpoint a provider's requests go to. It is present only
+when `configure` saved an endpoint other than the provider's default (see
+[Supported Providers & Models](#supported-providers--models)), from the
+endpoint you typed in the wizard or from `--base-url`. Only `opencode-zen`,
+`opencode-go`, `huggingface`, `kilo`, `together` and `ollama` take one.
 
 ---
 
@@ -540,6 +551,62 @@ What you may notice:
   keeps the old copy beside the hook as
   `.prepare-commit-msg.selfupdate-kept-<n>`, instead of removing it.
   Delete it once the hook works.
+
+---
+
+## Changes with go-llmprovider-sdk v1.12.0 and go-selfupdate-lib v1.15.2
+
+Release `v1.9.0` moves from go-llmprovider-sdk `v1.3.2` to `v1.12.0`, and
+from go-selfupdate-lib `v1.13.0` to `v1.15.2`
+([0014-MADR](docs/decisions/0014-MADR-adopt-go-llmprovider-sdk-v1-11-0-and-go-selfupdate-lib-v1-15-2.md)).
+What you may notice:
+
+- **Every provider can be configured.** `configure --provider` and the help
+  text name all 10 providers, where `v1.8.0`'s named only `gemini`, `openai`,
+  `claude` and `grok`. The next save of `config.json` adds an entry for
+  each.
+- **Ollama needs no key.** The hook runs a saved Ollama configuration
+  without one, where `v1.8.0` stopped with `no API key for provider
+  "ollama"`, and `configure --yes --provider ollama` no longer fails with
+  `API key required`.
+- **Your endpoint is kept.** An endpoint you type in the wizard, or pass
+  with the new `--base-url`, is saved as `base_url` when it differs from the
+  provider's default, and the hook sends its requests there (see
+  [Configuration File](#configuration-file)). `--base-url` refuses a user
+  name or password, a query and a fragment, and refuses plain `http` to a
+  remote host for any provider that needs a key.
+- **`configure --yes` stops on a refused key.** When the provider's model
+  listing refuses the key, it fails with `<provider> refused the API key`
+  and saves nothing. Any other listing failure still falls back to the
+  curated models.
+- **The model menu still shows six models,** the first six of the
+  provider's curated list. The lists themselves changed: see
+  [Supported Providers & Models](#supported-providers--models).
+- **Typed operational settings are saved.** The timeout, diff size and
+  retry values you enter in the wizard are kept, also when its answers are
+  piped in. The prompt reads `Timeout seconds (default 120):` where it read
+  `Timeout seconds [120]:`.
+- **Requests name this program.** Each request's `User-Agent` begins
+  `prepare-commit-msg/<version>`, where it named the SDK.
+- **OpenAI's default model writes a prompt cache you pay for.** OpenAI
+  caches prompts automatically on GPT-5.6 and later, and charges 1.25 times
+  the input price to write the cache; nothing the hook sends turns that
+  off. `gpt-6-luna`, now OpenAI's default, is one of those models, where
+  `v1.8.0`'s `gpt-4.1-mini` is not. Each commit's prompt is new, so the
+  cache is written and not read back. Choose `gpt-4.1-mini` to avoid the
+  charge.
+- **From the SDK:**
+  - an HTTP 403 means the account may not use that model; it no longer
+    renews a sign-in, and the next model is tried;
+  - a refused Grok key stops at once, as a refused Gemini key does from
+    `v1.8.0`;
+  - a request that fails after it was sent is retried at most once;
+  - a rate limit (HTTP 429) waits for the time the service names;
+  - the wizard asks again for a typed key the service refuses, up to three
+    times;
+  - model listings are cached for 10 minutes.
+- **`update`** behaves as in `v1.8.0`: go-selfupdate-lib `v1.15.2` changes
+  nothing it uses.
 
 ---
 

@@ -222,6 +222,11 @@ equivalent.
   operational values with its `Input`.
 * `readLine`, `promptInt` and the private `bufio.Reader` go. An invalid or
   non-positive value still keeps the current value, with the same note.
+  *(Amended 2026-10-13: `promptInt` stays, as the integer parser over the
+  prompter's `Input`. `wizard.Prompter` has `Select`, `MultiSelect`,
+  `Confirm`, `Input`, `Secret` and `Notify`, and no integer prompt, so the
+  parse and the "keeping N" note live here. `readLine` and the
+  `bufio.Reader` went. See the PLAN's Deviation 2.)*
 * The prompt shows `Timeout seconds (default 120):` where it showed
   `Timeout seconds [120]:`.
 

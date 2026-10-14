@@ -126,8 +126,9 @@ Done means every item under Verification holds.
    os.Stdout}`; pass `p` to `ConfigureLLM`; change `promptOperational` to
    take a `wizard.Prompter` and read each value with `p.Input(label,
    strconv.Itoa(current))`, keeping the "invalid value … keeping N" note.
-   Delete `readLine`, `promptInt`, the `bufio` reader and imports left
-   unused.
+   Delete `readLine`, ~~`promptInt`,~~ the `bufio` reader and imports left
+   unused. *(Deviation 2, 2026-10-13: `promptInt` stays, reading through
+   the prompter's `Input`.)*
 2. New `TestRunSetupInteractive_OperationalTyped`: pipes `99`, `12345`,
    `7`, `9` and asserts all four are saved. Fail-first: the scratch probe
    from the MADR (`f1c3523` kept `120`, `32000`, `3`, `3`).
@@ -296,8 +297,10 @@ every provider. Runs after the owner commits Phase 3, and before Phase 4.
   scratch build.
 * `TestMigrationByteForByte`, the `update` tests and
   `TestReadmeCuratedModels` pass.
-* `grep -n 'DiscoveryTimeout\|promptInt\|analyzerTestProvider'` over the Go
-  sources finds nothing.
+* `grep -n 'DiscoveryTimeout\|analyzerTestProvider'` over the Go sources
+  finds nothing. *(Deviation 2, 2026-10-13: `promptInt` left this grep;
+  it stays, and `grep -n 'bufio\|readLine' internal/ui/setup.go` finds
+  nothing.)*
 * CI green on `main` and on the tag; `v1.9.0` published through
   `436a7f5` with attestations.
 * The installed hook reports `v1.9.0` and writes a commit message.
@@ -849,3 +852,93 @@ Verification grep for `promptInt` therefore still finds it
 resolution.
 
 Staged for the owner's commit.
+
+Committed by the owner as `c8d935a`. The owner then said "committed,
+proceed", without choosing a resolution for the finding above; it still
+waits.
+
+### Phase 5: documents (2026-10-13)
+
+**Step 1, `README.md`:**
+
+* The section "Changes with go-llmprovider-sdk v1.12.0 and
+  go-selfupdate-lib v1.15.2" follows the `v1.13.0` one, and the table of
+  contents names it. It covers D2 to D6 (all 10 providers; Ollama with no
+  key in the hook and in `--yes`; `base_url` and `--base-url`; `--yes`
+  stopping on a refused key; the six-model menu; typed operational values
+  and the `(default N)` wording), D5's User-Agent, Amendment 1 A3's
+  prompt-cache charge on `gpt-6-luna`, SDK 0028's user-visible behaviour,
+  and that `update` is unchanged.
+* "Configuration File": the example's `ollama` entry carries a `base_url`
+  (`192.0.2.10`, an RFC 5737 documentation address), and a paragraph says
+  when it is saved and which providers take one.
+* The `--provider` row lists the registry's 10 IDs in registry order; a
+  `--base-url` row follows `--api-key` (MADR Amendment 2, B5).
+* **Noted, within the step:** the step names the section "Changes with
+  go-llmprovider-sdk v1.11.0 and go-selfupdate-lib v1.15.2". Amendment 1
+  moved the SDK to `v1.12.0` and the release ships it, so the heading
+  names `v1.12.0`.
+
+**Step 2, `docs/architecture.md`:** "Runtime flow" says the provider list,
+the key rule and each default endpoint come from the SDK's registry, which
+`internal/config` builds its list from, and that a saved `base_url`
+replaces the default endpoint.
+
+**Checked against the code, not the records:** v1.8.0's `ValidateActive`
+(`703ea27:internal/config/config.go`) refused an empty key for every
+provider with `no API key for provider %q`, and its `--provider` help
+named `gemini|openai|claude|grok`; the SDK's `TextPrompter.Input` prints
+`%s (default %s): ` (`wizard/text_prompter.go:292`); the registry's
+`SupportsBaseURL` is true for exactly the six providers the README names.
+
+**A new check, seen to fail:** the README's in-page links were checked
+against its headings by a scratch script (`#` links resolved to GitHub's
+heading slugs): none missing. On a scratch copy with the new table of
+contents link pointing at `#changes-with-go-llmprovider-sdk-v1-12-0`, it
+reported that anchor missing and exited 1. The script is not committed.
+
+**Phase gate,** each exit status captured before any filter:
+
+| Check | Result |
+| :--- | :--- |
+| `go test -race -count=1 ./...` | 0; 5 packages ok (`TestReadmeCuratedModels` among them) |
+| `CGO_ENABLED=0 GOOS={linux,darwin,windows} go vet ./...` | 0 each |
+| `go mod tidy -diff` | 0, empty |
+| `make verify` | 0; `golangci-lint run`: `0 issues.`; total coverage 83.5% (minimum 80.0%); `govulncheck`: `No vulnerabilities found.` |
+| `make check-records`, `make markdownlint` | 0 each |
+
+**Found, and done in this phase.** "3. Configure Provider & Model"
+(`README.md:230`) listed nine providers, in the provider table's order
+but without `together`; Phase 5 named the `--provider` row only. The
+owner chose to fix it here ("follow recommendations", 2026-10-13): the
+sentence names the registry's 10 IDs in registry order, as the
+`--provider` row does. `README.md` was already in this phase.
+
+### Deviation 2 (2026-10-13): `promptInt` stays
+
+**Found** in Phase 4 (recorded there): MADR D3 and Phase 2 step 1 say
+`promptInt` is deleted. Phase 2 (`8df87c7`) deleted `readLine` and the
+`bufio.Reader` but kept `promptInt` (`internal/ui/setup.go:85`), reading
+through `wizard.Prompter.Input`, and did not name that a deviation. The
+Verification grep for `promptInt` would have failed at close-out.
+
+**Why it stays [read].** `wizard.Prompter` has `Select`, `MultiSelect`,
+`Confirm`, `Input`, `Secret` and `Notify`, and no integer prompt. The
+string from `Input` has to be parsed, and an invalid value has to keep the
+current one with the "keeping N" note, somewhere in this repository.
+Inlining it into `promptOperational` would repeat the parse four times or
+move it under another name, with no change in behaviour.
+
+**Decision.** The owner chose to record it ("follow recommendations",
+2026-10-13). Records only, no code:
+
+* the MADR's D3 carries a dated annotation;
+* Phase 2 step 1 strikes `promptInt` from the deletion;
+* Verification drops `promptInt` from the grep and checks instead that
+  `bufio` and `readLine` are gone from `internal/ui/setup.go`.
+
+**Checked:** `grep -n 'bufio\|readLine' internal/ui/setup.go` finds
+nothing (exit 1).
+
+Phase 5, with the README line above and Deviation 2's records, is staged
+for the owner's commit.

@@ -18,6 +18,10 @@ commit-message file. The same binary exposes `configure`, `update`,
 `main.go` dispatches CLI subcommands or hook execution. Hook execution
 collects staged changes through `internal/git`, loads user settings through
 `internal/config`, and calls providers through `go-llmprovider-sdk`.
+The list of providers, whether each needs a key, and each one's default
+endpoint come from the SDK's provider registry (`providers.Default()`),
+from which `internal/config` builds its provider list. A provider's saved
+`base_url`, when present, replaces that default endpoint.
 `internal/fsutil` owns safe file writes. The update command delegates release
 selection, integrity checks, replacement, and build identity to
 `go-selfupdate-lib`.
