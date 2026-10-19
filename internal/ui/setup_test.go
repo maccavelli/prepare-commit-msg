@@ -53,6 +53,19 @@ func isolate(t *testing.T) *offlineTransport {
 	return offline
 }
 
+// testKeys numbers the keys testKey hands out.
+var testKeys atomic.Int32
+
+// testKey is a key of this run of t's own. The SDK caches a listing for ten
+// minutes, process-wide, keyed by provider, endpoint and credential, so two
+// tests that list with one key share a listing, as do two runs of one test
+// under -count (go-llmprovider-sdk 0041-MADR D6; 0015-MADR D4; 0015-PLAN
+// Deviation 2).
+func testKey(t *testing.T) string {
+	t.Helper()
+	return fmt.Sprintf("test-key-%s-%d", t.Name(), testKeys.Add(1))
+}
+
 func TestRunSetupInteractive_Success(t *testing.T) {
 	isolate(t)
 
@@ -100,6 +113,7 @@ func TestRunSetupInteractive_Success(t *testing.T) {
 // listing goes through listingClient, so tests can keep it offline.
 func TestRunSetupInteractive_ListingUsesInjectedClient(t *testing.T) {
 	offline := isolate(t)
+	key := testKey(t)
 
 	conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
 	config.ApplyDefaults(conf)
@@ -108,7 +122,7 @@ func TestRunSetupInteractive_ListingUsesInjectedClient(t *testing.T) {
 	defer func() { osGetenv = oldEnv }()
 	osGetenv = func(k string) string {
 		if k == "GEMINI_API_KEY" {
-			return "test-key"
+			return key
 		}
 		return ""
 	}
@@ -126,7 +140,7 @@ func TestRunSetupInteractive_ListingUsesInjectedClient(t *testing.T) {
 // through listingClient too.
 func TestDiscoverModels_UsesInjectedClient(t *testing.T) {
 	offline := isolate(t)
-	if _, err := discoverModels(context.Background(), providerGemini, "test-key", ""); err != nil {
+	if _, err := discoverModels(context.Background(), providerGemini, testKey(t), ""); err != nil {
 		t.Fatalf("an offline listing is not a refused key: %v", err)
 	}
 	if offline.requests.Load() == 0 {
@@ -156,14 +170,13 @@ func kiloTier(id string) string {
 		`"mayTrainOnYourPrompts":false}`, id, id)
 }
 
-// TestDiscoverModels_EmptyRecommendationFallsBack: a live listing that curates
-// to nothing, the SDK's 0021-MADR C13 case of a Kilo listing of only kilo-auto
-// tiers, gives the curated catalog, so configure --yes still has a model
-// (0009-MADR D3).
-func TestDiscoverModels_EmptyRecommendationFallsBack(t *testing.T) {
+// kiloListing serves a Kilo listing of entries, and routes configure's
+// listing to it.
+func kiloListing(t *testing.T, entries ...string) *redirectTransport {
+	t.Helper()
 	isolate(t)
 	t.Setenv("LLMPROVIDER_DISABLE_MODELS_METADATA", "1")
-	body := `{"data":[` + kiloTier("kilo-auto/small") + "," + kiloTier("kilo-auto/balanced") + `]}`
+	body := `{"data":[` + strings.Join(entries, ",") + `]}`
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(body))
@@ -175,8 +188,17 @@ func TestDiscoverModels_EmptyRecommendationFallsBack(t *testing.T) {
 	}
 	redirect := &redirectTransport{to: to}
 	listingClient = &http.Client{Transport: redirect}
+	return redirect
+}
 
-	got, err := discoverModels(context.Background(), string(llmprovider.ProviderKilo), "test-key", "")
+// TestDiscoverModels_EmptyRecommendationFallsBack: a live listing that curates
+// to nothing, a Kilo listing of one model that writes embeddings, gives the
+// curated catalog, so configure --yes still has a model (0009-MADR D3;
+// 0015-MADR D4).
+func TestDiscoverModels_EmptyRecommendationFallsBack(t *testing.T) {
+	redirect := kiloListing(t, `{"id":"openai/text-embedding-3-small","name":"embedding",`+
+		`"architecture":{"input_modalities":["text"],"output_modalities":["embeddings"]}}`)
+	got, err := discoverModels(context.Background(), string(llmprovider.ProviderKilo), testKey(t), "")
 	if err != nil {
 		t.Fatalf("discoverModels(kilo): %v", err)
 	}
@@ -185,6 +207,23 @@ func TestDiscoverModels_EmptyRecommendationFallsBack(t *testing.T) {
 	}
 	if want := catalog.Static(llmprovider.ProviderKilo); len(want) == 0 || !slices.Equal(got, want) {
 		t.Fatalf("discoverModels(kilo) = %q, want the curated catalog %q", got, want)
+	}
+}
+
+// TestDiscoverModels_KiloTiersOnly_0015: a Kilo listing of only kilo-auto
+// tiers recommends the tiers, which the SDK admits past the band
+// (go-llmprovider-sdk 0041-MADR A4; 0015-MADR D4).
+func TestDiscoverModels_KiloTiersOnly_0015(t *testing.T) {
+	redirect := kiloListing(t, kiloTier("kilo-auto/small"), kiloTier("kilo-auto/balanced"))
+	got, err := discoverModels(context.Background(), string(llmprovider.ProviderKilo), testKey(t), "")
+	if err != nil {
+		t.Fatalf("discoverModels(kilo): %v", err)
+	}
+	if redirect.requests.Load() == 0 {
+		t.Fatal("discoverModels did not list through the injected client")
+	}
+	if want := []string{"kilo-auto/balanced", "kilo-auto/small"}; !slices.Equal(got, want) {
+		t.Fatalf("discoverModels(kilo) = %q, want the kilo-auto tiers %q", got, want)
 	}
 }
 
@@ -665,7 +704,7 @@ func TestRunSetupNonInteractive_RefusedKey(t *testing.T) {
 			conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
 			config.ApplyDefaults(conf)
 			err = runSetupNonInteractive(context.Background(), conf, SetupOptions{
-				Provider: providerGemini, APIKey: "bad-key", NoEnv: true, Yes: true,
+				Provider: providerGemini, APIKey: testKey(t), NoEnv: true, Yes: true,
 			})
 			if redirect.requests.Load() == 0 {
 				t.Fatal("configure --yes did not list through the injected client")

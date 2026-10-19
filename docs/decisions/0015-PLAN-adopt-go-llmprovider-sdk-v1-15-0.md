@@ -1,6 +1,6 @@
 ---
 status: in-progress
-date: 2026-10-18
+date: 2026-10-19
 associated-madr: "0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md"
 ---
 # Implement the move to go-llmprovider-sdk v1.15.0 and the ChatGPT plan sign-in
@@ -25,7 +25,8 @@ Associated MADR: [0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md](0015-MADR-adopt
 
 * `go.mod`, `go.sum`; `main.go`; `internal/ui/setup.go`; the tests in
   `internal/ui` and the root package that the steps name.
-* `README.md`, `docs/README.md`. `docs/architecture.md` stays as it is:
+* `README.md` (its five curated rows in Phase 1, Deviation 1), `docs/README.md`.
+  `docs/architecture.md` stays as it is:
   its runtime flow (`docs/architecture.md:16-32`) names neither the
   wizard's options nor retries.
 
@@ -78,7 +79,8 @@ Associated MADR: [0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md](0015-MADR-adopt
 1. `go get github.com/maccavelli/go-llmprovider-sdk@v1.15.0`, then `go mod
    tidy`. Assert that only the SDK's lines change in `go.mod` and `go.sum`.
 2. **The listing cache.** A helper in `internal/ui`'s tests, `testKey(t)`,
-   returns `"test-key-" + t.Name()`. Every test that lists through an
+   returns ~~`"test-key-" + t.Name()`~~ `"test-key-<name>-<n>"`, `n` a
+   process-wide counter *(Deviation 2, 2026-10-19)*. Every test that lists through an
    injected client uses it in place of a shared literal key, so that no
    two tests share a cached listing (the SDK's 0041-MADR D6).
 3. **The fallback.** `TestDiscoverModels_EmptyRecommendationFallsBack`
@@ -96,6 +98,12 @@ Associated MADR: [0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md](0015-MADR-adopt
      removed, step 3's test fails.
 6. **Order independence.** `go test -count=3 -shuffle=on ./internal/ui/`
    passes.
+7. **The curated rows** *(Deviation 1, 2026-10-19).* `README.md`'s rows
+   for `kilo`, `huggingface`, `together`, `opencode-zen` and
+   `opencode-go` take
+   `catalog.Static`'s lists at `v1.15.0`, in its order, the first marked
+   "(recommended)" as now. `TestReadmeCuratedModels` failed first: at
+   `v1.15.0` with the old rows (step 5's first run).
 
 ### Phase 2: the ChatGPT plan sign-in (D2)
 
@@ -192,7 +200,7 @@ Associated MADR: [0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md](0015-MADR-adopt
 | # | Criterion | Check | Phase |
 | :--- | :--- | :--- | :--- |
 | V1 | `go.mod` pins `v1.15.0`, and only the SDK's lines changed | `git diff go.mod go.sum`; `go mod tidy -diff` | 1 |
-| V2 | The two broken tests pass, and the new ones failed first | the phase gate; the fail-first records | 1 |
+| V2 | The three broken tests pass (Deviation 1), and the new ones failed first | the phase gate; the fail-first records | 1 |
 | V3 | The tests pass in any order | `go test -count=3 -shuffle=on ./internal/ui/` | 1 |
 | V4 | The wizard offers the plan sign-in only with the app's name | Phase 2's tests | 2 |
 | V5 | A retry prints one line, in the format; nothing else does | Phase 3's tests | 3 |
@@ -226,3 +234,41 @@ Associated MADR: [0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md](0015-MADR-adopt
   * Phase 4 said "four terms" where the MADR lists five; it now names
     the MADR's list;
   * Phase 3's step for a Q2 answer of "only on a terminal" is struck.
+
+### Deviation 1 (2026-10-19): a third failing test, the README's curated rows
+
+* **Found.** Phase 1 step 5's first run, on a scratch copy at `v1.15.0`
+  with no test changed: `go test -count=1 ./...` exit 1, with
+  `TestRunSetupInteractive_ShortList` (`menu_limit_test.go:93`, "the wizard
+  did not list through the injected client"),
+  `TestDiscoverModels_EmptyRecommendationFallsBack` (`setup_test.go:187`,
+  `["kilo-auto/balanced" "kilo-auto/small"]`), and a third the MADR did
+  not name: `TestReadmeCuratedModels` (`readme_test.go:51`), on the rows
+  of `kilo`, `huggingface`, `together`, `opencode-zen` and `opencode-go`.
+* **Not pre-existing.** At `1dc2434` (`v1.12.0`) it passes. The MADR's
+  probe copy fails it too: the MADR miscounted.
+* **Resolution, the owner's (2026-10-19):** the rows change in Phase
+  1, as step 7. `README.md` joins Phase 1's files; Phase 4 still writes
+  the rest. The MADR's Amendment 1 records the fact.
+* **Corrected the same day.** The deviation first named four rows: the
+  read of the failing run's log was cut at four lines. The full log has
+  five `readme_test.go:51` lines; the fifth is `opencode-go`, reordered.
+  The resolution is unchanged; the records now name five. The MADR's
+  D5 also said "four terms", as Phase 4 did before Phase 0; it now
+  names the MADR's list.
+
+### Deviation 2 (2026-10-19): a key per run, not per test name
+
+* **Found.** Step 6, `go test -count=3 -shuffle=on ./internal/ui/`, exit 1:
+  `menu_limit_test.go:63`, `menu_limit_test.go:93` and `setup_test.go:219`
+  ("did not list through the injected client"), each on its second and
+  third runs. `go test -count=2 -run 'TestDiscoverModels_KiloTiersOnly_0015$'`
+  fails once, on the second run.
+* **Cause.** Step 2's key, `"test-key-" + t.Name()`, is the same for each
+  run of one test, so a repeat is served the listing the first run cached.
+  Step 2 as written caused it; nothing before it.
+* **Resolution, the owner's (2026-10-19):** `testKey` appends a
+  process-wide atomic counter, so every run of every test lists with a key
+  of its own. Step 2 is annotated. No MADR decision changes; D4's "a key of
+  its own" holds.
+

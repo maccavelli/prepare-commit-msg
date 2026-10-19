@@ -55,7 +55,7 @@ func longZenListing(t *testing.T) *redirectTransport {
 // list from a longer live listing.
 func TestDiscoverModels_ShortList(t *testing.T) {
 	redirect := longZenListing(t)
-	got, err := discoverModels(context.Background(), string(llmprovider.ProviderOpencodeZen), "test-key", "")
+	got, err := discoverModels(context.Background(), string(llmprovider.ProviderOpencodeZen), testKey(t), "")
 	if err != nil {
 		t.Fatalf("discoverModels: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestRunSetupInteractive_ShortList(t *testing.T) {
 	other := strconv.Itoa(catalog.MaxListed + 1)
 	// provider, endpoint (default), key, search blank, Other, the custom id,
 	// fallback search blank, none, the four operational defaults
-	input := strconv.Itoa(pos) + "\n\ntest-key\n\n" + other + "\nmy-custom-model\n\n\n\n\n\n\n"
+	input := strconv.Itoa(pos) + "\n\n" + testKey(t) + "\n\n" + other + "\nmy-custom-model\n\n\n\n\n\n\n"
 	if err := runSetupInteractive(context.Background(), conf, SetupOptions{NoEnv: true}, strings.NewReader(input)); err != nil {
 		t.Fatalf("runSetupInteractive: %v", err)
 	}

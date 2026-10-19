@@ -1,6 +1,6 @@
 ---
 status: accepted
-date: 2026-10-18
+date: 2026-10-19
 decision-makers: Project Owner
 consulted: go-llmprovider-sdk (its records 0040 to 0046, which made v1.13.0 to v1.15.0); GitHub issues 1 and 2 of this repository; probes on a scratch copy of this repository moved to v1.15.0, 2026-10-18
 informed: users of the installed hook, who receive the change through `update`
@@ -49,6 +49,8 @@ Every claim below is marked:
 tidy` change only the SDK's lines; `go build`, and `go vet` for darwin,
 linux and windows, exit 0; golangci-lint reports 0 issues. Two tests fail,
 both in `internal/ui`, under `go test` and under `-race`:
+*(Amendment 1, 2026-10-19: three tests fail; the third,
+`TestReadmeCuratedModels`, is in the root package.)*
 
 1. **`TestRunSetupInteractive_ShortList`** (`menu_limit_test.go:93`): "the
    wizard did not list through the injected client".
@@ -182,11 +184,15 @@ sign-in is a decision of its own, and 0014's PLAN is complete.
   lists a Kilo model that writes embeddings, which still gives an empty
   list and so the curated catalog **[probed]**. A new test pins the
   `kilo-auto` result of 0041-MADR A4.
+* **The curated rows** *(Amendment 1, 2026-10-19).* The README's
+  provider rows for `kilo`, `huggingface`, `together`, `opencode-zen`
+  and `opencode-go`
+  take `v1.15.0`'s curated lists, which `TestReadmeCuratedModels` pins.
 
 ### D5. The README states what changed
 
-* **The sign-in:** the plan method in the wizard, its notice, and the four
-  terms the app keeps, with D2's reasoning for this hook.
+* **The sign-in:** the plan method in the wizard, its notice, and the
+  terms the MADR lists, and how the app keeps each, with D2's reasoning for this hook.
 * **The retry line.**
 * **"With Ollama, name the models"** is narrowed to Ollama before
   `v0.30.0`.
@@ -195,6 +201,7 @@ sign-in is a decision of its own, and 0014's PLAN is complete.
   * the listing cache, and the stale listing;
   * Claude's live listing, and Ollama's filter;
   * the `kilo-auto` tiers;
+  * the curated lists of five providers *(Amendment 1, 2026-10-19)*;
   * the sign-in and the retry line;
   * the downgrade cost: a plan session saved by this version, read by an
     older one, fails to refresh until the user signs in again (the SDK's
@@ -223,7 +230,7 @@ sign-in is a decision of its own, and 0014's PLAN is complete.
 
 ### Confirmation
 
-* The two failing tests pass, and the new ones (the sign-in option, the
+* The ~~two~~ three failing tests pass *(Amendment 1, 2026-10-19)*, and the new ones (the sign-in option, the
   retry line, the `kilo-auto` result) are each seen to fail on a planted
   break first.
 * `go test -race ./...`, `scripts/go-precheck.py` and CI pass on all
@@ -279,3 +286,31 @@ sign-in is a decision of its own, and 0014's PLAN is complete.
   and [issue 2](https://github.com/maccavelli/prepare-commit-msg/issues/2).
 * The implementation:
   [0015-PLAN-adopt-go-llmprovider-sdk-v1-15-0.md](0015-PLAN-adopt-go-llmprovider-sdk-v1-15-0.md).
+
+### Amendment 1 (2026-10-19): a third test fails, on the README's curated rows
+
+"What moving changes" said two tests fail. Three do. 0015-PLAN's Phase 1,
+on a scratch copy at `v1.15.0` with no test changed, found the third:
+
+* `TestReadmeCuratedModels` (`readme_test.go:51`) compares each provider's
+  row in the README with `catalog.Static`. `v1.15.0` changed five lists
+  **[probed]**:
+  * `kilo`: `meta/muse-spark-1.2` and `openai/gpt-6.1-sol` leave;
+    `minimax/minimax-m3` and `nvidia/nemotron-3-ultra-550b-a55b` join; and
+    `google/gemini-3.6-flash` now comes before `google/gemini-3.8-flash`;
+  * `huggingface`: `thinkingmachines/Inkling-Small`,
+    `stepfun-ai/Step-3.7-Flash` and `stepfun-ai/Step-3.5-Flash` leave;
+    `tencent/Hy3`, `google/gemma-4-26B-A4B-it` and `google/gemma-4-31B-it`
+    join;
+  * `together`: the same six, with `openai/gpt-oss-120b` now before
+    `Qwen/Qwen3.6-Plus`;
+  * `opencode-zen`: `gemini-3.5-flash-lite` leaves; `gpt-6-luna` joins;
+  * `opencode-go`: the same six, with `gpt-6-luna` and `space-bunny` now
+    third and fourth.
+* At `1dc2434`, on `v1.12.0`, the test passes **[probed]**. The move
+  causes it.
+* The MADR's own probe copy fails it too **[probed]**: the draft
+  miscounted, and read only `internal/ui`'s failures.
+
+The owner chose (2026-10-19): the five rows change in Phase 1, with the
+move; D4 and D5 say so. No other decision changes.
