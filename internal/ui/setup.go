@@ -56,6 +56,10 @@ type SetupOptions struct {
 	// ClientOptions name the application in configure's SDK requests; none
 	// leaves the SDK naming itself (0014-MADR D5).
 	ClientOptions []llmprovider.Option
+	// AgentName is the application's own name, under which the wizard offers
+	// OpenAI's Sign in with ChatGPT for agents; empty, that method is not
+	// offered (0015-MADR D2).
+	AgentName string
 }
 
 // RunSetup runs the interactive configuration wizard.
@@ -274,6 +278,7 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 		NeedFallbacks:   true,
 		TokenStore:      store,
 		OpenURL:         openBrowser,
+		AgentName:       opts.AgentName,
 	})
 	if err != nil {
 		return err

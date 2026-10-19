@@ -332,3 +332,30 @@ Associated MADR: [0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md](0015-MADR-adopt
     govulncheck "No vulnerabilities found."; the six builds);
   * `make check-records`: 0; `make markdownlint`: 0.
 
+### Phase 2: the ChatGPT plan sign-in (2026-10-19)
+
+* **No deviation.**
+* **Steps 1–3.** `SetupOptions.AgentName`; `main.go` sets it to
+  `AppTitle`; `runSetupInteractive` passes it to `wizard.Options`.
+* **Step 4.** The two tests run the wizard to OpenAI's method menu, read
+  it from stdout (`captureStdout`, a pipe; no product change for the test),
+  choose the API key, and compare the labels with the SDK's own label for
+  `llmprovider.AuthChatGPTPlan`. The existing tests that choose a method by
+  number pass unchanged.
+* **Step 5, fail first,** each on a scratch copy:
+  * without step 3 (a clone of `3c28d39`, the phase applied but the
+    pass-through): `TestSetup_OffersChatGPTPlan_0015` fails
+    (`setup_test.go:1119`, five methods, no plan sign-in);
+  * with the wizard always given a name (`AgentName: "planted"`):
+    `TestSetup_NoAgentNameNoPlan_0015` fails (`setup_test.go:1129`, the
+    plan sign-in sixth).
+* **Not covered by a unit test:** `main.go`'s `AgentName: AppTitle`. It is
+  one field in the configure command's options. Phase 5's live wizard run
+  checks it: the menu must offer the plan sign-in.
+* **The phase gate:**
+  * `go test -race -count=1 ./...`: 0;
+  * `go vet` for linux, darwin, windows: 0, 0, 0;
+  * `go mod tidy -diff`: 0;
+  * `go test -count=3 -shuffle=on ./internal/ui/`: 0;
+  * `make verify`: 0 (0 issues; coverage 83.5%; no vulnerabilities).
+

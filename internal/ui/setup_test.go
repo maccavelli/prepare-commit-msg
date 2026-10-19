@@ -1024,3 +1024,111 @@ func TestSetup_UserAgentNamesApp(t *testing.T) {
 		})
 	}
 }
+
+// captureStdout runs fn with os.Stdout read into the returned string.
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	previous := os.Stdout
+	os.Stdout = w
+	done := make(chan string)
+	go func() {
+		var b bytes.Buffer
+		_, _ = io.Copy(&b, r)
+		done <- b.String()
+	}()
+	defer func() {
+		os.Stdout = previous
+	}()
+	fn()
+	_ = w.Close()
+	return <-done
+}
+
+// openAIMethods runs the wizard to OpenAI's method menu, chooses the API key,
+// and returns the menu's labels in order.
+func openAIMethods(t *testing.T, opts SetupOptions) []string {
+	t.Helper()
+	isolate(t)
+	conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
+	config.ApplyDefaults(conf)
+	pos := slices.IndexFunc(registry.Descriptors(), func(d llmprovider.Descriptor) bool {
+		return d.ID == llmprovider.ProviderOpenAI
+	}) + 1
+	if pos == 0 {
+		t.Fatal("the registry offers no OpenAI")
+	}
+	opts.NoEnv = true
+	key := testKey(t)
+	// provider, the API key (method 1), the key, search blank, model 1,
+	// fallback search blank, none, the four operational defaults
+	input := strconv.Itoa(pos) + "\n1\n" + key + "\n\n1\n\n\n\n\n\n\n"
+	var runErr error
+	out := captureStdout(t, func() {
+		runErr = runSetupInteractive(context.Background(), conf, opts, strings.NewReader(input))
+	})
+	if runErr != nil {
+		t.Fatalf("runSetupInteractive: %v\n%s", runErr, out)
+	}
+	if got := conf.Providers[string(llmprovider.ProviderOpenAI)].APIKey; got != key {
+		t.Fatalf("OpenAI key = %q; the run did not choose the API key\n%s", got, out)
+	}
+	_, menu, ok := strings.Cut(out, "Choose how to authenticate with OpenAI:\n")
+	if !ok {
+		t.Fatalf("no OpenAI method menu in:\n%s", out)
+	}
+	menu, _, _ = strings.Cut(menu, "Select [")
+	var labels []string
+	for i, line := range strings.Split(strings.TrimRight(menu, "\n"), "\n") {
+		_, label, ok := strings.Cut(line, fmt.Sprintf("  %d) ", i+1))
+		if !ok {
+			t.Fatalf("menu line %d = %q", i+1, line)
+		}
+		label, _, _ = strings.Cut(label, " — ")
+		labels = append(labels, label)
+	}
+	return labels
+}
+
+// chatGPTPlanLabel is the SDK's label for the ChatGPT plan sign-in.
+func chatGPTPlanLabel(t *testing.T) string {
+	t.Helper()
+	d, ok := registry.Descriptor(llmprovider.ProviderOpenAI)
+	if !ok {
+		t.Fatal("the registry offers no OpenAI")
+	}
+	for _, m := range d.AuthMethods {
+		if m.ID == llmprovider.AuthChatGPTPlan {
+			return m.Label
+		}
+	}
+	t.Fatal("OpenAI has no ChatGPT plan method")
+	return ""
+}
+
+// TestSetup_OffersChatGPTPlan_0015: with the app's name, OpenAI's method menu
+// offers the ChatGPT plan sign-in, last, so every earlier method keeps its
+// number (0015-MADR D2).
+func TestSetup_OffersChatGPTPlan_0015(t *testing.T) {
+	want := chatGPTPlanLabel(t)
+	labels := openAIMethods(t, SetupOptions{AgentName: "prepare-commit-msg"})
+	if len(labels) == 0 || labels[len(labels)-1] != want {
+		t.Fatalf("OpenAI's methods = %q; want %q last", labels, want)
+	}
+}
+
+// TestSetup_NoAgentNameNoPlan_0015: without the app's name, the method is not
+// offered (0015-MADR D2).
+func TestSetup_NoAgentNameNoPlan_0015(t *testing.T) {
+	want := chatGPTPlanLabel(t)
+	labels := openAIMethods(t, SetupOptions{})
+	if slices.Contains(labels, want) {
+		t.Fatalf("OpenAI's methods = %q; want no %q without AgentName", labels, want)
+	}
+	if len(labels) == 0 {
+		t.Fatal("OpenAI's method menu is empty")
+	}
+}

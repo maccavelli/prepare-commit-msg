@@ -153,6 +153,7 @@ func runConfigure(args []string) error {
 		NoEnv:             *noEnv,
 		Yes:               *yes,
 		ClientOptions:     []llmprovider.Option{clientInfo()},
+		AgentName:         AppTitle,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
