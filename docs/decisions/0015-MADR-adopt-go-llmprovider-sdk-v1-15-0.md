@@ -74,6 +74,8 @@ both in `internal/ui`, under `go test` and under `-race`:
    * The fallback itself still works. A Kilo listing whose only model
      writes embeddings gives the curated catalog, through
      `discoverModels`'s empty-list path **[probed]**.
+     *(Amendment 2, 2026-10-19: the curated catalog, yes, but from the
+     SDK, not through that path.)*
 
 **What the user would see,** from the SDK's release notes (its 0041-PLAN,
 0043-PLAN and 0044-PLAN) **[read]**:
@@ -181,8 +183,10 @@ sign-in is a decision of its own, and 0014's PLAN is complete.
 * **The listing cache.** Each test that lists through an injected client
   lists with a key of its own. Two tests then never share a cached listing.
 * **The fallback.** `TestDiscoverModels_EmptyRecommendationFallsBack`
-  lists a Kilo model that writes embeddings, which still gives an empty
-  list and so the curated catalog **[probed]**. A new test pins the
+  lists ~~a Kilo model that writes embeddings, which still gives an empty
+  list~~ a Kilo model past its expiration date, which the SDK lists and
+  recommends none of, and so the curated catalog **[probed]**
+  *(Amendment 2, 2026-10-19)*. A new test pins the
   `kilo-auto` result of 0041-MADR A4.
 * **The curated rows** *(Amendment 1, 2026-10-19).* The README's
   provider rows for `kilo`, `huggingface`, `together`, `opencode-zen`
@@ -314,3 +318,29 @@ on a scratch copy at `v1.15.0` with no test changed, found the third:
 
 The owner chose (2026-10-19): the five rows change in Phase 1, with the
 move; D4 and D5 say so. No other decision changes.
+
+### Amendment 2 (2026-10-19): the embedding listing does not reach the fallback
+
+"What moving changes" and D4 said a Kilo listing whose only model writes
+embeddings gives an empty `Recommended`, and so `discoverModels`'s
+curated catalog. The catalog is right; the route is not. 0015-PLAN's
+Phase 1, on a scratch copy with that fallback removed **[probed]**:
+
+| Kilo listing of one… | `Live` | `Recommended` | `discoverModels`, no fallback |
+| :--- | :--- | :--- | :--- |
+| model that writes embeddings | false | the SDK's curated list | the curated list |
+| text model without tools | false | the SDK's curated list | the curated list |
+| tool-using text model, `expiration_date` 2026-01-01 | true | `[]` | `[]` |
+| tool-using text model, an id with `-contributor` | true | `[]` | `[]` |
+
+* A model that writes no text, or uses no tools, is not usable. With none
+  usable, the SDK gives its static catalog itself (`listingResult.catalog`,
+  `catalog/discovery.go:474-482`) **[read]**.
+* A usable model with a caveat, expiring (`caveatsOf`,
+  `catalog/menu.go:66`) or unavailable (`excludedAtRequest`,
+  `catalog/model_ranking.go:182`), stays out of `Recommended`, so a live
+  listing of only such models recommends nothing **[read]**. That is the
+  case `discoverModels`'s fallback serves.
+
+The owner chose (2026-10-19): the fallback test lists one model past its
+expiration date. D4 says so. No other decision changes.

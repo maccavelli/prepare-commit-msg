@@ -192,12 +192,14 @@ func kiloListing(t *testing.T, entries ...string) *redirectTransport {
 }
 
 // TestDiscoverModels_EmptyRecommendationFallsBack: a live listing that curates
-// to nothing, a Kilo listing of one model that writes embeddings, gives the
-// curated catalog, so configure --yes still has a model (0009-MADR D3;
-// 0015-MADR D4).
+// to nothing, a Kilo listing of one model past its expiration date, gives the
+// curated catalog, so configure --yes still has a model (0009-MADR D3). The
+// SDK lists the model but recommends nothing, so only discoverModels' own
+// fallback gives the catalog (0015-MADR Amendment 2).
 func TestDiscoverModels_EmptyRecommendationFallsBack(t *testing.T) {
-	redirect := kiloListing(t, `{"id":"openai/text-embedding-3-small","name":"embedding",`+
-		`"architecture":{"input_modalities":["text"],"output_modalities":["embeddings"]}}`)
+	expired := strings.Replace(kiloTier("acme/chat-expired"), `"mayTrainOnYourPrompts":false`,
+		`"mayTrainOnYourPrompts":false,"expiration_date":"2026-01-01"`, 1)
+	redirect := kiloListing(t, expired)
 	got, err := discoverModels(context.Background(), string(llmprovider.ProviderKilo), testKey(t), "")
 	if err != nil {
 		t.Fatalf("discoverModels(kilo): %v", err)

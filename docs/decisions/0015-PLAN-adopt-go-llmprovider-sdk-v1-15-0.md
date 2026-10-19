@@ -84,9 +84,10 @@ Associated MADR: [0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md](0015-MADR-adopt
    injected client uses it in place of a shared literal key, so that no
    two tests share a cached listing (the SDK's 0041-MADR D6).
 3. **The fallback.** `TestDiscoverModels_EmptyRecommendationFallsBack`
-   lists one Kilo model whose `architecture.output_modalities` is
-   `["embeddings"]`, the body probed for the MADR. It still requires the
-   curated catalog.
+   lists ~~one Kilo model whose `architecture.output_modalities` is
+   `["embeddings"]`, the body probed for the MADR~~ one tool-using Kilo
+   text model whose `expiration_date` is 2026-01-01 *(Deviation 3,
+   2026-10-19)*. It still requires the curated catalog.
 4. **The `kilo-auto` result.** `TestDiscoverModels_KiloTiersOnly_0015`
    lists `kilo-auto/small` and `kilo-auto/balanced`, and requires
    `["kilo-auto/balanced", "kilo-auto/small"]` (0041-MADR A4).
@@ -271,4 +272,63 @@ Associated MADR: [0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md](0015-MADR-adopt
   process-wide atomic counter, so every run of every test lists with a key
   of its own. Step 2 is annotated. No MADR decision changes; D4's "a key of
   its own" holds.
+
+### Deviation 3 (2026-10-19): the fallback test reached the SDK's catalog, not the fallback
+
+* **Found.** Step 5's third check: on a scratch copy with
+  `discoverModels`'s `len(cat.Recommended) == 0` branch removed, the
+  fallback test, with step 3's embedding listing, passed. It guarded
+  nothing.
+* **Cause.** At `v1.15.0`, a model that writes no text is not usable, and
+  with none usable the SDK gives its static catalog itself (`Live` false).
+  The MADR's probe saw the catalog and credited the fallback. A text model
+  without tools goes the same way. A usable model with a caveat does not:
+  one past its `expiration_date`, or with `-contributor` in its id, is
+  listed (`Live` true) and recommended nothing; with the fallback removed,
+  `discoverModels` gives `[]`.
+* **Resolution, the owner's (2026-10-19):** the test lists one tool-using
+  Kilo text model whose `expiration_date` is 2026-01-01. Step 3 is
+  annotated; the MADR's Amendment 2 corrects the fact.
+
+### Phase 1: the move, and the tests (2026-10-19)
+
+* **Deviations 1, 2 and 3,** above, each on the owner's choice.
+* **Commits.** The owner committed the phase through Deviation 2 as
+  `e63b118`, before Deviation 3 was found. Its fallback test still listed
+  the embedding model, which guarded nothing. A second commit carries
+  Deviation 3, its MADR amendment, and this record; `e63b118` is not
+  rewritten.
+* **Step 1.** `go get …@v1.15.0`, `go mod tidy`: exit 0. `go.mod` changes
+  one line, `go.sum` two, all the SDK's.
+* **Steps 2–4, 7:** `testKey` (with Deviation 2's counter) in the six
+  calls that list through an injected client and assert on it:
+  * `menu_limit_test.go`'s two short-list tests;
+  * `TestRunSetupInteractive_ListingUsesInjectedClient`;
+  * `TestDiscoverModels_UsesInjectedClient`;
+  * `TestRunSetupNonInteractive_RefusedKey`, in place of its shared
+    `bad-key`;
+  * the two Kilo tests, through `kiloListing`.
+
+  A key that is only saved, or that is used with no listing, stays as it was.
+  The five README rows take `catalog.Static`'s lists.
+* **Step 5, fail first,** each on a scratch copy, never in the tree:
+  * at `v1.15.0`, no test changed: exit 1, the three failures of
+    Deviation 1;
+  * at `v1.12.0` (a clone of `1dc2434`) with these tests:
+    `TestDiscoverModels_KiloTiersOnly_0015` fails (`setup_test.go:226`,
+    the curated catalog where the tiers are wanted);
+  * with `discoverModels`'s empty-list branch removed:
+    `TestDiscoverModels_EmptyRecommendationFallsBack` fails
+    (`setup_test.go:211`, `discoverModels(kilo) = []`). With step 3's first
+    fixture it passed; that is Deviation 3;
+  * Deviation 2's counter: without it, `go test -count=2 -run
+    'TestDiscoverModels_KiloTiersOnly_0015$'` fails once; with it, exit 0.
+* **Step 6.** `go test -count=3 -shuffle=on ./internal/ui/`: exit 0.
+* **The phase gate,** each exit status captured before any filter:
+  * `go test -race -count=1 ./...`: 0;
+  * `go vet` for linux, darwin, windows: 0, 0, 0;
+  * `go mod tidy -diff`: 0;
+  * `make verify`: 0 (golangci-lint 0 issues; coverage 83.5%, minimum 80%;
+    govulncheck "No vulnerabilities found."; the six builds);
+  * `make check-records`: 0; `make markdownlint`: 0.
 
