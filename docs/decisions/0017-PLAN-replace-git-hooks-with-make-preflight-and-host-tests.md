@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: complete
 date: 2026-10-19
 associated-madr: "0017-MADR-replace-git-hooks-with-make-preflight-and-host-tests.md"
 ---
@@ -739,3 +739,55 @@ script.
   identifier: "machine", and the repository's GitHub owner in Deviation 2's
   URL, which `go.mod` and `ci.yml` already carry. Staged for the owner's
   commit.
+
+### Phase 5: push, and the first CI run (2026-10-19)
+
+* Phase 4 was committed by the owner as `fc399d7`. Its message,
+  `chore(ci): replace Git hooks with Make preflight checks`, was written by
+  the global `prepare-commit-msg` hook, with no local `core.hooksPath`
+  (V7).
+* **Step 1,** on the clean tree at `fc399d7`:
+  * `make preflight`: exit 0 (`0 issues.`, coverage 83.7%, `No
+    vulnerabilities found.`, `Ran 25 tests`, `preflight passed`);
+  * `make preflight-hosts`, the first run on the tree itself: exit 0;
+    `linux: exit=0 (38s)`, `wsl-ubuntu-24.04: exit=0 (31s)`, `windows:
+    exit=0 (3s)`, `macos: exit=0 (3s)`, `4/4 hosts passed`;
+  * the disclosure guard over `bdb82d6..fc399d7`: exit 0, no output.
+* **Step 2:** the owner pushed the six commits, `d12b24d` to `fc399d7`.
+* **Step 3,** CI run `39303119999` on `fc399d7`: `success`.
+  * `Go (quality contract)`: "Check records and documentation links",
+    "Lint Markdown" and "Run repository quality contract" all `success`.
+    The log shows `python3 scripts/check_records.py --check-all`, then
+    `npx --yes markdownlint-cli2@0.23.2` with `markdownlint-cli2 v0.23.2
+    (markdownlint v0.41.1)`, `Linting: 8 files` and `Summary: 0 issues`,
+    from the runner image's `python3` and Node. No setup step was added.
+    `make verify`'s log holds `0 issues.`, coverage 83.7%, `No
+    vulnerabilities found.`, and `Ran 25 tests`, so `HostsTest` runs on
+    the CI runner too.
+  * `Native Tests (Linux)`, `(macOS)`, `(Windows)`: `success`.
+  * `Build release / build` and its five identity checks: `success`;
+    `Publish GitHub Release`: skipped, as on any untagged push.
+* **Step 4:** every Verification row is met, below; this PLAN is
+  `complete`. MADR A1 was already `accepted` at Phase 0.
+
+### Verification, as met
+
+| # | Met | Evidence |
+| :--- | :--- | :--- |
+| V1 | yes | Phase 1: `tools/test_tools.py`'s log race, 13–30% of runs; fixed in Phase 1a (Deviation 1) |
+| V2 | yes | Phase 2's fail-first table; `make preflight` exit 0 at each phase |
+| V3 | yes | Phase 2 step 5 |
+| V4 | yes | Phase 5 step 3: both steps `success`, from the image's `python3` and `npx` |
+| V5 | yes | Phase 3 steps 5 and 8: 15 tests, five plants each failing its test |
+| V6 | yes | Phase 3 step 9 and Phase 5 step 1 |
+| V7 | yes | Phase 4 steps 1, 10, 11; `fc399d7`'s generated message |
+| V8 | yes | Phase 4 steps 5–9; `make check-records`, `make markdownlint` 0 |
+| V9 | yes | the identifier scan at each phase, every hit traced; the guard at Phase 5 step 1 |
+| V10 | yes | CI run `39303119999` |
+
+**Not done, and why:**
+
+* No CI change beyond the `go` job's two steps, as scoped.
+* The `available-dev-hosts` skill was not updated with F12 (WSL Ubuntu
+  24.04's SSH server). It is outside this repository; it was offered to the
+  owner and not asked for.
