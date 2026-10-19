@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-19
 decision-makers: Project Owner
 consulted: 0015-PLAN-adopt-go-llmprovider-sdk-v1-15-0.md (Phase 5's live retry check, Deviation 5); go-llmprovider-sdk 0035-MADR-maintainer-tools-in-python.md; a probe of `make -n tools` on a scratch clone at 75a5b1e, 2026-10-19
