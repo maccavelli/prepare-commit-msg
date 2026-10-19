@@ -45,7 +45,7 @@ This tree holds three kinds of document:
 | 0014 | MADR | [Adopt provider SDK v1.11.0 and self-update library v1.15.2](decisions/0014-MADR-adopt-go-llmprovider-sdk-v1-11-0-and-go-selfupdate-lib-v1-15-2.md) | accepted |
 | 0014 | PLAN | [Implement provider SDK v1.11.0 and self-update library v1.15.2](decisions/0014-PLAN-adopt-go-llmprovider-sdk-v1-11-0-and-go-selfupdate-lib-v1-15-2.md) | complete |
 | 0015 | MADR | [Adopt provider SDK v1.15.0 and the ChatGPT plan sign-in](decisions/0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md) | accepted |
-| 0015 | PLAN | [Implement provider SDK v1.15.0 and the ChatGPT plan sign-in](decisions/0015-PLAN-adopt-go-llmprovider-sdk-v1-15-0.md) | in-progress |
+| 0015 | PLAN | [Implement provider SDK v1.15.0 and the ChatGPT plan sign-in](decisions/0015-PLAN-adopt-go-llmprovider-sdk-v1-15-0.md) | complete |
 | 0016 | MADR | [Keep maintainer tools in `tools/`, starting with a fake provider that answers 429](decisions/0016-MADR-keep-maintainer-tools-starting-with-a-fake-provider.md) | accepted |
 | 0016 | PLAN | [Implement keeping maintainer tools in `tools/`, starting with a fake provider that answers 429](decisions/0016-PLAN-keep-maintainer-tools-starting-with-a-fake-provider.md) | proposed |
 

@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: complete
 date: 2026-10-19
 associated-madr: "0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md"
 ---
@@ -498,4 +498,36 @@ Associated MADR: [0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md](0015-MADR-adopt
   * **The installed hook** was not run, read or replaced: its SHA-256 was
     the same before and after, and `version` still reports `v1.9.0
     (release)`.
+* **Step 1, again,** for the record commit `75a5b1e`: the guard over the one
+  outgoing commit, exit 0, no finding; the owner pushed. CI run
+  `39265594955` on `75a5b1e`: `success`, every job as above.
+* **Step 4.** The owner tagged `v1.10.0` on `75a5b1e` and pushed the tag.
+  * Release run `39272068430`: `success`; the publish job ran. GitHub's
+    jobs list still showed the linux/amd64 identity job `in_progress`, its
+    five steps each `success`, after the run had completed; the publish job
+    that waits on it had run. Recorded as observed, a stale status.
+  * The release: not a draft, not a prerelease; nine assets (`install.sh`,
+    `install.ps1`, six binaries, `SHA256SUMS`). Downloaded to a scratch
+    directory: `shasum -a 256 -c SHA256SUMS`, all six `OK`.
+  * The darwin/arm64 asset: `v1.10.0 (release) 75a5b1eefcc9`; `go version
+    -m` names go-llmprovider-sdk `v1.15.0` and go-selfupdate-lib `v1.15.2`.
+  * The installed hook: `update --check`, exit 10, `v1.9.0 -> v1.10.0`;
+    `update --yes`, exit 0, "release asset integrity verified". `version`
+    reports `v1.10.0 (release) 75a5b1eefcc9`, its SHA-256 equals the
+    release's, and it names go-llmprovider-sdk `v1.15.0`.
+* **Step 5,** on the owner's word ("post and close"). Each comment was
+  written to a file, passed go-llmprovider-sdk's `tools/denyscan.py` (0
+  hits), and was shown to the owner in full; each cited line and test was
+  checked at its tag first.
+  * Issue 1:
+    [`#issuecomment-6270224176`](https://github.com/maccavelli/prepare-commit-msg/issues/1#issuecomment-6270224176);
+    closed, `COMPLETED`.
+  * Issue 2:
+    [`#issuecomment-6270225637`](https://github.com/maccavelli/prepare-commit-msg/issues/2#issuecomment-6270225637);
+    closed, `COMPLETED`.
 
+  Each comment, read back with `gh issue view --json comments`, equals its
+  file but for the trailing newline.
+* **The scratch home** of the plan sign-in, with its session, was deleted
+  on the owner's word, as were the other scratch copies of this PLAN.
+* **V1–V9 are met,** so this PLAN is `complete`.
