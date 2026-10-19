@@ -719,8 +719,9 @@ make verify         # Run complete quality contract: mod-check, fmt-check, lint,
 | `make coverage` | Verify statement coverage meets minimum threshold (80.0%) |
 | `make lint` | Run `golangci-lint` with fleet configuration |
 | `make fmt` | Format source files and imports |
-| `make hooks-install` | Preserve host hooks and install the repository pre-push wrapper |
-| `make hooks-test` | Test host-hook preservation, legacy migration, and repository pre-push composition |
+| `make preflight` | Run every CI gate that runs off GitHub: records, Markdown, then `make verify` |
+| `make preflight-hosts` | Run CI's jobs for `HEAD` on the test hosts ([`tools/README.md`](tools/README.md)) |
+| `make pre-add-check` | Check the staged Go snapshot, or `FILES=...` |
 | `make clean` | Clean build outputs from `dist/` |
 
 ### Maintainer Release

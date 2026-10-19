@@ -104,8 +104,24 @@ docs/reports/NNNN-GATES-short-slug.md
 ## Pre-add checks
 
 - Before every commit, run `make check-records` and `make markdownlint`.
+- With Go files or `go.mod`/`go.sum` staged, run `make pre-add-check`
+  (`FILES=...` to name files); the fleet agent commit gate runs it too.
 - Run any additional product check required by the active PLAN phase.
 - A file that fails a required check is not committed.
+
+## Before a push
+
+The repository installs no Git hooks
+(`docs/decisions/0017-MADR-replace-git-hooks-with-make-preflight-and-host-tests.md`).
+Before asking the owner to push, in this order:
+
+1. `make preflight`, always. It runs CI's `go` job's targets locally.
+2. `make preflight-hosts`, when the change can behave differently per OS: Go
+   sources, `go.mod`/`go.sum`, build tags, paths, `os/exec`, permissions, the
+   `Makefile`, scripts or workflows. Changes to docs and records only are
+   exempt. It tests the committed `HEAD`. A host that cannot be reached is
+   reported in the handoff, never skipped silently.
+3. The disclosure-guard command under "Identifiers".
 
 ## Tools
 

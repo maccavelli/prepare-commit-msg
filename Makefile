@@ -28,7 +28,7 @@ FLEET_LINT_CFG := .golangci.yml
 	linux linux-amd64 linux-arm64 darwin-arm64 darwin-amd64 windows-amd64 windows-arm64 \
 	help tools fmt fmt-check mod-check vet lint vuln workflow-lint verify verify-staged \
 	preflight preflight-hosts pre-add-check \
-	hooks-install hooks-uninstall hooks-test check-records markdownlint tools-test
+	check-records markdownlint tools-test
 
 all: help build-all
 
@@ -138,15 +138,6 @@ check-records: ## Checks record naming, pairing, placement and doc links
 
 markdownlint: ## Lints Markdown with the fleet configuration
 	npx --yes markdownlint-cli2@0.23.2
-
-hooks-install: ## Installs repository pre-push while preserving host hooks
-	./scripts/install-hooks.sh
-
-hooks-uninstall: ## Restores the hooks-path state from before installation
-	./scripts/uninstall-hooks.sh
-
-hooks-test: ## Tests hook composition in isolated temporary repositories
-	./scripts/test-hooks.sh
 
 run: build ## Builds and executes the local binary
 	@BIN_NAME=$(DIST_DIR)/$(BINARY_NAME)-$(shell go env GOOS)-$(shell go env GOARCH)$(if $(filter windows,$(shell go env GOOS)),.exe,) ; \

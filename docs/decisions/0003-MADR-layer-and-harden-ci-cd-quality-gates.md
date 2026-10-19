@@ -11,6 +11,12 @@ decision-makers:
 > [0013 D8](0013-MADR-align-repository-with-workspace-scaffolding.md#d8-retire-the-repository-owned-pre-commit-build-hook)
 > retires only this decision's repository pre-commit requirement. Its
 > pre-push, CI, release, and repository-settings decisions remain active.
+>
+> **Partially superseded (2026-10-19):**
+> [0017-MADR](0017-MADR-replace-git-hooks-with-make-preflight-and-host-tests.md)
+> retires the repository pre-push hook and its installer, in favour of `make
+> preflight` and `make preflight-hosts`. This decision's CI, release, and
+> repository-settings decisions remain active.
 
 ## Context and Problem Statement
 

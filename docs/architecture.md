@@ -38,10 +38,12 @@ checks modules, formatting, lint, vet, race-enabled tests, coverage,
 vulnerabilities, workflow syntax, and all release cross-builds.
 `make verify-staged` remains an explicit staged-snapshot diagnostic.
 
-The hook installer preserves previously effective host hooks. The repository
-adds a pre-push wrapper that runs `make verify`; it does not add a repository
-pre-commit build hook. [The CI workflow](../.github/workflows/ci.yml) runs the
-same complete verification contract and native platform jobs.
+The repository installs no Git hooks. Before a push, `make preflight` runs
+`check-records`, `markdownlint` and `verify`, and `make preflight-hosts` runs
+CI's jobs for `HEAD` on the test hosts through `tools/hosts.py`
+([0017-MADR](decisions/0017-MADR-replace-git-hooks-with-make-preflight-and-host-tests.md)).
+[The CI workflow](../.github/workflows/ci.yml) runs the same three targets and
+the native platform jobs.
 
 `selfupdate-release.json` defines release assets and build identity. The CI
 workflow calls pinned reusable build and publish workflows from
@@ -56,9 +58,8 @@ Makefile                   local and CI command surface
 main.go                    CLI dispatch, hook execution, and the commit-message write
 update.go                  update command and release-asset selection
 internal/                  git, config, UI, and atomic file writes
-scripts/                   verification, hook, and repository utilities
+scripts/                   verification and repository utilities
 tools/                     maintainer tools, run by hand: tools/README.md
-.githooks/pre-push         full local verification before push
 .github/workflows/ci.yml   CI, native tests, and release orchestration
 selfupdate-release.json    release asset and identity specification
 docs/

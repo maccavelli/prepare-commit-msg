@@ -73,7 +73,8 @@ Measured on 2026-09-14 against worktree
 * `.githooks/pre-commit` is bash:
   `exec make -C "$REPO_ROOT" verify-staged`. It does not run today under
   Git for Windows because local hooks are not installed.
-* [`scripts/install-hooks.sh`](../../scripts/install-hooks.sh) sets **local**
+* [`scripts/install-hooks.sh`](https://github.com/maccavelli/prepare-commit-msg/blob/bdb82d6/scripts/install-hooks.sh)
+  *(as of `bdb82d6`; deleted by 0017-MADR, 2026-10-19)* sets **local**
   `core.hooksPath` to a managed directory that runs the previous hook then
   `.githooks/<name>`. That is the only in-repo mechanism that makes
   `.githooks/pre-commit` fire while still composing with the global

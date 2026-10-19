@@ -57,8 +57,10 @@ This tree holds three kinds of document:
 | :--- | :--- |
 | understand how this fits together | [architecture.md](architecture.md) |
 | install and configure the commit-message hook | [root README](../README.md#quick-start--installation) |
-| run developer checks | [CI/CD operations guide](guides/cicd-operations.md#routine-verification) |
+| run developer checks before a push (`make preflight`, `make preflight-hosts`) | [CI/CD operations guide](guides/cicd-operations.md#routine-verification) |
+| run CI's jobs on the test hosts | [tools README](../tools/README.md#the-cross-host-run) |
 | perform or recover a release | [CI/CD operations guide](guides/cicd-operations.md#controlled-release) |
 | inspect repository settings procedures | [CI/CD operations guide](guides/cicd-operations.md#repository-settings-audit) |
-| know why the workspace and hook policy changed | [0013 MADR](decisions/0013-MADR-align-repository-with-workspace-scaffolding.md) |
+| know why the workspace and hook policy changed | [0013 MADR](decisions/0013-MADR-align-repository-with-workspace-scaffolding.md), then [0017 MADR](decisions/0017-MADR-replace-git-hooks-with-make-preflight-and-host-tests.md) |
+| fix a clone that still has the old repository hooks | [CI/CD operations guide](guides/cicd-operations.md#a-clone-that-still-has-the-old-hooks) |
 | follow repository workflow rules | [AGENTS.md](../AGENTS.md) |

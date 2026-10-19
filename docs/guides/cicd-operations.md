@@ -1,42 +1,78 @@
 # CI/CD Operations Runbook
 
 This runbook implements
-[`0003-MADR-layer-and-harden-ci-cd-quality-gates.md`](../decisions/0003-MADR-layer-and-harden-ci-cd-quality-gates.md).
-The repository-owned commands are the source of truth; workflows and hooks
-invoke those commands instead of maintaining separate check lists.
+[`0003-MADR-layer-and-harden-ci-cd-quality-gates.md`](../decisions/0003-MADR-layer-and-harden-ci-cd-quality-gates.md)
+and
+[`0017-MADR-replace-git-hooks-with-make-preflight-and-host-tests.md`](../decisions/0017-MADR-replace-git-hooks-with-make-preflight-and-host-tests.md).
+The repository-owned commands are the source of truth; CI invokes those
+commands instead of maintaining separate check lists. The repository installs
+no Git hooks: the global `prepare-commit-msg` hook and the disclosure guard
+run from the global `core.hooksPath`.
 
 ## Routine verification
 
-Install the pinned tools and run the complete gate before exporting or pushing
-a change:
+Before pushing, run every CI gate that runs off GitHub:
 
 ```bash
-make tools
-make verify
+make preflight
 ```
 
+It runs `make check-records`, `make markdownlint` and `make verify`, in that
+order, printing `==> <gate>` before each, stopping at the first failure, and
+ending with `preflight passed`. CI's `go` job runs the same three targets.
 `make verify` checks module tidiness and checksums, formatting and imports,
 static analysis, race-enabled tests, the 80% aggregate coverage threshold,
-reachable vulnerabilities, shell and workflow syntax, and all six release
-cross-builds. It is the deliberate local command and the contract run by the
-repository pre-push hook and CI. Use `make verify-staged` only when an
-on-demand diagnostic of the exact staged Go snapshot is useful.
+reachable vulnerabilities, shell and workflow syntax, the maintainer tools'
+tests, and all six release cross-builds.
 
-Install the composable local hooks with:
+When a change can behave differently per OS (Go sources, `go.mod`/`go.sum`,
+build tags, paths, `os/exec`, permissions, the `Makefile`, scripts or
+workflows), also run CI's jobs on the test hosts:
 
 ```bash
-make hooks-install
-make hooks-test
+make preflight-hosts
 ```
 
-The installer preserves and invokes previously effective host hooks, including
-an existing host pre-commit. It installs the repository pre-push wrapper and
-does not install a repository pre-commit build hook. Existing clones should
-run `make hooks-install` once after updating from the legacy wrapper. To remove
-only the managed repository layer and restore the prior `core.hooksPath` state:
+It tests the committed `HEAD`, so commit first. Linux hosts run `make verify`;
+Windows and this machine run `go test ./...`. The hosts are named in a config
+outside the repository; [`tools/README.md`](../../tools/README.md) gives its
+path and shape. A host that cannot be reached fails the run; say so when
+handing off, rather than pushing past it. Changes to docs and records only are
+exempt.
+
+`make pre-add-check` checks the exact staged Go snapshot (or `FILES=...`)
+with `scripts/go-precheck.py`; `make verify-staged` is its older name.
+
+### A clone that still has the old hooks
+
+Until 0017-MADR, `make hooks-install` pointed a clone's local
+`core.hooksPath` at `.git/prepare-commit-msg-hooks`, whose `pre-push` ran
+`.githooks/pre-push`. That file is gone, so such a clone fails every push.
+Before pulling this change, run `make hooks-uninstall`. After pulling, restore
+the clone by hand. First see whether the clone had its own setting before:
 
 ```bash
-make hooks-uninstall
+cat .git/prepare-commit-msg-hooks/.previous-local-present
+```
+
+If it prints `no`, remove the local setting:
+
+```bash
+git config --local --unset core.hooksPath
+```
+
+If it prints `yes`, restore the saved value instead:
+
+```bash
+git config --local core.hooksPath "$(cat .git/prepare-commit-msg-hooks/.previous-local-value)"
+```
+
+Then remove the managed directory and check where Git now looks; it should
+print the global hooks directory:
+
+```bash
+rm -rf .git/prepare-commit-msg-hooks
+git rev-parse --path-format=absolute --git-path hooks
 ```
 
 ## Repository-settings audit
@@ -232,8 +268,8 @@ Run the static rollback only when the saved snapshot confirms that exact
 baseline. If a resource existed before activation, restore its complete saved
 body instead of deleting it. Stop if duplicate managed ruleset names are found.
 Finally run `scripts/audit-github.sh` and compare every field with the snapshot.
-Local rollback is independent: use `make hooks-uninstall` for hooks and Git
-revert commits for version-controlled CI/CD changes.
+Local rollback is independent: Git revert commits for version-controlled
+CI/CD changes.
 
 ## References
 

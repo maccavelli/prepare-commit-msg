@@ -678,3 +678,64 @@ script.
   the three-letter account name inside "macOS", "macos" and "machine"; one
   is the made-up user `carol` in `test_redaction`'s fixtures. Staged for the
   owner's commit.
+
+### Deviation 2 (2026-10-19): a record linked to a deleted script
+
+* **Found:** at Phase 4 step 11, `make preflight` exit 2 at
+  `check-records`: `broken relative link:
+  docs/decisions/0005-MADR-windows-on-demand-compat-tests.md:76:
+  ../../scripts/install-hooks.sh`, the only broken link. Step 2 deleted the
+  script; step 10 said records keep their history and did not foresee a
+  record linking to a deleted file.
+* **Decision (owner, "Pinned GitHub link"):** the link points at the file
+  as of `bdb82d6`, which is on `origin/main` and holds the file, with an
+  inline note that 0017-MADR deleted it. The record's text is otherwise
+  unchanged.
+* **Added to scope:** `docs/decisions/0005-MADR-windows-on-demand-compat-tests.md`
+  (that one link).
+
+### Phase 4: remove the hook layer, then the docs (2026-10-19)
+
+* Phase 3 was committed by the owner as `1724d22`. F1 was re-checked first:
+  this clone had the managed `core.hooksPath`; the Windows host's clone has
+  none.
+* **Step 1:** `make hooks-uninstall` exit 0, "restored the previous local
+  core.hooksPath state". Then `git config --local --get core.hooksPath`
+  exit 1; `git rev-parse --path-format=absolute --git-path hooks` prints
+  the global hooks directory; `.git/prepare-commit-msg-hooks` is gone.
+* **Steps 2–4:** `git rm -r` of `.githooks`, `scripts/install-hooks.sh`,
+  `scripts/uninstall-hooks.sh` and `scripts/test-hooks.sh`; the three
+  targets and their `.PHONY` entries out of the `Makefile`;
+  `scripts/verify-scripts.sh` finds files under `scripts` only.
+* **Steps 5–8:**
+  * `README.md`: the two hook rows replaced by `make preflight`, `make
+    preflight-hosts` and `make pre-add-check`.
+  * `docs/guides/cicd-operations.md`: "Routine verification" rewritten for
+    `preflight`, `preflight-hosts` (when, and that it tests `HEAD`) and
+    `pre-add-check`, plus "A clone that still has the old hooks". Its
+    recovery is in separate blocks for the `no` and `yes` cases, so that
+    copying it whole cannot run both. The rollback line has no hook step,
+    and the opening cites 0017-MADR.
+  * `docs/architecture.md`: the hooks paragraph and the tree.
+  * `AGENTS.md`: `make pre-add-check` under "Pre-add checks", and a new
+    "Before a push".
+  * `docs/README.md`: two "I want to…" rows added, two extended.
+* **Step 9:** a dated "Partially superseded" note in 0003-MADR's banner and
+  at 0013-MADR's D8. No rationale was rewritten.
+* **Step 10:** `git ls-files` of the four paths: nothing; `make -n
+  hooks-install` exit 2, "No rule to make target `hooks-install'"; the
+  search for the hook names and `.githooks` in the `Makefile`, `scripts/`,
+  `tools/`, `.github/`, `README.md`, `AGENTS.md`, `docs/architecture.md` and
+  `docs/guides/` finds only the recovery subsection
+  (`docs/guides/cicd-operations.md:48-51`).
+* **Step 11:** the first `make preflight` failed at `check-records`
+  (Deviation 2). After that fix: exit 0 (`0 issues.`, coverage 83.7%, `No
+  vulnerabilities found.`, `Ran 25 tests`, `preflight passed`). The pinned
+  URL answers HTTP 200. The global hooks directory's `prepare-commit-msg`
+  is executable; the owner's commit of this phase is the first to use it
+  without the layer, and its message confirms V7.
+* **The gate:** `make check-records` 0; `make markdownlint` 0. The
+  identifier scan of the staged diff: two hits, both traced and neither an
+  identifier: "machine", and the repository's GitHub owner in Deviation 2's
+  URL, which `go.mod` and `ci.yml` already carry. Staged for the owner's
+  commit.

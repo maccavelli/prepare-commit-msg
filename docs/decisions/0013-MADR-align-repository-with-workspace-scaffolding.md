@@ -247,6 +247,12 @@ command's exit status, the copied-file `cmp` results, and the identifier scan.
 
 ### D8. Retire the repository-owned pre-commit build hook
 
+> **Partially superseded (2026-10-19):**
+> [0017-MADR](0017-MADR-replace-git-hooks-with-make-preflight-and-host-tests.md)
+> retires what this decision retained: `.githooks/pre-push`, the hook
+> installer and uninstaller, and their test. The pre-commit hook's
+> retirement below stands.
+
 Delete `.githooks/pre-commit` and remove `install_wrapper pre-commit` from
 `scripts/install-hooks.sh`. Teach the installer to recognize its exact legacy
 managed wrapper and replace it with host-only delegation. A wrapper that
