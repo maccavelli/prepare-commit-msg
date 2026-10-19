@@ -158,10 +158,10 @@ Associated MADR: [0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md](0015-MADR-adopt
      Ollama before `v0.30.0`.
    * **The retry line,** where the README describes retries.
    * **A section, "Changes with go-llmprovider-sdk v1.15.0":**
-     * the facts-based output limit;
+     * ~~the facts-based output limit;~~ *(Deviation 4)*
      * the ten-minute listing cache, and the stale listing after a
        transient failure;
-     * Claude's live listing; Ollama's filter;
+     * ~~Claude's live listing;~~ Ollama's filter *(Deviation 4)*;
      * the `kilo-auto` tiers;
      * the sign-in and the retry line;
      * the downgrade cost of a plan session record.
@@ -385,4 +385,53 @@ Associated MADR: [0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md](0015-MADR-adopt
   * `go mod tidy -diff`: 0;
   * `go test -count=3 -shuffle=on ./internal/ui/ .`: 0;
   * `make verify`: 0 (0 issues; coverage 83.7%; no vulnerabilities).
+
+### Deviation 4 (2026-10-19): the hook reads no model facts, and Claude's menu was live
+
+* **Found** while writing step 1's section, by reading the SDK at
+  `v1.12.0` and `v1.15.0`:
+  * Claude's wizard listing goes through `catalog.List` with no base URL,
+    live since before `v1.12.0`; the SDK's fix was to the provider's
+    `ListModels`;
+  * a request reads only the facts its process has cached, and never
+    fetches; the hook lists nothing before it generates, so its requests
+    find none. That also voids the facts-based output limit for the hook,
+    for every provider.
+* **Not pre-existing in the tree:** the MADR's claims, carried into the
+  README draft; nothing was staged.
+* **First choice, withdrawn.** The owner first chose to reword the Claude
+  bullet as "the hook's Claude requests read the model's facts". Checking
+  it found the second point, which makes that wording false; the owner was
+  asked again.
+* **Resolution, the owner's (2026-10-19):** the README names neither
+  change. The MADR's Amendment 3 records the facts; step 1's list is
+  annotated. A hook that warms the caches before generating was offered as
+  a new decision, and not chosen.
+
+### Phase 4: documents (2026-10-19)
+
+* **Deviation 4,** above, on the owner's choice.
+* **Step 1, `README.md`:**
+  * **Interactive Wizard:** the plan sign-in, its notice (from the SDK's
+    `wizard/auth.go:227`), and the MADR's five terms with how the hook
+    keeps each;
+  * **Daily Workflow & Hook Behavior:** the `generating via` line, which
+    the hook already wrote (`main.go:284`), and the retry line, with an
+    example for the default `retry_count` of 3 (`attempt 1 of 4`) and the
+    four kinds;
+  * **Changes from the mcplib Releases:** "a retry is no longer logged"
+    now says it is again from `v1.10.0`;
+  * **"With Ollama, name the models"** names Ollama before `v0.30.0`, and
+    links the new section;
+  * **"Changes with go-llmprovider-sdk v1.15.0",** with its contents
+    entry: the sign-in, the retry line, the listings (one `configure` run's
+    cache, Ollama's filter, the `kilo-auto` tiers), the five curated lists,
+    the way back to `v1.9.0`, and `update` unchanged. The output limit and
+    Claude's listing are left out (Deviation 4).
+* **Step 2.** `TestReadmeCuratedModels` passes.
+* **The link fragments.** `make markdownlint` checks them (MD051): on a
+  scratch copy with the new section's fragment changed to `…-v9999`, it
+  exits 2 with two `MD051/link-fragments` errors, at the contents entry
+  and the Ollama note.
+* **Not changed:** `docs/architecture.md` (the Scope's reason).
 

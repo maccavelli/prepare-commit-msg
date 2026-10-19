@@ -29,6 +29,7 @@ Commit](https://www.conventionalcommits.org/) messages.
 - [Changes with go-llmprovider-sdk v1.3.2](#changes-with-go-llmprovider-sdk-v132)
 - [Changes with go-selfupdate-lib v1.13.0](#changes-with-go-selfupdate-lib-v1130)
 - [Changes with go-llmprovider-sdk v1.12.0 and go-selfupdate-lib v1.15.2](#changes-with-go-llmprovider-sdk-v1120-and-go-selfupdate-lib-v1152)
+- [Changes with go-llmprovider-sdk v1.15.0](#changes-with-go-llmprovider-sdk-v1150)
 - [CLI Reference](#cli-reference)
 - [Developer Experience](#developer-experience)
 - [Documentation](#documentation)
@@ -264,6 +265,26 @@ file is read on every run and never refreshed here: the CLI keeps its own
 login current. When it expires, sign in again with the CLI; there is no need
 to re-run `configure`.
 
+For OpenAI, the wizard also offers **Use your ChatGPT plan with this app**:
+OpenAI's Sign in with ChatGPT for agents, under the name
+`prepare-commit-msg`. The first time, it asks you to confirm OpenAI's notice
+that this app's requests count toward your plan's usage, and names the page
+where you manage that usage. The session is saved in the `oauth/` directory,
+as every sign-in is.
+
+OpenAI's terms for using a plan this way, and how this hook keeps each:
+
+- **Requests from your own machine, for your own activity.** The hook runs
+  on your machine, only when you run `git commit`, to write that commit's
+  message.
+- **Consent before any background use.** The hook runs nothing in the
+  background.
+- **The plan used only for the app you connected.** The session is used
+  only by this hook, and sent only to OpenAI.
+- **No pooling, sharing, transfer or resale.** The session stays in your own
+  configuration directory; do not share that directory.
+- **No charge.** The hook is free.
+
 ---
 
 ### Non-Interactive CLI Flags
@@ -398,6 +419,19 @@ git commit
 
 3. Edit the message or save and close the editor to complete the commit.
 
+While it waits for the provider, the hook writes
+`prepare-commit-msg: generating via <provider> (<model>)...` to stderr. A
+request that fails in a way that can succeed later, such as a rate limit, an
+unavailable service or a failure to connect, is retried up to `retry_count`
+times, and before each wait the hook writes one line:
+
+```text
+prepare-commit-msg: openai: retrying in 2.4s (attempt 1 of 4): rate limited
+```
+
+The last part is the kind of failure: `rate limited`, `unavailable`,
+`cannot reach`, or `error`. The provider's own message is not shown.
+
 ### Hook Trigger Matrix
 
 Git invokes the hook as `prepare-commit-msg <file> [source] [sha]`. The hook evaluates whether to generate a message:
@@ -460,7 +494,8 @@ behaved differently in these ways:
   `X.Y.Z (release)`. Scripts that parse it must change.
 - **Retries** cover rate limits (not an exhausted quota), an unavailable
   service, and a failure to connect. Other errors return at once, and a retry
-  is no longer logged.
+  is no longer logged (from `v1.10.0` it is again: see
+  [Daily Workflow & Hook Behavior](#daily-workflow--hook-behavior)).
 - **Error messages** begin `llmprovider:` rather than `llm:`.
 - **Model-metadata overrides** are read from `LLMPROVIDER_*` variables, not
   `MCPLIB_*`.
@@ -575,10 +610,13 @@ What you may notice:
   [Configuration File](#configuration-file)). `--base-url` refuses a user
   name or password, a query and a fragment, and refuses plain `http` to a
   remote host for any provider that needs a key.
-- **With Ollama, name the models.** `configure --yes` takes the models in
-  the order Ollama lists them, and Ollama lists embedding models too, which
-  cannot write a commit message. Pass `--model` and `--fallback`, or choose
-  them in the interactive wizard.
+- **With Ollama before `v0.30.0`, name the models.** `configure --yes`
+  takes the models in the order Ollama lists them, and Ollama lists embedding
+  models too, which cannot write a commit message. Pass `--model` and
+  `--fallback`, or choose them in the interactive wizard. From Ollama
+  `v0.30.0`, which reports what each model can do, `v1.10.0` leaves those
+  models out: see
+  [Changes with go-llmprovider-sdk v1.15.0](#changes-with-go-llmprovider-sdk-v1150).
 - **`configure --yes` stops on a refused key.** When the provider's model
   listing refuses the key, it fails with `<provider> refused the API key`
   and saves nothing. Any other listing failure still falls back to the
@@ -611,6 +649,36 @@ What you may notice:
   - model listings are cached for 10 minutes.
 - **`update`** behaves as in `v1.8.0`: go-selfupdate-lib `v1.15.2` changes
   nothing it uses.
+
+---
+
+## Changes with go-llmprovider-sdk v1.15.0
+
+Release `v1.10.0` moves from go-llmprovider-sdk `v1.12.0` to `v1.15.0`
+([0015-MADR](docs/decisions/0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md)).
+go-selfupdate-lib stays at `v1.15.2`. What you may notice:
+
+- **Use your ChatGPT plan.** For OpenAI, the wizard offers **Use your
+  ChatGPT plan with this app**: see [Interactive Wizard](#interactive-wizard)
+  for the notice and the terms. `configure --yes` stays API-key-only.
+- **Retries are shown.** Before each retry's wait, the hook writes one line
+  to stderr: see
+  [Daily Workflow & Hook Behavior](#daily-workflow--hook-behavior).
+- **Model listings:**
+  - within one `configure` run, a provider's listing is fetched once and
+    reused; if a later listing in that run fails for a passing reason, the
+    earlier one is used;
+  - with Ollama `v0.30.0` or later, models that cannot write text, such as
+    embedding models, are left out, so `configure --yes` no longer picks one;
+  - a Kilo listing with nothing else to recommend now offers the `kilo-auto`
+    tiers, where `v1.9.0` fell back to the curated models.
+- **Curated models changed** for `kilo`, `huggingface`, `together`,
+  `opencode-zen` and `opencode-go`: see
+  [Supported Providers & Models](#supported-providers--models).
+- **Going back to `v1.9.0`.** A plan session saved by `v1.10.0` cannot be
+  refreshed by `v1.9.0`: run `configure` and sign in again, or use an API
+  key.
+- **`update`** behaves as in `v1.9.0`.
 
 ---
 

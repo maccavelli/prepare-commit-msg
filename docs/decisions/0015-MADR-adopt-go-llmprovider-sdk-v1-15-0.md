@@ -83,12 +83,14 @@ both in `internal/ui`, under `go test` and under `-race`:
 * **The hook's request.** It sets no output limit and no reasoning
   (`main.go:394-396`) **[read]**. Under `v1.14.0`, its output limit is the
   configured default, cut to the model's own where that is smaller, and
-  never raised.
+  never raised. *(Amendment 3, 2026-10-19: not in the hook, which caches
+  no facts; its limit is the default, as in `v1.9.0`.)*
 * **Listings:**
   * a listing is cached for ten minutes;
   * after a transient listing failure, the last good one (within 24
     hours) is served;
-  * Claude's listing is live;
+  * Claude's listing is live; *(Amendment 3, 2026-10-19: this app's
+    was already)*
   * Ollama's listing leaves out models that cannot write text.
 * **Ollama.** An install whose `/api/tags` reports capabilities (Ollama
   `v0.30.0` and later) no longer offers an embedding model to `--yes`
@@ -201,9 +203,10 @@ sign-in is a decision of its own, and 0014's PLAN is complete.
 * **"With Ollama, name the models"** is narrowed to Ollama before
   `v0.30.0`.
 * **A section, "Changes with go-llmprovider-sdk v1.15.0":**
-  * the facts-based output limit;
+  * ~~the facts-based output limit;~~ *(Amendment 3, 2026-10-19)*
   * the listing cache, and the stale listing;
-  * Claude's live listing, and Ollama's filter;
+  * ~~Claude's live listing, and~~ Ollama's filter *(Amendment 3,
+    2026-10-19)*;
   * the `kilo-auto` tiers;
   * the curated lists of five providers *(Amendment 1, 2026-10-19)*;
   * the sign-in and the retry line;
@@ -344,3 +347,31 @@ Phase 1, on a scratch copy with that fallback removed **[probed]**:
 
 The owner chose (2026-10-19): the fallback test lists one model past its
 expiration date. D4 says so. No other decision changes.
+
+### Amendment 3 (2026-10-19): the hook reads no model facts, and Claude's menu was live
+
+"What would the user see" named two changes that do not reach this app.
+0015-PLAN's Phase 4 found them while writing the README **[read]**:
+
+* **The output limit.** A request reads only what its process has cached:
+  "A request never fetches, and never waits" (the SDK's
+  `providers/claude/claude.go:88-91`), and `catalog.CachedFacts` "starts
+  no fetch: catalog.List, ListModels and LookupModel warm the caches it
+  reads" (`catalog/lookup.go:124-131`). The caches are maps in the process
+  (`catalog/model_metadata.go:328`; `catalog/listing_cache.go`). The hook
+  is a new process for each commit, and calls none of those (`main.go`,
+  `update.go`). So its requests find no facts: the limit is the default,
+  and Claude's request shape follows the version rules, as in `v1.9.0`.
+* **Claude's listing.** The SDK's fix (its
+  `0041-MADR-decide-per-model-behaviour-from-metadata.md` A8) was to the
+  Claude provider's own `ListModels`, which asked for `/v1/v1/models` and
+  returned the static list. This app's wizard (`wizard/configure.go:435` at
+  `v1.12.0`) and `configure --yes` (`internal/ui/setup.go:166`) list through
+  `catalog.List` with no base URL, which read `/v1/models` already, and
+  `v1.12.0` lists Claude (`catalog/discovery.go:291`). Claude's menu was
+  live in `v1.9.0`.
+* **The listing cache** is in the process too. For this app it lasts one
+  `configure` run, and the README says so rather than "ten minutes".
+
+The owner chose (2026-10-19): the README names neither change. D5 is
+annotated. No other decision changes.
