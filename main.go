@@ -6,6 +6,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
+	"net/url"
 	"os"
 	"slices"
 	"strings"
@@ -384,14 +386,41 @@ var errRefused = errors.New("model refused the request")
 // refusalNoteRunes bounds how much of a refusal an error quotes.
 const refusalNoteRunes = 120
 
+// retryOut is where reportRetry writes; tests replace it.
+var retryOut io.Writer = os.Stderr
+
+// reportRetry writes one line before each retry's wait, so that a wait is not
+// taken for a hang. It names the failure's kind, never the provider's message
+// (0015-MADR D3).
+func reportRetry(_ context.Context, n llmprovider.RetryNotice) {
+	fmt.Fprintf(retryOut, "%s: %s: retrying in %s (attempt %d of %d): %s\n",
+		AppTitle, n.Provider, n.Wait.Round(100*time.Millisecond), n.Attempt, n.MaxAttempts, retryKind(n.Err))
+}
+
+// retryKind is the class of a retried failure, as reportRetry names it.
+func retryKind(err error) string {
+	var urlErr *url.Error
+	switch {
+	case errors.Is(err, llmprovider.ErrRateLimited):
+		return "rate limited"
+	case errors.Is(err, llmprovider.ErrProviderUnavailable):
+		return "unavailable"
+	case errors.As(err, &urlErr):
+		return "cannot reach"
+	default:
+		return "error"
+	}
+}
+
 // generateText runs prompt on p as one user message. A failed attempt is
 // retried up to retries times, waiting delay before the first retry and
-// doubling after; WithRetry retries only what can succeed later. It calls
-// Generate, not GenerateText, because only the response's finish reason
-// tells a refusal from a commit message (0009-MADR D1).
+// doubling after; WithRetryNotify retries only what can succeed later, and
+// reportRetry says so before each wait. It calls Generate, not GenerateText,
+// because only the response's finish reason tells a refusal from a commit
+// message (0009-MADR D1).
 func generateText(ctx context.Context, p llmprovider.Provider, prompt string, retries int, delay time.Duration) (string, error) {
 	policy := llmprovider.RetryPolicy{MaxAttempts: max(retries, 0) + 1, BaseDelay: delay}
-	retrying := llmprovider.WithRetry(p, policy)
+	retrying := llmprovider.WithRetryNotify(p, policy, reportRetry)
 	resp, err := retrying.Generate(ctx, &llmprovider.Request{
 		Input: []llmprovider.Item{llmprovider.MessageItem{Role: llmprovider.RoleUser, Text: prompt}},
 	})

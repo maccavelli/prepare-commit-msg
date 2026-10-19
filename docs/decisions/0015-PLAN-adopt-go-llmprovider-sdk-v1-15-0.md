@@ -359,3 +359,30 @@ Associated MADR: [0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md](0015-MADR-adopt
   * `go test -count=3 -shuffle=on ./internal/ui/`: 0;
   * `make verify`: 0 (0 issues; coverage 83.5%; no vulnerabilities).
 
+### Phase 3: the retry line (2026-10-19)
+
+* **No deviation.**
+* **Step 1.** `generateText` wraps with `WithRetryNotify(p, policy,
+  reportRetry)`. `reportRetry` writes to `retryOut` (`os.Stderr`):
+  `prepare-commit-msg: <provider>: retrying in <wait> (attempt <n> of
+  <max>): <kind>`, the wait `Round(100*time.Millisecond)`, so a wait under
+  50 ms reads `0s`. `retryKind` gives the four kinds of the step, matched
+  with `errors.Is` / `errors.As`.
+* **Step 2.** `TestGenerateText_RetryLine_0015`, over the SDK's
+  `llmtest` fake, with the step's three cases. One more test,
+  `TestRetryKind_0015`, holds step 1's "never quotes the provider's
+  message": it calls `reportRetry` with each kind, the error carrying a
+  detail, and requires the exact line.
+* **Step 3, fail first,** each on a scratch copy:
+  * with `WithRetry` kept (a clone of `72e040a`, the phase applied but the
+    wrapper): the first case fails (`provider_test.go:266`, `stderr = ""`);
+  * with the line given `n.Err` in place of `retryKind(n.Err)`:
+    `TestRetryKind_0015` fails (`provider_test.go:310`, the detail
+    quoted).
+* **The phase gate:**
+  * `go test -race -count=1 ./...`: 0;
+  * `go vet` for linux, darwin, windows: 0, 0, 0;
+  * `go mod tidy -diff`: 0;
+  * `go test -count=3 -shuffle=on ./internal/ui/ .`: 0;
+  * `make verify`: 0 (0 issues; coverage 83.7%; no vulnerabilities).
+

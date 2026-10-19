@@ -1,12 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -231,5 +235,79 @@ func TestProvider_UserAgentNamesApp(t *testing.T) {
 	got, _ := agent.Load().(string)
 	if want := AppTitle + "/" + buildIdentity().Current() + " ("; !strings.HasPrefix(got, want) {
 		t.Errorf("User-Agent = %q; want it to begin %q", got, want)
+	}
+}
+
+// captureRetries points retryOut at the returned buffer for t.
+func captureRetries(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var b bytes.Buffer
+	previous := retryOut
+	retryOut = &b
+	t.Cleanup(func() { retryOut = previous })
+	return &b
+}
+
+// retryLine is the line reportRetry writes (0015-MADR D3).
+var retryLine = regexp.MustCompile(`^prepare-commit-msg: openai: retrying in [0-9.]+m?s \(attempt 1 of 2\): rate limited\n$`)
+
+// TestGenerateText_RetryLine_0015: a retried failure writes one line before
+// its wait; a success and a failure that is not retried write none
+// (0015-MADR D3).
+func TestGenerateText_RetryLine_0015(t *testing.T) {
+	t.Run("rate limit, then success", func(t *testing.T) {
+		out := captureRetries(t)
+		fake := llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).
+			Fail(llmprovider.ErrRateLimited).ReplyText("feat: after retry")
+		if got, err := generateText(context.Background(), fake, "p", 1, time.Millisecond); err != nil || got != "feat: after retry" {
+			t.Fatalf("generateText() = %q, %v", got, err)
+		}
+		if !retryLine.MatchString(out.String()) {
+			t.Fatalf("stderr = %q; want one line matching %s", out.String(), retryLine)
+		}
+	})
+	t.Run("success", func(t *testing.T) {
+		out := captureRetries(t)
+		fake := llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).ReplyText("feat: x")
+		if _, err := generateText(context.Background(), fake, "p", 2, time.Millisecond); err != nil {
+			t.Fatal(err)
+		}
+		if out.Len() != 0 {
+			t.Fatalf("stderr = %q; want nothing for a success", out.String())
+		}
+	})
+	t.Run("not retried", func(t *testing.T) {
+		out := captureRetries(t)
+		fake := llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).
+			Fail(llmprovider.ErrAuthFailure).ReplyText("never")
+		if _, err := generateText(context.Background(), fake, "p", 2, time.Millisecond); !errors.Is(err, llmprovider.ErrAuthFailure) {
+			t.Fatalf("err = %v; want ErrAuthFailure", err)
+		}
+		if out.Len() != 0 {
+			t.Fatalf("stderr = %q; want nothing for a failure that is not retried", out.String())
+		}
+	})
+}
+
+// TestRetryKind_0015: each class the line names, and never the provider's
+// message (0015-MADR D3).
+func TestRetryKind_0015(t *testing.T) {
+	const detail = "provider detail that must not be quoted"
+	for _, c := range []struct {
+		err  error
+		want string
+	}{
+		{fmt.Errorf("%w: %s", llmprovider.ErrRateLimited, detail), "rate limited"},
+		{fmt.Errorf("%w: %s", llmprovider.ErrProviderUnavailable, detail), "unavailable"},
+		{&url.Error{Op: "Post", URL: "https://example.test", Err: errors.New(detail)}, "cannot reach"},
+		{errors.New(detail), "error"},
+	} {
+		out := captureRetries(t)
+		reportRetry(context.Background(), llmprovider.RetryNotice{Provider: llmprovider.ProviderOpenAI, Attempt: 1,
+			MaxAttempts: 3, Wait: 1500 * time.Millisecond, Err: c.err})
+		want := "prepare-commit-msg: openai: retrying in 1.5s (attempt 1 of 3): " + c.want + "\n"
+		if out.String() != want {
+			t.Errorf("reportRetry(%v) wrote %q; want %q", c.err, out.String(), want)
+		}
 	}
 }
