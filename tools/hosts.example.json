@@ -1,0 +1,9 @@
+{
+  "hosts": [
+    {"label": "linux", "kind": "linux", "ssh": "<linux-ssh-destination>"},
+    {"label": "wsl-ubuntu-24.04", "kind": "linux", "ssh": "<windows-ssh-destination>", "wsl": "Ubuntu-24.04"},
+    {"label": "windows", "kind": "windows", "ssh": "<windows-ssh-destination>"},
+    {"label": "local", "kind": "local"}
+  ],
+  "identifiers": ["<account-name>", "<host-name>", "<org-domain>"]
+}

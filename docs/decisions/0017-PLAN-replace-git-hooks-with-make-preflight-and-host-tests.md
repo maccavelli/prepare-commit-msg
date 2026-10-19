@@ -607,3 +607,74 @@ script.
   Staged for the owner's commit, after the identifier scan below.
 * **Not yet confirmed:** that the CI image's `python3` and `npx` run the
   two new steps. That is Phase 5 step 3, from the first run's log.
+* **Asked after staging:** why CI needs `npx`. `make markdownlint` is
+  `npx --yes markdownlint-cli2@0.23.2`; acp-go-sdk2, go-selfupdate-lib and
+  go-tui-lib run the same command in CI on the runner image's Node, with no
+  `setup-node`, while go-llmprovider-sdk runs only its records check. The
+  owner kept the step as staged and committed the phase as `92611a4`.
+
+### Phase 3: `make preflight-hosts` and `tools/hosts.py` (2026-10-19)
+
+* **Steps 1–4, 6:** `tools/hostrun.py`, `tools/hosts.py`,
+  `tools/hosts.example.json` (placeholders only), the `preflight-hosts`
+  target with `HOSTS_FLAGS ?=` (in `.PHONY`, not a prerequisite of
+  `preflight`), and `tools/README.md`'s two rows and its section, "The
+  cross-host run". As written, plus:
+  * `hostrun.py` sets its stdout to UTF-8, because a Windows pipe defaults
+    to the ANSI code page, and exits 127 when the command cannot be
+    started;
+  * `hosts.py` rejects unknown config fields, an `ssh` or `wsl` on a
+    `local` host, empty identifiers, and an unknown `--only` label, each
+    with exit 2.
+* **Step 5:** 15 tests in `HostsTest`: the five config errors, the
+  default commands, the three exact transports, the dirty-tree refusal
+  (no transport started), the redaction, a local host end to end
+  (`describe=v0.0.1`, the committed file present), a failing host's tail
+  and exit 1, the fake `ssh` (its recorded argv `["dest", "python3",
+  "-"]`), an unreachable host (`exit=255`, exit 1), `--only`, and the
+  clone's removal. The throwaway repository sets `core.hooksPath` to an
+  empty path, so the global `prepare-commit-msg` hook never runs in a
+  test. `make tools-test`: `Ran 25 tests`, OK; no `pcm-hosts-*` directory
+  left in the temporary directory.
+* **Step 7:** `make workflow-lint` exit 0; `py_compile` of both files: 0.
+* **Step 8, fail first,** each on a scratch copy of `tools/`, removed
+  afterwards; each named test also passed on the unplanted copy:
+
+  | Plant | Test | Failure |
+  | :--- | :--- | :--- |
+  | `BatchMode=yes` dropped | `test_transports_are_exact_argument_lists` | `Lists differ: ['ssh', '-o', 'ConnectTimeout=5', '-T', 'dest', …` |
+  | the dirty-tree check removed | `test_dirty_tree_exits_two_and_starts_no_transport` | `AssertionError: 1 != 2` |
+  | the `/Users/` redaction removed | `test_redaction` | `'/Users/alice/x …' != '/Users/<user>/x …'` |
+  | `hostrun`'s `finally` removal skipped | `test_clone_is_removed_afterwards` | `… was left behind`; the leaked directory was then removed |
+  | the bundle made without `--tags` | `test_local_host_runs_on_a_clone_of_head_with_its_tags` | `1 != 0 : m: exit=9` |
+
+* **Step 9, live.** The owner's config was written outside the repository,
+  at `~/.config/prepare-commit-msg/hosts.json`: the four default hosts, and
+  the account names, host aliases, host names and domain collected from the
+  hosts as identifiers (never printed). The tree had this phase
+  uncommitted, and the tool refuses a dirty tree, so each run was in a
+  scratch clone of `92611a4` with this phase's files committed: the same
+  content as this phase's commit.
+
+  | Run | Exit | Hosts |
+  | :--- | :--- | :--- |
+  | `make preflight-hosts`, clean `HEAD` | 0 (48 s) | linux 0 (36 s), wsl-ubuntu-24.04 0 (47 s), windows 0 (3 s), macos 0 (4 s): `4/4 hosts passed` |
+  | a committed `zz_windows_only_test.go` (`//go:build windows`, `t.Fatal`) | 1 (41 s) | linux 0, wsl-ubuntu-24.04 0, **windows 1**, macos 0: `3/4`; the Windows tail holds `planted: fails on Windows only` |
+  | a dirty tree | 2 | `commit first: preflight-hosts tests HEAD, and the tree has changes` |
+  | `--config /nonexistent/hosts.json` | 2 | `no config at /nonexistent/hosts.json: …` |
+
+  The short Windows and macOS times are Go's test cache: the clone is new,
+  but the packages and their inputs are unchanged. The Windows-only run
+  shows the tests do run there when an input changes.
+* **The scan of the live output and logs:** no unredacted home path. One
+  identifier hit in each full run, traced: a three-letter account name
+  inside the label `macos`, on the summary line. The label is the owner's
+  config, printed as given; no host's log held an identifier.
+* **The gate:** `make preflight` in the tree: exit 0 (`0 issues.`, coverage
+  83.7%, `No vulnerabilities found.`, `Ran 25 tests`, `preflight passed`);
+  `make check-records` 0; `make markdownlint` 0. The identifier scan of the
+  staged diff's added lines, with the config's identifiers and home and
+  temporary paths: six hits, each traced and none an identifier. Five are
+  the three-letter account name inside "macOS", "macos" and "machine"; one
+  is the made-up user `carol` in `test_redaction`'s fixtures. Staged for the
+  owner's commit.

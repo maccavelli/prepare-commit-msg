@@ -15,6 +15,44 @@ Exit codes, for every tool: **0** clean, **1** a finding, **2** a tool error.
 | Tool | What it does | Usage |
 | :--- | :--- | :--- |
 | `fakeprovider.py` | a local OpenAI-compatible API on `127.0.0.1` that answers the first generations with an error and `Retry-After`, then a commit message; it logs each request's method, path and status, and never a header | `tools/fakeprovider.py [--fail N] [--status CODE] [--retry-after S] [--message TEXT] [--port-file FILE] [--log FILE] [--max-requests N]` |
+| `hosts.py` | runs CI's jobs for `HEAD` on the test hosts, in parallel, and reports one line per host ([0017-MADR](../docs/decisions/0017-MADR-replace-git-hooks-with-make-preflight-and-host-tests.md) D4) | `make preflight-hosts [HOSTS_FLAGS='--only LABEL --config PATH']` |
+| `hostrun.py` | what each host runs: a clone of `HEAD` from a bundle, the command, then cleanup. `hosts.py` sends its source to the host's `python3 -`; it is not run by hand | — |
+
+## The cross-host run
+
+`make preflight-hosts` tests the commit, not the working tree: it refuses a
+dirty tree. It bundles `HEAD` and the tags, and sends each host one program
+on stdin over `ssh -o BatchMode=yes -o ConnectTimeout=5 -T`. A WSL distro is
+entered through its Windows host's connection, with `wsl -d <distro> --
+bash -lc 'python3 -'`. Each host needs Git, Python 3.12 or later as
+`python3`, and the toolchain its command needs.
+
+The hosts are named only in a config file that is never committed:
+`--config PATH`, else `$XDG_CONFIG_HOME/prepare-commit-msg/hosts.json`, else
+`~/.config/prepare-commit-msg/hosts.json`. Copy
+[`hosts.example.json`](hosts.example.json) there and fill in the SSH
+destinations. Each host has a `label`, a `kind` and, unless it is `local`,
+an `ssh` destination; a `linux` host may add `wsl`, a distro name. The
+`command` defaults to the kind's CI job:
+
+| `kind` | Default `command` | CI job |
+| :--- | :--- | :--- |
+| `linux` | `make verify` | `go`, and `go-native` on Linux |
+| `windows` | `go test ./...` | `go-native` on Windows |
+| `local` | `go test ./...` | `go-native` on this machine's OS |
+
+To also test a WSL distro that CI does not run, add it with its own label
+and `go test ./...`:
+
+```json
+{"label": "wsl-almalinux-10", "kind": "linux", "ssh": "<windows-ssh-destination>",
+ "wsl": "AlmaLinux-10", "command": ["go", "test", "./..."]}
+```
+
+`identifiers` lists strings, such as an account or host name, that are
+replaced with `<redacted>` in everything the tool prints or logs; home paths
+become `<user>` either way. Each host's full output is in
+`<log dir>/<label>.log`, and the last line names the log directory.
 
 ## The live retry check
 

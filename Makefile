@@ -27,7 +27,7 @@ FLEET_LINT_CFG := .golangci.yml
 .PHONY: all build clean test coverage test-coverage run install version build-all \
 	linux linux-amd64 linux-arm64 darwin-arm64 darwin-amd64 windows-amd64 windows-arm64 \
 	help tools fmt fmt-check mod-check vet lint vuln workflow-lint verify verify-staged \
-	preflight pre-add-check \
+	preflight preflight-hosts pre-add-check \
 	hooks-install hooks-uninstall hooks-test check-records markdownlint tools-test
 
 all: help build-all
@@ -119,6 +119,10 @@ preflight: ## Runs every CI gate that runs off GitHub: records, Markdown, verify
 	@echo "==> markdownlint"; $(MAKE) --no-print-directory markdownlint
 	@echo "==> verify"; $(MAKE) --no-print-directory verify
 	@echo "preflight passed"
+
+HOSTS_FLAGS ?=
+preflight-hosts: ## Runs CI's jobs for HEAD on the test hosts (tools/hosts.py; 0017-MADR)
+	$(PYTHON) tools/hosts.py $(HOSTS_FLAGS)
 
 FILES ?=
 pre-add-check: tools ## Checks the staged Go snapshot, or FILES=... (scripts/go-precheck.py)
