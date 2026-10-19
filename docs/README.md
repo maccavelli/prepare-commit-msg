@@ -48,6 +48,8 @@ This tree holds three kinds of document:
 | 0015 | PLAN | [Implement provider SDK v1.15.0 and the ChatGPT plan sign-in](decisions/0015-PLAN-adopt-go-llmprovider-sdk-v1-15-0.md) | complete |
 | 0016 | MADR | [Keep maintainer tools in `tools/`, starting with a fake provider that answers 429](decisions/0016-MADR-keep-maintainer-tools-starting-with-a-fake-provider.md) | accepted |
 | 0016 | PLAN | [Implement keeping maintainer tools in `tools/`, starting with a fake provider that answers 429](decisions/0016-PLAN-keep-maintainer-tools-starting-with-a-fake-provider.md) | complete |
+| 0017 | MADR | [Replace the repository Git hooks with `make preflight` and a cross-host test run](decisions/0017-MADR-replace-git-hooks-with-make-preflight-and-host-tests.md) | accepted |
+| 0017 | PLAN | [Implement replacing the repository Git hooks with `make preflight` and a cross-host test run](decisions/0017-PLAN-replace-git-hooks-with-make-preflight-and-host-tests.md) | proposed |
 
 ## I want to…
 
