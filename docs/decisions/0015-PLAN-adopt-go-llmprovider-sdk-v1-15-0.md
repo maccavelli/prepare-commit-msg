@@ -183,8 +183,9 @@ Associated MADR: [0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md](0015-MADR-adopt
    * the hook, on a scratch repository with one staged file: a
      Conventional Commit message through the plan session;
    * the retry line, against a local server that answers 429 once:
-     `configure --yes --provider openai --base-url <server>` with a
-     made-up key in the environment, then the hook.
+     `configure --yes --provider ~~openai~~ together --base-url <server>`
+     with a made-up key in the environment, then the hook *(Deviation 5,
+     2026-10-19)*.
 4. The owner tags `v1.10.0` and pushes the tag. CI publishes. The agent
    checks the release assets, runs `update` on the installed hook, and
    confirms `version` names the SDK at `v1.15.0`.
@@ -434,4 +435,67 @@ Associated MADR: [0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md](0015-MADR-adopt
   exits 2 with two `MD051/link-fragments` errors, at the contents entry
   and the Ollama note.
 * **Not changed:** `docs/architecture.md` (the Scope's reason).
+
+### Deviation 5 (2026-10-19): the live retry check uses `together`
+
+* **Found.** Step 3's retry check, on the scratch build of `0380c18`:
+  `configure --yes --provider openai --base-url http://127.0.0.1:<port>/v1`
+  exits 1, "Setup failed: openai takes no --base-url". This app gives
+  OpenAI no endpoint; `TestRunSetupNonInteractive_BaseURL` pins the
+  refusal for a provider without one. The step as written could not run.
+  The local server received no request.
+* **Resolution, the owner's (2026-10-19):** the check uses `together`,
+  whose OpenAI-compatible endpoint takes `--base-url`, plain `http` to
+  loopback included, with a made-up `TOGETHER_API_KEY`. The retry goes
+  through the same `generateText` and `WithRetryNotify`; the line names
+  `together`. Step 3 is annotated. No MADR decision changes.
+
+### Phase 5: release, live checks and issues (2026-10-19)
+
+* **Deviation 5,** above, on the owner's choice.
+* **Step 1.** The pre-push disclosure guard over `a04b617..0380c18`, the
+  seven commits of Phases 0–4: exit 0, no finding. The owner pushed.
+* **Step 2.** CI run `39261573108` on `0380c18`: `success`. Every job
+  passed (the quality contract; the native tests on Windows, macOS and
+  Linux; the release build and its five identity checks); the publish job
+  was skipped, as it is without a tag.
+* **Step 3, the live checks,** on a scratch build of `0380c18`
+  (`v1.9.1-0.20261019133410-0380c18da740 (local)`), each with a scratch
+  `HOME` and `XDG_CONFIG_HOME`:
+  * **The retry line,** against a local server that answers the first
+    generation with HTTP 429 and `Retry-After: 1`: `configure --yes
+    --provider together --base-url http://127.0.0.1:<port>/v1` with a
+    made-up `TOGETHER_API_KEY`, `--retry-count 2 --retry-delay-seconds 1`,
+    then the hook on a scratch repository with one staged file. Exit 0;
+    stderr:
+
+    ```text
+    prepare-commit-msg: generating via together (zai-org/GLM-5.3-Flash)...
+    prepare-commit-msg: together: retrying in 1s (attempt 1 of 3): rate limited
+    ```
+
+    The message was the server's, `chore: add live retry check file`; the
+    server logged one 429, then one 200. A first run had the server answer
+    `/chat/completions` in the Responses shape, which the SDK refused as an
+    answer with no content: a fault of the fixture, fixed before this run.
+  * **The plan sign-in,** by the owner. The owner's terminal was on another
+    host, so the build and its scratch home were copied to a folder under
+    the home directory of this Mac, where the owner ran `configure` from a
+    local terminal. OpenAI's method menu offered "Use your ChatGPT plan
+    with this app" (so `main.go`'s `AgentName` reaches the wizard), the
+    notice was confirmed, and the owner signed in. Saved: `auth_kind`
+    `oauth`, no API key, `oauth/openai.json` mode `0600` in a `0700`
+    directory. The session file was checked for its presence and mode
+    only, never read.
+  * **The hook through the plan session,** with `OPENAI_API_KEY` unset, on
+    a scratch repository with one staged Python file: exit 0, one request,
+
+    ```text
+    prepare-commit-msg: generating via openai (gpt-5.6-terra)...
+    ```
+
+    and the message `feat(calc): add addition helper`, with one body line.
+  * **The installed hook** was not run, read or replaced: its SHA-256 was
+    the same before and after, and `version` still reports `v1.9.0
+    (release)`.
 
