@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: in-progress
 date: 2026-10-19
 associated-madr: "0017-MADR-replace-git-hooks-with-make-preflight-and-host-tests.md"
 ---
@@ -71,6 +71,9 @@ clone. Hosts are named here by role only.
   on them.
 * The host config itself: it lives outside the repository and is never
   committed.
+* WSL Ubuntu 24.04's own SSH server (F12): WSL is entered through the
+  Windows host's connection (MADR A1, the owner's choice). No step
+  authorizes a key there or pins its host key.
 
 ## Rules for every phase
 
@@ -96,7 +99,8 @@ clone. Hosts are named here by role only.
 ### Phase 0: records
 
 1. 0017-MADR is `accepted`, with amendment A1 `proposed`; this PLAN is
-   `proposed`; both are indexed in `docs/README.md`.
+   `proposed`; both are indexed in `docs/README.md`. *(On approval, A1 is
+   `accepted` and this PLAN `in-progress`.)*
 2. `make check-records` and `make markdownlint` exit 0.
 3. The owner reviews; approval of this PLAN approves A1. The owner commits.
 
@@ -422,6 +426,20 @@ No file in the tree changes in this phase.
 
 ## Execution Record
 
-Not started. Each phase records what was done, the commands' exit statuses
-and quoted output, each fail-first result, the hosts' times, and any
-deviation, dated.
+Each phase records what was done, the commands' exit statuses and quoted
+output, each fail-first result, the hosts' times, and any deviation, dated.
+
+### Phase 0: records (2026-10-19)
+
+* The owner accepted the MADR ("accepted") and approved this PLAN and A1
+  ("approved to proceed"). A1 is `accepted`; this PLAN is `in-progress`;
+  `docs/README.md` indexes both records.
+* The owner committed the records as drafted as `d12b24d`; the status
+  changes above are staged on top of it. `make check-records` exit 0;
+  `make markdownlint` exit 0; the identifier scan of the staged diff (the
+  local account names, the host aliases and domains, the Windows host's
+  address, home paths) found nothing.
+* Before approval, the owner corrected one claim: WSL Ubuntu 24.04 does
+  run an SSH server. It was probed (F12), A1's reason was struck and
+  annotated, and the owner chose `wsl -d` through the Windows host's
+  connection over that server.

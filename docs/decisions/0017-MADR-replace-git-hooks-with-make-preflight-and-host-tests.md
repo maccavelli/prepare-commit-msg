@@ -362,8 +362,9 @@ rationale is not rewritten.
 
 ### A1 (2026-10-19): the bundle travels on stdin; no `scp`
 
-*Status: proposed, with the PLAN.* Found while grounding the PLAN; it
-changes D4 items 1 and 3, and nothing else.
+*Status: accepted (2026-10-19), with the PLAN* (the owner's "approved to
+proceed"). Found while grounding the PLAN; it changes D4 items 1 and 3,
+and nothing else.
 
 **Found** **[probed]**, 2026-10-19, read-only on every host:
 
@@ -393,8 +394,21 @@ changes D4 items 1 and 3, and nothing else.
 source with the base64 bundle, the command and the label appended. There
 is no `scp` and no upload path: one channel, proven on every target, in
 place of two, and no remote path to choose or clean up. ~~A WSL distro has
-no SSH server~~ *(false, corrected above: Ubuntu 24.04 has one; how the
-tool reaches WSL is open, pending the owner's choice)*. The runner, which needs Python 3.12 or
+no SSH server~~ *(false, corrected above: Ubuntu 24.04 has one)*.
+
+WSL is reached through the Windows host's own connection, `wsl -d <distro>
+-- bash -lc 'python3 -'`, and not through the distro's SSH server *(the
+owner's choice, 2026-10-19)*, because:
+
+* it works today, proven, with no change to any host or to `~/.ssh`;
+  reaching the distro's server would need this machine's key added to its
+  `authorized_keys` and its host key pinned;
+* it is the fleet's rule for nested environments: one SSH connection per
+  physical machine, with WSL entered through it;
+* it works for any distro, where only Ubuntu 24.04 has a server.
+
+The cost is a `wsl` field on a `linux` host, and one more argument list
+in the tool. The runner, which needs Python 3.12 or
 later, writes the bundle to a temporary directory, clones it, runs the
 command, and removes the directory. The `local` kind runs the same program
 through `python3 -`, so the tests exercise the code the hosts run. D4's
