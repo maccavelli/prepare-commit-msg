@@ -44,6 +44,8 @@ This tree holds three kinds of document:
 | 0013 | GATES | [Workspace-scaffolding verification](reports/0013-GATES-workspace-scaffolding.md) | complete |
 | 0014 | MADR | [Adopt provider SDK v1.11.0 and self-update library v1.15.2](decisions/0014-MADR-adopt-go-llmprovider-sdk-v1-11-0-and-go-selfupdate-lib-v1-15-2.md) | accepted |
 | 0014 | PLAN | [Implement provider SDK v1.11.0 and self-update library v1.15.2](decisions/0014-PLAN-adopt-go-llmprovider-sdk-v1-11-0-and-go-selfupdate-lib-v1-15-2.md) | complete |
+| 0015 | MADR | [Adopt provider SDK v1.15.0 and the ChatGPT plan sign-in](decisions/0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md) | proposed |
+| 0015 | PLAN | [Implement provider SDK v1.15.0 and the ChatGPT plan sign-in](decisions/0015-PLAN-adopt-go-llmprovider-sdk-v1-15-0.md) | proposed |
 
 ## I want to…
 
