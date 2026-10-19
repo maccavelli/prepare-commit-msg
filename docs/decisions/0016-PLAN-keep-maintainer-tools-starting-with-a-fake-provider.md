@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: complete
 date: 2026-10-19
 associated-madr: "0016-MADR-keep-maintainer-tools-starting-with-a-fake-provider.md"
 ---
@@ -181,5 +181,12 @@ Associated MADR: [0016-MADR-keep-maintainer-tools-starting-with-a-fake-provider.
   issues; coverage 83.7%; no vulnerabilities; the tools' tests). `make
   check-records`, `make markdownlint`: 0. The identifier scan of the staged
   files: no hit.
-* **Left for after the push:** V3's CI run on `main`, after which this PLAN
-  is `complete`.
+* **After the push.** The owner committed the phase as `5981bc9` and pushed,
+  after the disclosure guard passed (exit 0). CI run `39277673444`:
+  `success`, every job (the quality contract, the native tests on Windows,
+  Linux and macOS, the release build and its five identity checks); the
+  publish job skipped, as without a tag. The quality job's log holds
+  `python3 -B -m unittest discover -s tools -p 'test_*.py'` and `Ran 9
+  tests`. Two `gh run watch` sessions ended on GitHub API errors (HTTP 502)
+  while the build jobs queued; the run itself never failed.
+* **V1–V5 are met,** so this PLAN is `complete`.
