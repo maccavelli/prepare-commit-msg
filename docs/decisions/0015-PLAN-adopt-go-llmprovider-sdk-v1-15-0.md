@@ -1,6 +1,6 @@
 ---
-status: proposed
-date: 2026-10-19
+status: in-progress
+date: 2026-10-18
 associated-madr: "0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md"
 ---
 # Implement the move to go-llmprovider-sdk v1.15.0 and the ChatGPT plan sign-in
@@ -129,8 +129,9 @@ Associated MADR: [0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md](0015-MADR-adopt
    * `<kind>` is `rate limited` for `ErrRateLimited`, `unavailable` for
      `ErrProviderUnavailable`, `cannot reach` for a `*url.Error`, and
      `error` otherwise. It never quotes the provider's message.
-   * If the owner answers Q2 "only when stderr is a terminal", the line
-     is written only then. That answer becomes a MADR amendment first.
+   * ~~If the owner answers Q2 "only when stderr is a terminal", the line
+     is written only then.~~ *(Phase 0, 2026-10-18: the owner answered
+     "on every retry"; the line is always written.)*
 2. **Tests,** with a fake provider and `retryOut` captured:
    * a 429, then a success: one line, matching the format, with
      `attempt 1 of <max>` and `rate limited`;
@@ -143,7 +144,7 @@ Associated MADR: [0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md](0015-MADR-adopt
 
 1. **`README.md`:**
    * **Configuration:** the plan sign-in in the wizard; the notice; the
-     four terms the app keeps, with the MADR's reasoning for a commit hook.
+     plan terms the MADR lists, and how the app keeps each.
    * **"With Ollama, name the models"** (`README.md:578`) is narrowed to
      Ollama before `v0.30.0`.
    * **The retry line,** where the README describes retries.
@@ -210,4 +211,18 @@ Associated MADR: [0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md](0015-MADR-adopt
 
 ## Execution Record
 
-(Empty until the PLAN is approved.)
+### Phase 0: records (2026-10-18)
+
+* The pair and its index rows were committed by the owner as `1dc2434`,
+  who then said "proceed, prompt me questions".
+* **The owner's answers,** each the recommended one: Q1 yes, offer the
+  sign-in; Q2 the line on every retry; Q3 `v1.10.0`; no host test
+  before the release, CI's three platforms being enough. No decision
+  changes. The MADR records each answer and is `accepted`; this PLAN
+  is `in-progress`.
+* **Corrections, no decision changed:**
+  * the records' date is the local date, 2026-10-18, where the drafts
+    had 2026-10-19;
+  * Phase 4 said "four terms" where the MADR lists five; it now names
+    the MADR's list;
+  * Phase 3's step for a Q2 answer of "only on a terminal" is struck.

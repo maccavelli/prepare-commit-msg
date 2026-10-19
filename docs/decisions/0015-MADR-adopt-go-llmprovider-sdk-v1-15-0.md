@@ -1,8 +1,8 @@
 ---
-status: proposed
-date: 2026-10-19
+status: accepted
+date: 2026-10-18
 decision-makers: Project Owner
-consulted: go-llmprovider-sdk (its records 0040 to 0046, which made v1.13.0 to v1.15.0); GitHub issues 1 and 2 of this repository; probes on a scratch copy of this repository moved to v1.15.0, 2026-10-19
+consulted: go-llmprovider-sdk (its records 0040 to 0046, which made v1.13.0 to v1.15.0); GitHub issues 1 and 2 of this repository; probes on a scratch copy of this repository moved to v1.15.0, 2026-10-18
 informed: users of the installed hook, who receive the change through `update`
 ---
 # Move to go-llmprovider-sdk v1.15.0, and offer the ChatGPT plan sign-in under this app's own name
@@ -30,7 +30,7 @@ Every claim below is marked:
 
 * **[read]**: from this repository, or the SDK's source or records at the
   version named;
-* **[probed]**: run on 2026-10-19 on a scratch copy of this repository at
+* **[probed]**: run on 2026-10-18 on a scratch copy of this repository at
   `a04b617`, moved to `v1.15.0` by the SDK's `tools/consumer.py
   --dependent` (which copies the repository without `.git` or any secret
   file, and never changes it), never in this tree;
@@ -261,9 +261,12 @@ sign-in is a decision of its own, and 0014's PLAN is complete.
 * **Q1.** Does a commit hook that runs on each `git commit` meet the
   terms' "user's own activity", and need no separate consent? D2 assumes
   yes.
+  **Answered 2026-10-18: yes.** D2 stands.
 * **Q2.** Should the retry line go to stderr on every retry (D3), or only
   when stderr is a terminal?
+  **Answered 2026-10-18: on every retry.** D3 stands.
 * **Q3.** Is the release `v1.10.0` (D7)?
+  **Answered 2026-10-18: `v1.10.0`.** D7 stands.
 
 ## More Information
 
