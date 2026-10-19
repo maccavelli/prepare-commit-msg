@@ -27,6 +27,7 @@ FLEET_LINT_CFG := .golangci.yml
 .PHONY: all build clean test coverage test-coverage run install version build-all \
 	linux linux-amd64 linux-arm64 darwin-arm64 darwin-amd64 windows-amd64 windows-arm64 \
 	help tools fmt fmt-check mod-check vet lint vuln workflow-lint verify verify-staged \
+	preflight pre-add-check \
 	hooks-install hooks-uninstall hooks-test check-records markdownlint tools-test
 
 all: help build-all
@@ -113,16 +114,25 @@ workflow-lint: tools ## Checks shell scripts and GitHub Actions workflows
 
 verify: tools mod-check fmt-check lint vet test coverage vuln workflow-lint tools-test build-all ## Runs the complete local and CI quality contract
 
-verify-staged: tools ## Checks the exact staged Go snapshot
-	$(PYTHON) scripts/go-precheck.py
+preflight: ## Runs every CI gate that runs off GitHub: records, Markdown, verify (0017-MADR)
+	@echo "==> check-records"; $(MAKE) --no-print-directory check-records
+	@echo "==> markdownlint"; $(MAKE) --no-print-directory markdownlint
+	@echo "==> verify"; $(MAKE) --no-print-directory verify
+	@echo "preflight passed"
+
+FILES ?=
+pre-add-check: tools ## Checks the staged Go snapshot, or FILES=... (scripts/go-precheck.py)
+	$(PYTHON) scripts/go-precheck.py $(FILES)
+
+verify-staged: pre-add-check ## Alias of pre-add-check; earlier records cite it
 
 tools-test: ## Checks the maintainer tools in tools/ (0016-MADR)
 	$(PYTHON) -B -m unittest discover -s tools -p 'test_*.py'
 
-check-records:
+check-records: ## Checks record naming, pairing, placement and doc links
 	python3 scripts/check_records.py --check-all
 
-markdownlint:
+markdownlint: ## Lints Markdown with the fleet configuration
 	npx --yes markdownlint-cli2@0.23.2
 
 hooks-install: ## Installs repository pre-push while preserving host hooks

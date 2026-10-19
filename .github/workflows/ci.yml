@@ -45,6 +45,12 @@ jobs:
             go.sum
             scripts/bootstrap-tools.sh
 
+      - name: Check records and documentation links
+        run: make check-records
+
+      - name: Lint Markdown
+        run: make markdownlint
+
       - name: Run repository quality contract
         run: make verify
 

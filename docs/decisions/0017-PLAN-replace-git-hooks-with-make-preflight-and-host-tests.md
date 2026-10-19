@@ -573,3 +573,37 @@ script.
   account names, the host aliases and domains, the Windows host's address,
   home and temporary-directory paths): no hit; `py_compile` of both files:
   0. Staged for the owner's commit.
+
+### Phase 2: `make preflight`, `make pre-add-check`, and CI (2026-10-19)
+
+* Phase 1a was committed by the owner as `ce43f97`.
+* **Steps 1–3,** as written: `preflight`, `pre-add-check` (with `FILES ?=`)
+  and `verify-staged` as its alias in the `Makefile`, both new targets in
+  `.PHONY`, and `##` help text on `check-records` and `markdownlint`; in
+  `ci.yml`'s `go` job, "Check records and documentation links" and "Lint
+  Markdown" before "Run repository quality contract". The help text says
+  `FILES=...`, in ASCII; the `Makefile` carries no non-ASCII byte. `make
+  help` lists all five targets.
+* **Step 4, fail first,** each in its own scratch clone of `ce43f97`
+  carrying this phase's `Makefile` and `ci.yml`, removed afterwards:
+
+  | Plant | Command | Exit | Banners printed | The failure |
+  | :--- | :--- | :--- | :--- | :--- |
+  | none (control) | `make preflight` | 0 (25 s) | all three, then `preflight passed` | — |
+  | a record link to `0017-MADR-no-such-record.md` | `make preflight` | 2 | `==> check-records` only | `broken relative link: docs/decisions/0017-PLAN-…:8: 0017-MADR-no-such-record.md` |
+  | `#No space after the hash` in the guide | `make preflight` | 2 | `check-records`, `markdownlint` | `MD018/no-missing-space-atx` at `docs/guides/cicd-operations.md:247:1` |
+  | a staged, unformatted `zz_unformatted.go` | `make preflight` | 2 | all three; no `preflight passed` | `gofmt found unformatted files: zz_unformatted.go`; `[fmt-check] Error 1` |
+  | `no-such-key: true` on the "Lint Markdown" step | `make workflow-lint` | 2 | — | actionlint: `ci.yml:53:9: unexpected key "no-such-key" for step` |
+
+* **Step 5:** `make -n pre-add-check FILES=main.go` printed
+  `./scripts/bootstrap-tools.sh` then `python3 scripts/go-precheck.py
+  main.go`; with nothing staged, `make pre-add-check` exit 0 (both pinned
+  modules resolved from GitHub); `make -n verify-staged` ends with
+  `python3 scripts/go-precheck.py`; `grep -qE '^pre-add-check:' Makefile`
+  exit 0, so the fleet gate (F8) now finds it.
+* **Step 6:** `make preflight` in the tree: exit 0; `==> check-records`,
+  `==> markdownlint`, `==> verify`, `0 issues.`, coverage 83.7%, `No
+  vulnerabilities found.`, the tools' 10 tests, `preflight passed`.
+  Staged for the owner's commit, after the identifier scan below.
+* **Not yet confirmed:** that the CI image's `python3` and `npx` run the
+  two new steps. That is Phase 5 step 3, from the first run's log.
