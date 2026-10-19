@@ -55,6 +55,8 @@ clone. Hosts are named here by role only.
   `docs/architecture.md`, `docs/README.md`, and the banners of
   `0003-MADR-layer-and-harden-ci-cd-quality-gates.md` and
   `0013-MADR-align-repository-with-workspace-scaffolding.md`.
+* Added by Deviation 1: `tools/fakeprovider.py`, and a dated note in
+  `0016-PLAN-keep-maintainer-tools-starting-with-a-fake-provider.md`.
 * Deleted: `.githooks/pre-push`, `scripts/install-hooks.sh`,
   `scripts/uninstall-hooks.sh`, `scripts/test-hooks.sh`.
 * This clone's `.git/config` (`make hooks-uninstall`, Phase 4).
@@ -137,6 +139,28 @@ No file in the tree changes in this phase.
    * nothing fails anywhere: record "not reproduced on any target" with the
      results, and continue. The removal in Phase 4 takes the hook off the
      push path either way.
+
+### Phase 1a: fix the fake provider's race *(Deviation 1, 2026-10-19)*
+
+1. **`tools/fakeprovider.py`:** `record` logs and returns whether the
+   request was the last of `max_requests`; `Handler.answer` calls it
+   *before* `send_response`, then writes and flushes the body, then starts
+   the shutdown thread if `record` said so.
+2. **`tools/test_tools.py`:** `setUp` registers `self.tmp.cleanup` with
+   `addCleanup` first, so it runs after every server cleanup, and
+   `tearDown` goes. A new test,
+   `test_log_line_is_written_before_the_answer_arrives`, wraps the
+   server's `record` with a 0.3 s delay, makes one request, and reads the
+   log at once.
+3. **Fail first:** the new test against the committed `fakeprovider.py`, on
+   a scratch copy, fails.
+4. **Stability:** the phase's `tools/` on scratch copies, `make
+   tools-test`'s command 30 times each on macOS, the Linux host and the
+   Windows host: 0 failures.
+5. **0016-PLAN:** a dated note in its Execution Record: the flake, found
+   by this PLAN's Phase 1, fixed under Deviation 1.
+6. Gate: `make tools-test`, `make verify`, `make check-records`, `make
+   markdownlint`, the identifier scan. The owner commits.
 
 ### Phase 2: `make preflight`, `make pre-add-check`, and CI (D2, D3)
 
@@ -443,3 +467,109 @@ output, each fail-first result, the hosts' times, and any deviation, dated.
   run an SSH server. It was probed (F12), A1's reason was struck and
   annotated, and the owner chose `wsl -d` through the Windows host's
   connection over that server.
+
+### Phase 1: reproduce the failing Python script (2026-10-19)
+
+No file in the tree changed. Step 1's question was put to the owner; the
+reproduction (step 2) ran without waiting for the answer, and found the
+script.
+
+* **Step 2,** on a clone of `d12b24d` from a `HEAD --tags` bundle on each
+  target, over the F4 transports. `exit` is each step's own status; every
+  target's transport exited 0 and its clone was removed afterwards:
+
+  | Target | `tools-test` | `workflow-lint` | `verify` | disclosure guard, `HEAD~5..HEAD` |
+  | :--- | :--- | :--- | :--- | :--- |
+  | Linux host | **exit=2** (4 s) | exit=0 (143 s) | exit=0 (260 s) | no global `pre-push` on the host |
+  | WSL Ubuntu 24.04 | exit=0 (4 s) | exit=0 (12 s) | **exit=2** (33 s), at `tools-test` | no global hooks path |
+  | Windows host | **exit=2** (5 s) | exit=0 (14 s) | exit=0 (56 s) | exit=0 (1 s) |
+  | macOS | exit=0 (4 s) | exit=0 (11 s) | exit=0 (24 s) | exit=0 (1 s) |
+
+  The Linux host's long `workflow-lint` and `verify` include the first
+  `make tools` bootstrap in a fresh clone.
+* **The script is `tools/test_tools.py`,** run by `make tools-test` and so
+  by `make verify`, the pre-push hook and CI's `go` job. Each failure is
+  the same test:
+
+  ```text
+  FAIL: test_log_holds_method_path_status_and_no_header (test_tools.FakeProviderTest...)
+  AssertionError: Lists differ: ['GET[29 chars]1/chat/completions -> 429'] != ['GET[29 chars]1/chat/completions -> 429', 'POST /v1/chat/completions -> 200']
+  ```
+
+  On Windows it also raised, in `tearDown`:
+  `OSError: [WinError 145] The directory is not empty: '...\Temp\tmp…'`.
+* **Cause** (`tools/fakeprovider.py:106-115`, `tools/test_tools.py:29-40`):
+  1. `Handler.answer` writes the response body, then calls `record`, which
+     writes the log line. The client has its whole answer
+     (`Content-Length`) and returns, so the test can read the log before
+     the server thread writes the last line.
+  2. `tearDown` removes the temporary directory before the cleanups
+     registered with `addCleanup` stop the server, because unittest runs
+     `tearDown` first. A late log write then lands in a directory being
+     removed: on Windows, `WinError 145`.
+* **Proven** on scratch copies of `tools/` only, each in a temporary
+  directory (`make tools-test`'s command, run N times):
+
+  | Variant | macOS | Linux host | Windows host |
+  | :--- | :--- | :--- | :--- |
+  | as committed, 30 runs | 4/30 failed | 7/30 failed | 9/30 failed |
+  | as committed, `record` delayed 0.3 s, 5 runs | 5/5 failed | 5/5 failed | 5/5 failed |
+  | candidate fix, 30 runs | 0/30 failed | 0/30 failed | 0/30 failed |
+  | candidate fix, `record` delayed 0.3 s, 5 runs | 0/5 failed | 0/5 failed | 0/5 failed |
+
+  The candidate fix logs before the response is sent (the server stops
+  only after it is sent), and registers the temporary directory's removal
+  as the first cleanup, so it runs last.
+* **CI** passed both runs since the tests landed (`5981bc9`, `bdb82d6`),
+  consistent with a 13–30% failure rate.
+* **The disclosure guard is not the failing script.** It exited 0 over five
+  real commits on macOS and on Windows.
+* **Step 4:** the failure is in a `make verify` step, so it is a deviation:
+  Deviation 1, below, on the owner's choice.
+
+### Deviation 1 (2026-10-19): `tools/test_tools.py` races its fake provider
+
+* **Found:** Phase 1's record above. The script the owner saw fail is the
+  fake provider's test, which fails 13–30% of runs on every OS.
+* **Decision (owner, "Fix under 0017"):** the fix goes under this PLAN as
+  Phase 1a, before Phase 2, with a test that fails every time on the old
+  code. 0016-PLAN, whose deliverable it is, gets a dated note pointing
+  here, and is not reopened.
+* **Added to scope:** `tools/fakeprovider.py`, `tools/test_tools.py`, and
+  `0016-PLAN-keep-maintainer-tools-starting-with-a-fake-provider.md` (the
+  note only).
+* **Not changed:** what `fakeprovider.py` serves, logs, or how it stops; the
+  log line is written earlier, and the server stops at the same point,
+  after the last answer is sent.
+
+### Phase 1a: fix the fake provider's race (2026-10-19)
+
+* Phase 0's status changes were committed by the owner as `60f1de1`.
+* **Steps 1–2:** `record` returns whether the request is the last;
+  `answer` calls it before `send_response`, flushes the body, then starts
+  the shutdown; `setUp` registers the temporary directory's removal first,
+  and `tearDown` is gone; the new test
+  `test_log_line_is_written_before_the_answer_arrives` was added. The diff
+  is the candidate fix that Phase 1 proved, plus the new test and a comment
+  citing this deviation.
+* **Step 3, fail first:** the new test, with `HEAD`'s `fakeprovider.py`, on
+  a scratch copy: exit 1.
+
+  ```text
+  ERROR: test_log_line_is_written_before_the_answer_arrives (test_tools.FakeProviderTest...)
+  FileNotFoundError: [Errno 2] No such file or directory: '.../T/tmp…/requests.log'
+  FAILED (errors=1)
+  ```
+
+* **Step 4, stability:** this phase's `tools/`, 30 runs each: macOS 0/30
+  failed, the Linux host 0/30, the Windows host 0/30; each run `Ran 10
+  tests`.
+* **Step 5:** 0016-PLAN's Execution Record gained "Later finding
+  (2026-10-19)", pointing here.
+* **Step 6, the gate:** `make tools-test` exit 0 (`Ran 10 tests`, OK);
+  `make verify` exit 0 (`0 issues.`, coverage 83.7%, `No vulnerabilities
+  found.`, the tools' 10 tests); `make check-records` 0; `make
+  markdownlint` 0; the identifier scan of the staged diff (the local
+  account names, the host aliases and domains, the Windows host's address,
+  home and temporary-directory paths): no hit; `py_compile` of both files:
+  0. Staged for the owner's commit.

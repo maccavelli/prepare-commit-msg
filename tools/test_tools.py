@@ -28,10 +28,10 @@ class FakeProviderTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
+        # Cleanups run last-in first-out, so this one, added first, runs after
+        # every server a test starts has stopped and released the log.
+        self.addCleanup(self.tmp.cleanup)
         self.log = Path(self.tmp.name) / "requests.log"
-
-    def tearDown(self) -> None:
-        self.tmp.cleanup()
 
     def start(self, **kwargs: object) -> fakeprovider.FakeProvider:
         server = fakeprovider.serve(log=self.log, **kwargs)
@@ -91,6 +91,20 @@ class FakeProviderTest(unittest.TestCase):
                                             "POST /v1/chat/completions -> 200"])
         self.assertNotIn(MADE_UP_KEY, log)
         self.assertNotIn("Authorization", log)
+
+    def test_log_line_is_written_before_the_answer_arrives(self) -> None:
+        # A slow log write must hold the answer back, not trail it
+        # (0017-PLAN, Deviation 1).
+        server = self.start()
+        record = server.record
+
+        def slow_record(*args: object) -> bool:
+            time.sleep(0.3)
+            return record(*args)
+
+        server.record = slow_record
+        self.assertEqual(self.request(server, "GET", "/v1/models")[0], 200)
+        self.assertEqual(self.log.read_text(encoding="utf-8").splitlines(), ["GET /v1/models -> 200"])
 
     def test_max_requests_stops_the_server(self) -> None:
         server = fakeprovider.FakeProvider(0, 429, 1, "m", self.log, max_requests=1)

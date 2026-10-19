@@ -339,6 +339,12 @@ rationale is not rewritten.
 
 ## More Information
 
+* **Resolved, 2026-10-19:** the failing script is `tools/test_tools.py`.
+  Its fake provider logs a request after sending the answer, so the test
+  can read the log too early (13–30% of runs, on every OS). It is a gate
+  inside `make verify`, so it is fixed under the PLAN, as Deviation 1
+  ([0017-PLAN-replace-git-hooks-with-make-preflight-and-host-tests.md](0017-PLAN-replace-git-hooks-with-make-preflight-and-host-tests.md),
+  Phase 1). No decision here changes.
 * **The owner's answers, 2026-10-19,** each the recommended option:
   * *Which Python script fails:* reproduce it first. The PLAN's first phase
     runs the managed `pre-push` by hand with a ref line on stdin, in a

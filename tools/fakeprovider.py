@@ -85,16 +85,14 @@ class FakeProvider(ThreadingHTTPServer):
             self.generations += 1
             return self.generations
 
-    def record(self, method: str, path: str, status: int) -> None:
-        """Logs one request, and stops the server after max_requests."""
+    def record(self, method: str, path: str, status: int) -> bool:
+        """Logs one request; True when it is the last of max_requests."""
         with self.lock:
             self.requests += 1
-            done = self.max_requests is not None and self.requests >= self.max_requests
             if self.log is not None:
                 with self.log.open("a", encoding="utf-8") as f:
                     f.write(f"{method} {path} -> {status}\n")
-        if done:
-            threading.Thread(target=self.shutdown, daemon=True).start()
+            return self.max_requests is not None and self.requests >= self.max_requests
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -105,6 +103,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def answer(self, status: int, body: dict, headers: tuple[tuple[str, str], ...] = ()) -> None:
         data = json.dumps(body).encode("utf-8")
+        # Logged before the answer is sent, so a client that has its answer
+        # can read the log line; the server stops only after the answer is out
+        # (0017-PLAN, Deviation 1).
+        done = self.server.record(self.command, self.path, status)
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
@@ -112,7 +114,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header(name, value)
         self.end_headers()
         self.wfile.write(data)
-        self.server.record(self.command, self.path, status)
+        self.wfile.flush()
+        if done:
+            threading.Thread(target=self.server.shutdown, daemon=True).start()
 
     def do_GET(self) -> None:
         if self.path.rstrip("/").endswith("/models"):

@@ -190,3 +190,16 @@ Associated MADR: [0016-MADR-keep-maintainer-tools-starting-with-a-fake-provider.
   tests`. Two `gh run watch` sessions ended on GitHub API errors (HTTP 502)
   while the build jobs queued; the run itself never failed.
 * **V1–V5 are met,** so this PLAN is `complete`.
+
+### Later finding (2026-10-19): the log test raced the fake
+
+* Found by
+  [0017-PLAN-replace-git-hooks-with-make-preflight-and-host-tests.md](0017-PLAN-replace-git-hooks-with-make-preflight-and-host-tests.md)
+  Phase 1: `test_log_holds_method_path_status_and_no_header` failed in
+  13–30% of runs on macOS, Linux and Windows, because `Handler.answer` wrote
+  the log line after sending the answer, and `tearDown` removed the log's
+  directory before the server stopped. V1 held only on the runs observed
+  above.
+* Fixed under 0017-PLAN, Deviation 1 (Phase 1a), with a test that fails on
+  this phase's code. This PLAN stays `complete`; its record above is not
+  rewritten.
