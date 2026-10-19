@@ -27,7 +27,7 @@ FLEET_LINT_CFG := .golangci.yml
 .PHONY: all build clean test coverage test-coverage run install version build-all \
 	linux linux-amd64 linux-arm64 darwin-arm64 darwin-amd64 windows-amd64 windows-arm64 \
 	help tools fmt fmt-check mod-check vet lint vuln workflow-lint verify verify-staged \
-	hooks-install hooks-uninstall hooks-test check-records markdownlint
+	hooks-install hooks-uninstall hooks-test check-records markdownlint tools-test
 
 all: help build-all
 
@@ -111,10 +111,13 @@ vuln: tools ## Reports reachable vulnerabilities using the current Go database
 workflow-lint: tools ## Checks shell scripts and GitHub Actions workflows
 	ACTIONLINT=$(ACTIONLINT) PYTHON=$(PYTHON) ./scripts/verify-scripts.sh
 
-verify: tools mod-check fmt-check lint vet test coverage vuln workflow-lint build-all ## Runs the complete local and CI quality contract
+verify: tools mod-check fmt-check lint vet test coverage vuln workflow-lint tools-test build-all ## Runs the complete local and CI quality contract
 
 verify-staged: tools ## Checks the exact staged Go snapshot
 	$(PYTHON) scripts/go-precheck.py
+
+tools-test: ## Checks the maintainer tools in tools/ (0016-MADR)
+	$(PYTHON) -B -m unittest discover -s tools -p 'test_*.py'
 
 check-records:
 	python3 scripts/check_records.py --check-all

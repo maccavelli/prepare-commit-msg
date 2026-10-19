@@ -107,6 +107,15 @@ docs/reports/NNNN-GATES-short-slug.md
 - Run any additional product check required by the active PLAN phase.
 - A file that fails a required check is not committed.
 
+## Tools
+
+`tools/` holds the tools a maintainer or an agent runs by hand
+([`tools/README.md`](tools/README.md); 0016-MADR); `scripts/` holds what
+`make` and CI run. Each tool is Python 3 on the standard library, with a test
+in `tools/test_tools.py`; `make tools-test` runs them, and `make verify` runs
+it. A release's live retry check runs the hook against
+`tools/fakeprovider.py` (0015-PLAN's Phase 5 step 3, with Deviation 5).
+
 ## Identifiers
 
 Nothing committed carries a hostname, account name, org-internal path, or a

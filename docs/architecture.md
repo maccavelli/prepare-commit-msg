@@ -57,6 +57,7 @@ main.go                    CLI dispatch, hook execution, and the commit-message 
 update.go                  update command and release-asset selection
 internal/                  git, config, UI, and atomic file writes
 scripts/                   verification, hook, and repository utilities
+tools/                     maintainer tools, run by hand: tools/README.md
 .githooks/pre-push         full local verification before push
 .github/workflows/ci.yml   CI, native tests, and release orchestration
 selfupdate-release.json    release asset and identity specification

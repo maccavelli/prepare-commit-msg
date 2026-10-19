@@ -15,4 +15,11 @@ done < <(
 		-type f 2>/dev/null | LC_ALL=C sort
 )
 
+# tools/ holds Python and a README; only its .py files are scripts (0016-MADR D1).
+while IFS= read -r script; do
+	"$PYTHON" -c 'import ast, sys; ast.parse(open(sys.argv[1], encoding="utf-8").read(), sys.argv[1])' "$script"
+done < <(
+	find "$REPO_ROOT/tools" -name '*.py' -not -path '*/__pycache__/*' -type f 2>/dev/null | LC_ALL=C sort
+)
+
 "$ACTIONLINT" "$REPO_ROOT"/.github/workflows/*.yml

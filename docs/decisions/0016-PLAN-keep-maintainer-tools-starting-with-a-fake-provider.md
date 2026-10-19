@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: in-progress
 date: 2026-10-19
 associated-madr: "0016-MADR-keep-maintainer-tools-starting-with-a-fake-provider.md"
 ---
@@ -132,4 +132,54 @@ Associated MADR: [0016-MADR-keep-maintainer-tools-starting-with-a-fake-provider.
 
 ## Execution Record
 
-(Empty until the PLAN is approved.)
+### Phase 0: records (2026-10-19)
+
+* The MADR was accepted and this PLAN indexed, committed by the owner as
+  `c15103a`; the owner then approved it ("approved, proceed").
+
+### Phase 1: `tools/` and the fake provider (2026-10-19)
+
+* **No deviation.**
+* **Steps 1–7** as written:
+  * `tools/fakeprovider.py`: `serve(...)` returns a running
+    `FakeProvider` (a `ThreadingHTTPServer` on `127.0.0.1`, port 0); its
+    generation counter and its request count are under one lock;
+    `--max-requests` stops it from a thread, so a request is answered
+    before the server shuts down.
+  * `tools/test_tools.py`: nine tests; every request carries an
+    `Authorization` header with a made-up key, which the log test requires
+    absent.
+  * `tools/README.md`; the `tools-test` target, in `.PHONY` and in
+    `verify`; `verify-scripts.sh` parses `tools/*.py` in a loop of its own;
+    the tree in `docs/architecture.md`; AGENTS.md's "Tools".
+* **Step 8, fail first,** each on a fresh scratch copy of the working tree:
+  * the chat completion in the Responses shape (the 0015 fault):
+    `test_chat_completions_fail_first_then_answer` fails, `'response' !=
+    'chat.completion'`;
+  * `Retry-After` left out: the same test fails, `None != '1'`;
+  * the log given the request's headers:
+    `test_log_holds_method_path_status_and_no_header` fails;
+  * `verify-scripts.sh` given the whole `tools/` directory: `make
+    workflow-lint` exits 2, `tools/README.md: line 5: syntax error near
+    unexpected token`. The trap of step 5 is real.
+* **Step 9.** `make -n tools` prints `./scripts/bootstrap-tools.sh`.
+* **Step 10, live,** on a scratch build of the tree with a scratch `HOME`:
+  the fake with `--fail 1`; `configure --yes --provider together
+  --base-url http://127.0.0.1:<port>/v1` with a made-up
+  `TOGETHER_API_KEY`, exit 0; the hook on a scratch repository with one
+  staged file, exit 0:
+
+  ```text
+  prepare-commit-msg: generating via together (zai-org/GLM-5.3-Flash)...
+  prepare-commit-msg: together: retrying in 1.2s (attempt 1 of 3): rate limited
+  ```
+
+  The message was the fake's, `chore: add live retry check file`; the
+  fake's log held `POST /v1/chat/completions -> 429`, then `-> 200`, and the
+  key 0 times. The installed hook's SHA-256 was the same before and after.
+* **The gate:** `make tools-test`: 9 tests, OK. `make verify`: exit 0 (0
+  issues; coverage 83.7%; no vulnerabilities; the tools' tests). `make
+  check-records`, `make markdownlint`: 0. The identifier scan of the staged
+  files: no hit.
+* **Left for after the push:** V3's CI run on `main`, after which this PLAN
+  is `complete`.
