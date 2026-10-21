@@ -11,7 +11,7 @@ else
 endif
 .SHELLFLAGS := -eu -o pipefail -c
 
-MOD_VERSION := 1.27.2
+MOD_VERSION := 1.27.3
 BINARY_NAME=prepare-commit-msg
 DIST_DIR=dist
 GIT_DESCRIBE_REDIRECT := $(if $(filter Windows_NT,$(OS)),,2>/dev/null)

@@ -1,6 +1,6 @@
 module github.com/maccavelli/prepare-commit-msg
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/maccavelli/go-llmprovider-sdk v1.15.0

@@ -253,3 +253,28 @@ are in the MADR's Context.
 * The MADR is `accepted`, this PLAN is `in-progress`, and the index rows
   match. The pair and `docs/README.md` are staged. The untracked 0019
   pair is not.
+* The owner committed Phase 0 as `75cb0c3`. The 0019 records followed as
+  `6eb837a`.
+
+### Phase 1, 2026-10-21
+
+* **Step 1, fail first,** on a scratch clone at `75cb0c3`, never in this
+  tree:
+  * `make tools` exited 2: `expected go1.27.2, got go1.27.3`.
+  * `govulncheck ./...` (`v1.8.0`, built and run under
+    `GOTOOLCHAIN=go1.27.2`) exited 3. It reported `Vulnerability #1:
+    GO-2026-6809`, `Found in: crypto/x509@go1.27.2`, `Fixed in:
+    crypto/x509@go1.27.3`.
+* **Step 2:** the three edits were made by a script that checks each one.
+  It found each old string once and the new string after the edit.
+* **Step 3:** `go mod tidy -diff` exited 0 with empty output.
+  `git diff --numstat` showed `1 1` each for `Makefile`, `go.mod` and
+  `scripts/bootstrap-tools.sh`, and nothing else. `grep -rn -E '1\.27\.2'
+  go.mod Makefile scripts .github` exited 1, finding nothing.
+* **Step 4:** `make preflight` exited 0. `make tools` rebuilt
+  golangci-lint, govulncheck and actionlint under go1.27.3, govulncheck
+  printed `No vulnerabilities found.`, no test failed, and the last line
+  was `preflight passed`.
+* **Step 5:** with the files staged, `make check-records`,
+  `make markdownlint` and `make pre-add-check` each exited 0. The last
+  printed `0 issues.` and `No vulnerabilities found.`.
