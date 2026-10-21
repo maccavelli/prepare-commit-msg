@@ -22,7 +22,8 @@ workflow pins of the MADR's option A. The filename keeps its first slug.*
   `036289ecc701d84c7749f4950a57a154c1af2cf4` (`v1.17.2`) and its publish
   workflow to `e8d4904a09194d99761042a8996983e8d5b957eb` (`v1.17.1`), with
   a comment that says why and cites the MADR. If the owner answers Q1 "B",
-  both are `036289ec…`.
+  both are `036289ec…`. *Superseded by MADR Amendment A1 (2026-10-21):
+  both are `036289ec…`. Phase 2a makes the change.*
 * **D4:** the README states what a user can see.
 * **D5:** if the owner answers Q3 yes, `v1.10.1` is released and checked.
 
@@ -145,6 +146,32 @@ workflow pins of the MADR's option A. The filename keeps its first slug.*
 7. Pre-add checks; stage `go.mod`, `go.sum`, `.github/workflows/ci.yml`.
    The owner commits. This is the "`ci.yml` commit" 0019-PLAN waits for.
 
+### Phase 2a: both workflows at `v1.17.2` (MADR A1)
+
+Added 2026-10-21, after Phase 2's commit `c57e9de`, by the owner's
+"option 1".
+
+1. The MADR gains Amendment A1 and this PLAN gains this phase, in the
+   same commit as step 2.
+2. **The edit** is made by a script that checks each step:
+   * the publish line's
+     `@e8d4904a09194d99761042a8996983e8d5b957eb # v1.17.1` becomes
+     `@036289ecc701d84c7749f4950a57a154c1af2cf4 # v1.17.2`;
+   * the comment above the build job is replaced by one that says both
+     workflows are pinned to `v1.17.2`'s commit, the version `go.mod`
+     requires. The publish path is unchanged from `v1.17.1`'s, which
+     has published live (magic-cli-remote `v0.22.2`, run
+     `39635656900`). The comment cites this MADR's A1 and
+     `0010-MADR-adopt-go-selfupdate-lib-v1-9-0.md` D2 and A1.
+3. **Assert:**
+   * `grep -c 036289ecc701d84c7749f4950a57a154c1af2cf4
+     .github/workflows/ci.yml` is `2`;
+   * `grep -c e8d4904a .github/workflows/ci.yml` is `0`;
+   * `git diff --numstat` names only `ci.yml` and this pair;
+   * the whole edited block is read back.
+4. **Gate:** `make preflight` exits 0.
+5. Pre-add checks; stage `ci.yml` and the pair. The owner commits.
+
 ### Phase 3: the README (D4)
 
 1. `README.md` gains, after "Changes with go-llmprovider-sdk v1.15.0", a
@@ -187,7 +214,7 @@ workflow pins of the MADR's option A. The filename keeps its first slug.*
 ### Phase 5: release `v1.10.1` (D5; only if Q3 is yes)
 
 1. The owner tags `v1.10.1` and pushes the tag. CI's `release` job
-   publishes through `e8d4904a…` (option A) or `036289ec…` ("B").
+   publishes through `036289ec…` (MADR A1).
 2. **The release, checked by the agent:**
    * the build job's setup-go logs Go 1.27.3;
    * the run's `sign` job is skipped and `publish` succeeds;
@@ -196,8 +223,8 @@ workflow pins of the MADR's option A. The filename keeps its first slug.*
      SHA256SUMS` passes on the downloaded binaries;
    * `go version -m` on a downloaded binary reports `go1.27.3`;
    * the downloaded `install.sh --help` lists `--force`;
-   * under "B", the run's URL is recorded as the first publish through
-     `036289ec…`.
+   * the run's URL is recorded as the first publish through
+     `036289ec…` (MADR A1).
 3. **`update`, the owner present,** on a scratch copy of `v1.10.0`'s
    binary under a scratch directory; the installed hook is not touched:
    `update --check` reports `v1.10.1`, `update --yes` exits 0, and
@@ -306,4 +333,34 @@ are in the MADR's Context.
   vulnerabilities found.`. `workflow-lint` passed on `ci.yml`, and the
   last line was `preflight passed`.
 * **Step 7:** with the files staged, `make check-records`,
+  `make markdownlint` and `make pre-add-check` each exited 0.
+* The owner committed Phase 2 as `c57e9de`.
+
+### Deviation, 2026-10-21: the publish pin moves to `v1.17.2`
+
+* **Evidence.** The owner asked why the two pins differed. The commits
+  were compared file by file on GitHub. Every part of `036289ec…`'s
+  publish path is the same blob as at `e8d4904a…`: the workflow, the four
+  scripts and `internal/cmd/selfupdate-note`. Only test files and
+  `go.mod`'s `go` and `toolchain` lines differ. The MADR's Context had
+  said the scripts changed in comments and a usage string. That was
+  wrong.
+* **Resolution chosen by the owner** ("option 1"): `go.mod`'s toolchain
+  lines are not part of A1's publish path, so 0010-MADR A1 gives
+  `036289ec…` for both workflows (MADR Amendment A1). Phase 2a was added
+  to make the change.
+
+### Phase 2a, 2026-10-21
+
+* **Step 1:** the MADR gained Amendment A1, plus pointers in D2 and the
+  owner answers, and this PLAN gained Phase 2a. Phase 5 now names
+  `036289ec…`.
+* **Steps 2–3:** the edit was made by a script that checks each step, and
+  the whole block was re-read. `grep -c` on `ci.yml`: `036289ec…` 2,
+  `e8d4904a` 0. `git diff --numstat` named `ci.yml` (`7 8`) and this pair
+  only.
+* **Step 4:** `make preflight` exited 0. Lint showed `0 issues.`, total
+  coverage was `83.7% (minimum 80.0%)`, govulncheck printed `No
+  vulnerabilities found.`, and the last line was `preflight passed`.
+* **Step 5:** with the files staged, `make check-records`,
   `make markdownlint` and `make pre-add-check` each exited 0.

@@ -286,6 +286,9 @@ owner's (2026-10-21) and lands first.
 
 ### D2. The workflow pins
 
+*The publish pin is superseded by Amendment A1 (2026-10-21): both
+workflows pin `036289ec…`.*
+
 * The build workflow's `uses:` pins
   `036289ecc701d84c7749f4950a57a154c1af2cf4 # v1.17.2`, the version
   `go.mod` requires.
@@ -424,6 +427,61 @@ the PLAN. That instruction named neither option, so Q1 takes the
 recommendation, **A**, which A1 requires. Q2 takes the recommendation:
 `NewGitHubUpdater` waits for its own record. **Q3 is open.** A tag needs
 the owner's ask in the turn it is made, so Phase 5 waits for it.
+
+**Q1 revisited 2026-10-21:** the owner chose both workflows at
+`v1.17.2`, by A1's own text (Amendment A1 below).
+
+## Amendments
+
+### A1 (2026-10-21): both workflows at `v1.17.2`, by 0010-MADR A1
+
+*The owner decided this on 2026-10-21 ("option 1"), after Phase 2 had been
+committed as `c57e9de`. A1 supersedes D2's publish pin and corrects the
+Context paragraph "`e8d4904` against `036289e`". Both are left above as
+written.*
+
+* **The correction.** The two commits were re-read file by file
+  **[read]**. `036289ec…` is 9 commits ahead of `e8d4904a…`, which is
+  its merge base. Every part of the publish path is identical at both
+  commits:
+
+  | Path the publish job uses | `e8d4904` (`v1.17.1`) | `036289e` (`v1.17.2`) |
+  | :--- | :--- | :--- |
+  | `.github/workflows/publish-selfupdate-release.yml` | `5048ad0c` | `5048ad0c` |
+  | `scripts/check-release-tag.sh` | `15bab924` | `15bab924` |
+  | `scripts/refuse-existing-release.sh` | `5ce43176` | `5ce43176` |
+  | `scripts/release-latest-flag.sh` | `023c1c5d` | `023c1c5d` |
+  | `scripts/verify-selfupdate-release.sh` | `3b4c00fc` | `3b4c00fc` |
+  | `internal/cmd/selfupdate-note/` | `804438fe` | `804438fe` |
+  | `internal/cmd/selfupdate-release/` | `2ec6408f` | `20594a2d`: only test files and a test fixture differ |
+  | `go.mod` (the job's `go-version-file`) | `3462ade1` | `24d7b31e`: `go 1.26.9` → `1.26.10`, `toolchain go1.27.2` → `go1.27.3` |
+
+  * The `scripts/` tree differs only in `scripts/go-fuzz_test.sh`.
+  * No non-test Go file changed between the two commits.
+  * The Context paragraph's "header comment" and "comments and a usage
+    string" are wrong. Neither change is between these two commits.
+* **The decision.** A1 defines the publish path as "the publish workflow
+  file and the scripts it runs from the pinned checkout". The owner rules
+  that `go.mod`'s `go` and `toolchain` lines are not part of it.
+  `036289ec…`'s publish path is then unchanged from `e8d4904a…`'s, which
+  has published live (magic-cli-remote `v0.22.2`, run `39635656900`,
+  `sign` unset). So 0010-MADR A1 itself makes `036289ec…` the publish pin,
+  with no exception to the rule. Both workflows pin
+  `036289ecc701d84c7749f4950a57a154c1af2cf4 # v1.17.2`.
+* **Consequences.**
+  * One version is pinned everywhere: `go.mod`, the build workflow and the
+    publish workflow.
+  * The publish job builds its tools with Go 1.27.3. The Consequences
+    bullet on Go 1.27.2 no longer applies.
+  * This repository's next tag is the first to run that publish job under
+    Go 1.27.3.
+* **Confirmation.**
+  * `grep -c` on `ci.yml` gives `036289ec…` 2 and `e8d4904a…` 0.
+  * `make preflight` passes.
+  * If Q3 is yes, the release run's URL is recorded as the first publish
+    through `036289ec…`.
+* **If that publish fails,** the PLAN's rollback applies: repin the
+  publish workflow to `e8d4904a…` and tag a new patch.
 
 ## More Information
 
