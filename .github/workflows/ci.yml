@@ -96,13 +96,15 @@ jobs:
     needs: [go, go-native]
     permissions:
       contents: read
-    # Both workflows are pinned to the commit of go-selfupdate-lib v1.15.2,
-    # the version go.mod requires. The publish path (the publish workflow
-    # file and the scripts it runs) is unchanged from v1.11.0's, which has
-    # published live, so 0010-MADR D2's rule, as amended, holds
-    # (docs/decisions/0014-MADR-adopt-go-llmprovider-sdk-v1-11-0-and-go-selfupdate-lib-v1-15-2.md
-    # D1; docs/decisions/0010-MADR-adopt-go-selfupdate-lib-v1-9-0.md D2).
-    uses: maccavelli/go-selfupdate-lib/.github/workflows/build-selfupdate-release.yml@436a7f5976a6815491c7384527fef90869574a1b # v1.15.2
+    # The build workflow is pinned to the commit of go-selfupdate-lib
+    # v1.17.2, the version go.mod requires. The publish workflow (the
+    # release job) is pinned to v1.17.1's, the newest commit with a live
+    # publish (magic-cli-remote v0.22.2, run 39635656900, with sign unset as
+    # here). It moves to v1.17.2's once a publish through that commit is on
+    # record
+    # (docs/decisions/0018-MADR-adopt-go-llmprovider-sdk-v1-18-0-and-go-selfupdate-lib-v1-17-0.md
+    # D2; docs/decisions/0010-MADR-adopt-go-selfupdate-lib-v1-9-0.md D2, A1).
+    uses: maccavelli/go-selfupdate-lib/.github/workflows/build-selfupdate-release.yml@036289ecc701d84c7749f4950a57a154c1af2cf4 # v1.17.2
     with:
       spec-path: selfupdate-release.json
 
@@ -117,7 +119,7 @@ jobs:
       contents: write
       id-token: write
       attestations: write
-    uses: maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml@436a7f5976a6815491c7384527fef90869574a1b # v1.15.2
+    uses: maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml@e8d4904a09194d99761042a8996983e8d5b957eb # v1.17.1
     with:
       artifact-name: ${{ needs.build.outputs.artifact-name }}
       products-json: ${{ needs.build.outputs.products-json }}

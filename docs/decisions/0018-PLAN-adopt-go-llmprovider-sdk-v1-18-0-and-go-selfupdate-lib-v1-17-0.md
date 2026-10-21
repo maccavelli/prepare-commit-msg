@@ -278,3 +278,32 @@ are in the MADR's Context.
 * **Step 5:** with the files staged, `make check-records`,
   `make markdownlint` and `make pre-add-check` each exited 0. The last
   printed `0 issues.` and `No vulnerabilities found.`.
+* The owner committed Phase 1 as `4f9a175`.
+
+### Phase 2, 2026-10-21
+
+* **Step 1, the releases re-read:**
+  * `go list -m -versions` ends at `v1.21.0` (go-llmprovider-sdk) and at
+    `v1.17.2` (go-selfupdate-lib).
+  * `git ls-remote --tags`: `v1.17.1^{}` is `e8d4904a…` and `v1.17.2^{}`
+    is `036289ec…`. No tag is newer.
+  * The owner had published `v1.17.2`'s GitHub Release (no assets) that
+    day. It ran no workflow, so it is not a publish through `036289ec…`'s
+    publish workflow.
+  * The fleet's consumers still pin the publish workflow at `e8d4904a…`
+    (magic-cli-remote) and `adc2c757…` (gobble-cli). No publish through
+    `036289ec…` is on record. Option A stands.
+* **Steps 2–3:** `go get` reported `go-llmprovider-sdk v1.15.0 =>
+  v1.21.0` and `go-selfupdate-lib v1.15.2 => v1.17.2`, and `go mod tidy`
+  exited 0. `git diff --numstat` showed `2 2 go.mod` and `4 4 go.sum`,
+  every changed line naming one of the two modules. `go.mod` keeps
+  `go 1.27.3`. `go mod tidy -diff` exited 0 with empty output.
+* **Steps 4–5:** the pin edits were made by a script that checks each one,
+  and the whole block was re-read. `grep -c` on `ci.yml`: `036289ec…` 1,
+  `e8d4904a…` 1, `436a7f59` 0.
+* **Step 6:** `make preflight` exited 0. Lint showed `0 issues.`, total
+  coverage was `83.7% (minimum 80.0%)`, and govulncheck printed `No
+  vulnerabilities found.`. `workflow-lint` passed on `ci.yml`, and the
+  last line was `preflight passed`.
+* **Step 7:** with the files staged, `make check-records`,
+  `make markdownlint` and `make pre-add-check` each exited 0.

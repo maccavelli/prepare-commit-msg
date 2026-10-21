@@ -1,7 +1,7 @@
-github.com/maccavelli/go-llmprovider-sdk v1.15.0 h1:2e0OXSSoB5WKa+q5dfPUx5BzjdcfIiRib/63zrjBBBc=
-github.com/maccavelli/go-llmprovider-sdk v1.15.0/go.mod h1:en9k+ZhlMT41q/+FtXQrLE/3qDaBrWFr8TeLyZw2+Jg=
-github.com/maccavelli/go-selfupdate-lib v1.15.2 h1:FuQ++o9ojyQUDWR7g7WvLKYBzyNplztF3KrziyynlFE=
-github.com/maccavelli/go-selfupdate-lib v1.15.2/go.mod h1:yZNc7rTDTKgGS2DaqNKRS9ph09bsIsP6ymJBCiV1Kfo=
+github.com/maccavelli/go-llmprovider-sdk v1.21.0 h1:I/XtppPTqONicgX0yIp/H2UQ4Hqy+K8J3zQV1a4ik9g=
+github.com/maccavelli/go-llmprovider-sdk v1.21.0/go.mod h1:dE+W7oDyvVmAxpSOuIJO3qSD3bDTh/olLt/TbByBE1M=
+github.com/maccavelli/go-selfupdate-lib v1.17.2 h1:pe6sZ1U4/efMOc6q5KvFH5tvbxZQLLgK++jY4qIos+c=
+github.com/maccavelli/go-selfupdate-lib v1.17.2/go.mod h1:boXH5t3XBFF7sNNQL8r/w1TUJjuzjrDh7bKDCrlP0Q8=
 golang.org/x/mod v0.40.0 h1:hUv+3cXcdRHz08UmSiOob7sadHig73uo5bkXxQ/tvUs=
 golang.org/x/mod v0.40.0/go.mod h1:0/weTWkPWGBikyTWAX3dkjVztMmBA5hM0DH6BElSupE=
 golang.org/x/sys v0.47.0 h1:o7XGOvZQCADBQQ4Y7VNq2dRWQR7JmOUW8Kxx4ZsNgWs=
