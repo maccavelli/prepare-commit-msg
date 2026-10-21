@@ -364,3 +364,27 @@ are in the MADR's Context.
   vulnerabilities found.`, and the last line was `preflight passed`.
 * **Step 5:** with the files staged, `make check-records`,
   `make markdownlint` and `make pre-add-check` each exited 0.
+* The owner committed Phase 2a as `0d50074`.
+
+### Phase 3, 2026-10-21
+
+* **Step 1:** `README.md` gained "Changes with Go 1.27.3,
+  go-llmprovider-sdk v1.21.0 and go-selfupdate-lib v1.17.2" after the
+  `v1.15.0` section. Q3 is open, so its first line says "The next
+  release".
+  * Before the installer bullet was written, the installers it describes
+    were read at `036289ec…`. Both print `could not remove <path>` and
+    exit 3 (`install.sh`'s uninstall function; `install.ps1`'s
+    `-Uninstall` branch, `return 3`).
+  * `install.ps1` at `436a7f59…` (`v1.15.2`) has no such check.
+* **Step 2:** the table of contents gained the section's line, anchored
+  `#changes-with-go-1273-go-llmprovider-sdk-v1210-and-go-selfupdate-lib-v1172`.
+* **Step 3:** "Building from source needs Go 1.27.3." The remaining
+  `Go 1.27.2` hits in `README.md` are the `v1.8.0` section, which is
+  history, and the new section's own statement that `v1.10.0` was built
+  with it.
+* **Step 4:** `make markdownlint` exited 0 (`0 issues`), and
+  `go test ./...` exited 0 across all five packages, `readme_test.go`
+  included.
+* **Step 5:** with the files staged, `make check-records`,
+  `make markdownlint` and `make pre-add-check` each exited 0.

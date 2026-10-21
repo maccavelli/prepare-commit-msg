@@ -30,6 +30,7 @@ Commit](https://www.conventionalcommits.org/) messages.
 - [Changes with go-selfupdate-lib v1.13.0](#changes-with-go-selfupdate-lib-v1130)
 - [Changes with go-llmprovider-sdk v1.12.0 and go-selfupdate-lib v1.15.2](#changes-with-go-llmprovider-sdk-v1120-and-go-selfupdate-lib-v1152)
 - [Changes with go-llmprovider-sdk v1.15.0](#changes-with-go-llmprovider-sdk-v1150)
+- [Changes with Go 1.27.3, go-llmprovider-sdk v1.21.0 and go-selfupdate-lib v1.17.2](#changes-with-go-1273-go-llmprovider-sdk-v1210-and-go-selfupdate-lib-v1172)
 - [CLI Reference](#cli-reference)
 - [Developer Experience](#developer-experience)
 - [Documentation](#documentation)
@@ -682,6 +683,36 @@ go-selfupdate-lib stays at `v1.15.2`. What you may notice:
 
 ---
 
+## Changes with Go 1.27.3, go-llmprovider-sdk v1.21.0 and go-selfupdate-lib v1.17.2
+
+The next release moves to Go 1.27.3, from go-llmprovider-sdk `v1.15.0` to
+`v1.21.0`, and from go-selfupdate-lib `v1.15.2` to `v1.17.2`
+([0018-MADR](docs/decisions/0018-MADR-adopt-go-llmprovider-sdk-v1-18-0-and-go-selfupdate-lib-v1-17-0.md)).
+What you may notice:
+
+- **Built with Go 1.27.3,** which fixes GO-2026-6809 in `crypto/x509`.
+  `v1.10.0` was built with Go 1.27.2, which has that advisory. Run
+  `prepare-commit-msg update` to take the release.
+- **Retries.** When a provider's reply has started and the provider then
+  reports a failure inside it, the hook retries once, whatever
+  `retry_count` is. Other failures are retried as before.
+- **Wizard messages:**
+  - a refused key, a model-listing warning or a Kilo profile notice shows
+    the error's class and HTTP status, such as
+    `authentication failed, HTTP 401`, and not the service's own message,
+    which can echo a key;
+  - a failed browser or device sign-in, an expired device code and an
+    unreachable Ollama server name the kind of failure first.
+- **The installer.** When `install.sh --uninstall` or
+  `install.ps1 -Uninstall` cannot remove a copy, for example on Windows
+  while the program is running, it prints `could not remove <path>`, removes the
+  rest and exits 3. Before, `install.ps1` reported the copy removed and
+  exited 0. The usage lists a new `--force` (`-Force`). It applies only to
+  a `before_uninstall` hook, and this app has none.
+- **`update`** behaves as in `v1.10.0`.
+
+---
+
 ## CLI Reference
 
 ```text
@@ -702,7 +733,7 @@ Brief guide for contributors and local development.
 
 ### Toolchain & Quality Gates
 
-The repository uses pinned developer tools in `.tools/bin` to ensure identical results across local machines and CI. Building from source needs Go 1.27.2.
+The repository uses pinned developer tools in `.tools/bin` to ensure identical results across local machines and CI. Building from source needs Go 1.27.3.
 
 ```bash
 make tools          # Bootstrap pinned tools (golangci-lint, govulncheck, actionlint)
