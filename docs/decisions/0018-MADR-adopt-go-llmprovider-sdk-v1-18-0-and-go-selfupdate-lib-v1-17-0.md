@@ -2,7 +2,7 @@
 status: accepted
 date: 2026-10-21
 decision-makers: Project Owner
-consulted: go-llmprovider-sdk (its CHANGELOG, v1.16.0 to v1.21.0); go-selfupdate-lib (its CHANGELOG, v1.16.0 to v1.17.2, its migration guide, and its 0025-PLAN's S13 live rehearsal); the release runs of gobble-cli v0.1.1 and magic-cli-remote v0.22.2; magic-cli-remote's 0169-MADR, the fleet toolchain rule, as amended 2026-10-21, and its 0169-PLAN's P14; scratch clones of this repository moved to the new pins, 2026-10-20 and 2026-10-21
+consulted: go-llmprovider-sdk (its CHANGELOG, v1.16.0 to v1.21.0); go-selfupdate-lib (its CHANGELOG, v1.16.0 to v1.17.2, its migration guide, and its 0025-PLAN's S13 live rehearsal); the release runs of <cli-b> v0.1.1 and magic-cli-remote v0.22.2; magic-cli-remote's 0169-MADR, the fleet toolchain rule, as amended 2026-10-21, and its 0169-PLAN's P14; scratch clones of this repository moved to the new pins, 2026-10-20 and 2026-10-21
 informed: users of the installed hook, who receive the change through `update`
 ---
 # Move to Go 1.27.3, go-llmprovider-sdk v1.21.0 and go-selfupdate-lib v1.17.2, with the publish workflow at the newest live-published commit
@@ -220,7 +220,7 @@ before any tag **[read]**.
 
 | Publish pin | Published by | Run | `sign` |
 | :--- | :--- | :--- | :--- |
-| `adc2c757…` (`v1.17.0`) | gobble-cli `v0.1.1`, 2026-10-20 | `39363019252`, success | not set |
+| `adc2c757…` (`v1.17.0`) | <cli-b> `v0.1.1`, 2026-10-20 | `39363019252`, success | not set |
 | `e8d4904a…` (`v1.17.1`) | magic-cli-remote `v0.22.0`, 2026-10-20, and `v0.22.2`, 2026-10-21 | `39635656900`: "sign: skipped", "publish: success" | not set |
 | `036289ec…` (`v1.17.2`) | none on record | | |
 
@@ -505,6 +505,22 @@ is on it", which is left above as written.*
 * **Q3 (D5), answered 2026-10-21: yes.** `v1.10.1` is released after the
   push and a green CI on `main`. The tag is asked for in the turn it is
   made.
+
+### A3 (2026-10-21): the `v1.10.1` publish built no Go
+
+*Found at PLAN Phase 5. A3 corrects A1's consequence "The publish job
+builds its tools with Go 1.27.3", which is left above as written.*
+
+* **What happened.** This repository publishes raw binaries, with no
+  archives. The publish workflow's "Set up Go for the archive check" and
+  "Check archived programs" steps run only
+  `if: steps.verify.outputs.packed == 'true'`. The sign job, the other
+  user of Go, is skipped when `sign` is unset. So run `39709052042`
+  compiled nothing with Go in its publish job, and the library's `go.mod`
+  toolchain line did not reach this release **[read]**.
+* **What still holds.** The publish job ran the same workflow file and the
+  same four scripts as `v1.17.1`'s, which have published live. The run
+  is the first publish through `036289ec…`, and it succeeded.
 
 ## More Information
 

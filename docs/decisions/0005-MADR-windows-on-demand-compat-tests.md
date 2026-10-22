@@ -41,7 +41,7 @@ Measured on 2026-09-14 against worktree
 
 **Host and toolchain**
 
-* Agent default shell is WSL2 (`uname -a`: `Linux MAC420
+* Agent default shell is WSL2 (`uname -a`: `Linux <windows-host>
   6.6.87.2-microsoft-standard-WSL2`). `go` is **not** on the WSL PATH.
   WSL `python3` is `/usr/bin/python3` **3.12.3**, `sys.platform=linux`.
 * Native Windows Go, via `cmd.exe /C "go version && go env GOOS GOARCH"`:

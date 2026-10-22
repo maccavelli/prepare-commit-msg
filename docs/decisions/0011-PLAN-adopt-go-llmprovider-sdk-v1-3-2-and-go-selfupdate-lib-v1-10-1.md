@@ -43,7 +43,7 @@ Done means every item under Verification holds.
 * Adopting `releasespec`, `build-selfupdate-release.yml`, the installers,
   services, archives or codesign.
 * Any change in go-llmprovider-sdk or go-selfupdate-lib.
-* gobble-cli's versions.
+* <cli-b>'s versions.
 * Push and tags, which are the owner's.
 
 ## Rules for every phase

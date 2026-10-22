@@ -2,7 +2,7 @@
 status: accepted
 date: 2026-10-19
 decision-makers: Project Owner
-consulted: gobble-cli and magic-cli-remote `make preflight`; go-tui-lib 0018-MADR-python-verification-tools.md (its `remote` runner); the owner's dev-host fleet notes
+consulted: <cli-b> and magic-cli-remote `make preflight`; go-tui-lib 0018-MADR-python-verification-tools.md (its `remote` runner); the owner's dev-host fleet notes
 informed: maintainers and agents working in this repository
 ---
 # Replace the repository Git hooks with `make preflight` and a cross-host test run
@@ -64,7 +64,7 @@ Information).
 
 **How the newer repositories work** **[read]**:
 
-* **gobble-cli** and **magic-cli-remote** set no local `core.hooksPath` and
+* **<cli-b>** and **magic-cli-remote** set no local `core.hooksPath` and
   carry no `.githooks/`. Each has `make preflight`: every CI gate in one
   target, each announced with `==> <gate>`, stopping at the first failure,
   ending `preflight passed`. Each has `make pre-add-check FILES=…`, which the
@@ -77,7 +77,7 @@ Information).
   paths and configured identifiers from what comes back. The hosts are named
   only in a config file outside the repository; a placeholder example is
   committed.
-* gobble-cli's 0007-PLAN ran `make preflight` inside a WSL distro the same
+* <cli-b>'s 0007-PLAN ran `make preflight` inside a WSL distro the same
   way, by hand.
 
 **The fleet's test hosts** cover every CI runner's platform: a Linux
@@ -119,7 +119,7 @@ not, what replaces it so that a push is known to pass CI before it is made?
 The owner accepted this decision on 2026-10-19 ("accepted"), with the four
 answers recorded under More Information.
 
-Chosen option: "C", because it is what gobble-cli, magic-cli-remote and
+Chosen option: "C", because it is what <cli-b>, magic-cli-remote and
 go-tui-lib do, it makes `git push` return as fast as the disclosure guard
 does, and — unlike today's hook — it runs CI's `go` job on Linux and its
 `go-native` job on Linux, macOS and Windows before the push, which is the
@@ -165,7 +165,7 @@ the other while `make verify` stays the single definition of the Go gates.
 ### D3. `make pre-add-check`: the fleet name for the staged check
 
 `make pre-add-check FILES=…` runs `scripts/go-precheck.py $(FILES)`, the
-same contract as gobble-cli's and magic-cli-remote's, so the fleet's agent
+same contract as <cli-b>'s and magic-cli-remote's, so the fleet's agent
 commit gate finds it. `make verify-staged` stays as an alias, because
 earlier records cite it.
 
@@ -357,7 +357,7 @@ rationale is not rewritten.
   * *Default hosts:* CI's platforms only (D4).
   * *Push procedure:* `make preflight` always, `make preflight-hosts` when
     the change is OS-sensitive (D5).
-* Sibling evidence: gobble-cli `Makefile` (`preflight`, `pre-add-check`);
+* Sibling evidence: <cli-b> `Makefile` (`preflight`, `pre-add-check`);
   magic-cli-remote `Makefile` (`preflight`, "a green preflight means a green
   CI"); go-tui-lib `docs/decisions/0018-MADR-python-verification-tools.md`
   and `tools/verify/remote.py`.

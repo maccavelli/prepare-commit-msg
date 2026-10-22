@@ -43,7 +43,7 @@ Done means every item under Verification holds.
   archives, codesign, or `AllowSpecialModeBits`.
 * **Any change in go-selfupdate-lib,** including its 0013-PLAN B6
   rehearsal, which is that repository's work.
-* **gobble-cli's pin.**
+* **<cli-b>'s pin.**
 * **Push and tags,** which are the owner's.
 
 ## Rules for every phase
@@ -356,4 +356,4 @@ at both versions.
   * **The MADR's "not decided here" items:**
     * adopting the release spec and build workflow, after go-selfupdate-lib
       `v1.10.0`;
-    * gobble-cli's go-selfupdate-lib pin at `v1.7.0`.
+    * <cli-b>'s go-selfupdate-lib pin at `v1.7.0`.

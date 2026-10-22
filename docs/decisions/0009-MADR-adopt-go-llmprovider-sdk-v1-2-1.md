@@ -371,7 +371,7 @@ outcome above stands as written, and this record is `accepted`.
 * Not decided here:
   * go-selfupdate-lib `v1.5.0` to `v1.9.0`;
   * acting on `FinishLength`;
-  * gobble-cli's pin. gobble-cli is another consumer of the SDK, at
+  * <cli-b>'s pin. <cli-b> is another consumer of the SDK, at
     `v1.1.1`.
 
 ## Amendment 2026-10-08: the Gemini row did not hold until SDK `v1.3.2`

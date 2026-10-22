@@ -368,4 +368,4 @@ written.*
 * **Not decided here:**
   * moving the publish pin, D2's follow-up;
   * adopting the release spec and build workflow, after `v1.10.0`;
-  * gobble-cli's go-selfupdate-lib pin at `v1.7.0`.
+  * <cli-b>'s go-selfupdate-lib pin at `v1.7.0`.

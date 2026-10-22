@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: complete
 date: 2026-10-21
 associated-madr: "0018-MADR-adopt-go-llmprovider-sdk-v1-18-0-and-go-selfupdate-lib-v1-17-0.md"
 ---
@@ -320,7 +320,7 @@ are in the MADR's Context.
     day. It ran no workflow, so it is not a publish through `036289ec…`'s
     publish workflow.
   * The fleet's consumers still pin the publish workflow at `e8d4904a…`
-    (magic-cli-remote) and `adc2c757…` (gobble-cli). No publish through
+    (magic-cli-remote) and `adc2c757…` (<cli-b>). No publish through
     `036289ec…` is on record. Option A stands.
 * **Steps 2–3:** `go get` reported `go-llmprovider-sdk v1.15.0 =>
   v1.21.0` and `go-selfupdate-lib v1.15.2 => v1.17.2`, and `go mod tidy`
@@ -437,3 +437,108 @@ are in the MADR's Context.
 * **Step 3:** the disclosure guard over `origin/main..f75153e` exited 0.
 * **Step 4** waits for this record's commit. Then the push needs the
   owner's ask.
+* The owner committed the record as `52ad549`. On it, `make preflight`
+  exited 0 (`preflight passed`), and the guard over the seven outgoing
+  commits exited 0. The owner pushed.
+* **Step 4, CI on `main`:** run `39708078687` on `52ad549` concluded
+  `success`.
+  * Every Go job's setup-go logged `Setup go version spec 1.27.3`. The Go
+    versions were `go1.27.3 linux/amd64` (Go, Linux, build),
+    `darwin/arm64` and `windows/amd64`.
+  * `Go (quality contract)` printed `No vulnerabilities found.`.
+  * The build and its five `identity` jobs passed.
+  * `Publish GitHub Release` was `skipped`, as on any branch push.
+  * The run's referenced workflows are `build-selfupdate-release.yml` and
+    `publish-selfupdate-release.yml`, both at
+    `036289ecc701d84c7749f4950a57a154c1af2cf4`.
+
+### Phase 5, 2026-10-21
+
+* The owner tagged `v1.10.1` (annotated, on `52ad549`) and pushed it.
+* **Step 1, the release run:**
+  [`39709052042`](https://github.com/maccavelli/prepare-commit-msg/actions/runs/39709052042),
+  conclusion `success`.
+  * Every job passed: the Go, native, build and five `identity` jobs, and
+    `Publish GitHub Release / publish`.
+  * `Publish GitHub Release / sign` was `skipped`.
+  * The referenced workflows are `build-selfupdate-release.yml` and
+    `publish-selfupdate-release.yml`, both at
+    `036289ecc701d84c7749f4950a57a154c1af2cf4`. **This is the first
+    publish through `036289ec…`** (MADR A1).
+  * The publish job ran no setup-go: its Go steps run only for a packed
+    release (MADR A3).
+* **Step 2, the release, checked by the agent** on a download into the
+  session's scratch space:
+  * The release is published, not a draft or a prerelease, and immutable.
+    It is `Latest`, published `2026-10-22T02:06:14Z`.
+  * Its files are the six binaries, `SHA256SUMS`, `install.sh` and
+    `install.ps1`. There is no `SHA256SUMS.note`.
+  * `shasum -a 256 -c SHA256SUMS` reported `OK` for all six binaries.
+  * `go version` on each of the six reported `go1.27.3`. The
+    darwin/arm64 binary's `go version -m` names go-llmprovider-sdk
+    `v1.21.0`, go-selfupdate-lib `v1.17.2` and
+    `vcs.revision=52ad5494ccfe55b5374397c133e5fc17ac0c7838`.
+  * Its `version` prints `prepare-commit-msg version v1.10.1 (release)
+    52ad5494ccfe`.
+  * The downloaded `install.sh --help` lists `--force` ("with
+    --uninstall: remove even when a before_uninstall hook fails").
+  * `gh attestation verify --signer-workflow
+    maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml`
+    exited 0 for all nine files.
+
+### Deviation, 2026-10-21: the `update` check needs a copy under `$HOME`
+
+* **Found.** Step 3, on a checksummed copy of `v1.10.0`'s darwin/arm64
+  binary in the session's scratch space: `update --check` exited 1 with
+  `target … is outside allowed roots`. This is the library's
+  home-directory rule, which 0008-PLAN's `v1.5.0` check also met.
+* **Resolution (owner): a scratch copy under `$HOME`.** Declined: updating
+  the installed hook, doing both, and the owner running it. Added to the
+  phase: one new directory under `~/.cache`, written and then removed.
+
+### Phase 5, continued
+
+* **Step 3, `update`,** on that copy in a new `~/.cache` directory. Its
+  SHA-256 matched `v1.10.0`'s `SHA256SUMS`.
+  * `version`: `v1.10.0 (release) 75a5b1eefcc9`.
+  * `update --check`: exit 10, `prepare-commit-msg: update available:
+    v1.10.0 -> v1.10.1`.
+  * `update --yes`: exit 0, `release asset integrity verified`,
+    `prepare-commit-msg: updated v1.10.0 -> v1.10.1`.
+  * `version`: `v1.10.1 (release) 52ad5494ccfe`. The file's SHA-256 equals
+    the release's darwin/arm64 entry, `86316386…`.
+  * The directory held only the binary and the library's lock file. Both
+    were removed, then the directory.
+  * The installed hook was not touched. It still reports `v1.10.0
+    (release) 75a5b1eefcc9`, and its update is the owner's.
+* **Not done here:** magic-cli-remote's 0169-PLAN Deviation 21, written
+  there for the owner to commit in that repository.
+
+### Close-out, 2026-10-21
+
+* D1–D6 hold:
+  * Go 1.27.3 in the three pins, and `go.mod` on `v1.21.0` and `v1.17.2`;
+  * both workflows at `036289ec…` (A1);
+  * the README section;
+  * `v1.10.1` released, with no library feature adopted.
+* Every Verification item is recorded above as output. This PLAN is
+  `complete`.
+
+### Deviation, 2026-10-22: the close-out push was refused by the disclosure guard
+
+* **Found.** The guard over `origin/main..dcc7628` exited 1 with 19
+  `BLOCKED` lines in 10 records under `docs/decisions/`. The deny list
+  gained two entries after `52ad549` was pushed: a sibling CLI's repository
+  name and the Windows test host's name. The guard reads every file in each
+  outgoing commit's tree, so lines that were published before the new
+  entries now block the push. Rerun with `52ad549` as the outgoing commit,
+  it also exits 1.
+* **Resolution (owner): fix the outgoing commit.** The guard's own
+  `redact --apply` set the deny list's placeholders, `<cli-b>` and
+  `<windows-host>`: 18 lines in 10 files, with no rename needed. The
+  redaction was amended into the unpushed close-out commit, because a fix
+  on top leaves the close-out commit's tree to be checked. Files added to
+  the phase: the 0005, 0009, 0010, 0011 and 0017 records the guard named.
+* **Not done:** published history is not rewritten. The names stay in the
+  commits that introduced them, back to `6076fc8` and `854a78d`, for the
+  owner to decide on.

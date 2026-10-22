@@ -326,4 +326,4 @@ above stands as written, and this record is `accepted`.
   * moving the pin to `v1.10.1`'s commit, D2's follow-up;
   * go-selfupdate-lib `v1.11.0`;
   * adopting `releasespec`, the build workflow or the installers;
-  * gobble-cli's versions.
+  * <cli-b>'s versions.

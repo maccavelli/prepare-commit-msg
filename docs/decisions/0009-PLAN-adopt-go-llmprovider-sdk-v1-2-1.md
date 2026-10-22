@@ -42,7 +42,7 @@ Done means every item under Verification holds.
 * **Any change in go-llmprovider-sdk.** No record there needs an entry: its
   0020-PLAN only says that this repository bumps on its own.
 * go-selfupdate-lib `v1.5.0` → `v1.9.0`, acting on `FinishLength`, and
-  gobble-cli's pin. The MADR names each as not decided here.
+  <cli-b>'s pin. The MADR names each as not decided here.
 * Historical records. 0008's `v1.0.0` text stays as written.
 * Push and tags, which are the owner's.
 
@@ -499,7 +499,7 @@ exactly the drift that the MADR's "The README is out of date" found.
   * **The MADR's "not decided here" items:**
     * go-selfupdate-lib `v1.5.0` → `v1.9.0`;
     * acting on `FinishLength`;
-    * gobble-cli's SDK pin.
+    * <cli-b>'s SDK pin.
 
     Each needs a record of its own.
   * **The live check covered one provider,** the owner's configured one. The
