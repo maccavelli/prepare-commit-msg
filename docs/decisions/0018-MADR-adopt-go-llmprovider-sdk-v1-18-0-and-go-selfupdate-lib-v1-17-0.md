@@ -428,6 +428,8 @@ recommendation, **A**, which A1 requires. Q2 takes the recommendation:
 `NewGitHubUpdater` waits for its own record. **Q3 is open.** A tag needs
 the owner's ask in the turn it is made, so Phase 5 waits for it.
 
+**Q3 answered 2026-10-21: yes** (Amendment A2 below).
+
 **Q1 revisited 2026-10-21:** the owner chose both workflows at
 `v1.17.2`, by A1's own text (Amendment A1 below).
 
@@ -482,6 +484,27 @@ written.*
     through `036289ec…`.
 * **If that publish fails,** the PLAN's rollback applies: repin the
   publish workflow to `e8d4904a…` and tag a new patch.
+
+### A2 (2026-10-21): the WSL test host was on go1.27.2, and Q3 is yes
+
+*Found at PLAN Phase 4 step 2. A2 corrects the Context bullet "Every host
+is on it", which is left above as written.*
+
+* **The correction.** `make preflight-hosts` runs on four hosts, not three:
+  Linux, the WSL distro on the Windows test host, Windows and this Mac. WSL
+  stopped at `make tools` with `expected go1.27.2, got go1.27.3`. Read
+  there afterwards: `go version go1.27.2 linux/amd64`, and
+  `GOTOOLCHAIN=go1.27.2` in Go's env file. magic-cli-remote's 0169-PLAN P14
+  moved "the two test hosts", Linux and Windows, and not the distro.
+* **The decision (owner, 2026-10-21): "Move it under 0169".** The move is
+  recorded in magic-cli-remote
+  `0169-PLAN-standardize-toolchains-on-current-supported-advisory-free-releases.md`,
+  "Deviation 21". It follows the P12 way, with a checksummed archive,
+  `GOTOOLCHAIN=go1.27.3` and a PATH swap, and keeps go1.27.2 installed.
+  Nothing in this repository changes for it.
+* **Q3 (D5), answered 2026-10-21: yes.** `v1.10.1` is released after the
+  push and a green CI on `main`. The tag is asked for in the turn it is
+  made.
 
 ## More Information
 

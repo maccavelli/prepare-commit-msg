@@ -51,7 +51,9 @@ workflow pins of the MADR's option A. The filename keeps its first slug.*
 * The Go text of records `0001` to `0017`, and the README's `v1.8.0`
   section (`README.md:572-578`), which are history.
 * The hosts' toolchains: all three run `go1.27.3` already (MADR, "The
-  toolchain").
+  toolchain"). *Corrected by MADR Amendment A2: four hosts, and WSL was
+  on go1.27.2. It was moved under magic-cli-remote's 0169-PLAN, not
+  here.*
 * `0019-PLAN-skip-full-ci-for-docs-only-pushes.md`'s files and order. It
   waits for this pair's records commit and its `ci.yml` commit, both
   named below.
@@ -388,3 +390,50 @@ are in the MADR's Context.
   included.
 * **Step 5:** with the files staged, `make check-records`,
   `make markdownlint` and `make pre-add-check` each exited 0.
+* The owner committed Phase 3 as `f75153e`.
+
+### Phase 4, 2026-10-21
+
+* **Step 1:** `make preflight` on `f75153e`, a clean tree, exited 0.
+  Lint showed `0 issues.`, total coverage was `83.7% (minimum 80.0%)`,
+  govulncheck printed `No vulnerabilities found.`, and the last line was
+  `preflight passed`.
+* **Step 2, first run:** `make preflight-hosts` exited 2. It reported
+  `linux: exit=0`, `wsl-ubuntu-24.04: exit=2`, `windows: exit=0`,
+  `macos: exit=0`, and `3/4 hosts passed`. WSL's log ends
+  `expected go1.27.2, got go1.27.3`.
+
+### Deviation, 2026-10-21: the WSL test host was on go1.27.2
+
+* **Evidence.** `go version` and `go env` were read on each host,
+  changing nothing:
+  * Linux, Windows and this Mac report `go1.27.3`.
+  * WSL reports `go version go1.27.2 linux/amd64`, with `GOTOOLCHAIN`
+    `go1.27.2` and `GOROOT` `~/sdk/go1.27.2`.
+  * The failure was there before this PLAN. magic-cli-remote's 0169-PLAN
+    P14 moved two test hosts, not the WSL distro. This PLAN's Scope said
+    all hosts were on go1.27.3 (corrected by MADR A2).
+* **Resolution (owner): "Move it under 0169",** keeping go1.27.2
+  installed. Declined: recording the move in this pair, and the owner
+  moving it by hand.
+  * The move is magic-cli-remote 0169-PLAN's Deviation 21, which is
+    written there and left for the owner to commit in that repository.
+  * No file in this repository is added to the phase.
+* **Q3** was answered at the same time: yes, release `v1.10.1` (MADR A2).
+
+### Phase 4, continued
+
+* **The WSL move,** per 0169-PLAN Deviation 21: a dated backup; the
+  archive's checksum `OK`; `~/sdk/go1.27.3`; one PATH entry swapped in
+  `devenv.sh`; `GOTOOLCHAIN=go1.27.3`. A fresh login shell reported
+  `go version go1.27.3 linux/amd64`.
+* **Step 2, second run,** on `f75153e`: `make preflight-hosts` exited 0.
+  It reported `linux: exit=0 (29s)`, `wsl-ubuntu-24.04: exit=0 (67s)`,
+  `windows: exit=0 (3s)`, `macos: exit=0 (4s)`, and `4/4 hosts passed`.
+  * Linux and WSL ran `make verify`: `0 issues.`, total coverage `83.7%`,
+    `No vulnerabilities found.`.
+  * Windows and this Mac ran the native tests (0017-MADR). Each listed
+    `ok` for all five packages, with timings, so none was cached.
+* **Step 3:** the disclosure guard over `origin/main..f75153e` exited 0.
+* **Step 4** waits for this record's commit. Then the push needs the
+  owner's ask.
