@@ -685,7 +685,7 @@ go-selfupdate-lib stays at `v1.15.2`. What you may notice:
 
 ## Changes with Go 1.27.3, go-llmprovider-sdk v1.21.0 and go-selfupdate-lib v1.17.2
 
-The next release moves to Go 1.27.3, from go-llmprovider-sdk `v1.15.0` to
+Release `v1.10.1` moves to Go 1.27.3, from go-llmprovider-sdk `v1.15.0` to
 `v1.21.0`, and from go-selfupdate-lib `v1.15.2` to `v1.17.2`
 ([0018-MADR](docs/decisions/0018-MADR-adopt-go-llmprovider-sdk-v1-18-0-and-go-selfupdate-lib-v1-17-0.md)).
 What you may notice:

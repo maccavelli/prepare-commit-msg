@@ -52,6 +52,10 @@ This tree holds three kinds of document:
 | 0017 | PLAN | [Implement replacing the repository Git hooks with `make preflight` and a cross-host test run](decisions/0017-PLAN-replace-git-hooks-with-make-preflight-and-host-tests.md) | complete |
 | 0018 | MADR | [Adopt Go 1.27.3, provider SDK v1.21.0 and self-update library v1.17.2](decisions/0018-MADR-adopt-go-llmprovider-sdk-v1-18-0-and-go-selfupdate-lib-v1-17-0.md) | accepted |
 | 0018 | PLAN | [Implement Go 1.27.3, provider SDK v1.21.0 and self-update library v1.17.2](decisions/0018-PLAN-adopt-go-llmprovider-sdk-v1-18-0-and-go-selfupdate-lib-v1-17-0.md) | complete |
+| 0019 | MADR | [Skip the full CI for a change to Markdown that no code reads](decisions/0019-MADR-skip-full-ci-for-docs-only-pushes.md) | accepted |
+| 0019 | PLAN | [Implement skipping the full CI for a change to Markdown that no code reads](decisions/0019-PLAN-skip-full-ci-for-docs-only-pushes.md) | in progress |
+| 0020 | MADR | [Reconcile current product and maintainer documentation](decisions/0020-MADR-reconcile-current-product-and-maintainer-documentation.md) | accepted |
+| 0020 | PLAN | [Implement reconciliation of current product and maintainer documentation](decisions/0020-PLAN-reconcile-current-product-and-maintainer-documentation.md) | in progress |
 
 ## I want to…
 

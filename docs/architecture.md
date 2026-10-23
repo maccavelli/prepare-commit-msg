@@ -15,15 +15,22 @@ commit-message file. The same binary exposes `configure`, `update`,
 
 ## Runtime flow
 
-`main.go` dispatches CLI subcommands or hook execution. Hook execution
-collects staged changes through `internal/git`, loads user settings through
-`internal/config`, and calls providers through `go-llmprovider-sdk`.
+`main.go` dispatches CLI subcommands or hook execution. The hook skips Git
+sources with an already supplied or generated message, collects staged changes
+through `internal/git`, loads user settings through `internal/config`, and
+calls providers through `go-llmprovider-sdk`. It tries the configured primary
+model followed by at most three fallbacks, retries eligible transient failures,
+and soft-fails so Git leaves the commit editor available when analysis or
+generation cannot complete.
 The list of providers, whether each needs a key, and each one's default
 endpoint come from the SDK's provider registry (`providers.Default()`),
 from which `internal/config` builds its provider list. A provider's saved
-`base_url`, when present, replaces that default endpoint.
-`internal/fsutil` owns safe file writes. The update command delegates release
-selection, integrity checks, replacement, and build identity to
+`base_url`, when present, replaces that default endpoint. Configuration is
+stored in the platform configuration directory; it supports API keys, saved
+OAuth sessions kept separately from `config.json`, and vendor-CLI credentials
+read from their existing auth files. `internal/fsutil` owns safe file writes.
+The update command delegates release selection, integrity checks, replacement,
+and build identity to
 `go-selfupdate-lib`.
 
 Interactive configuration lives in `internal/ui`. The root
