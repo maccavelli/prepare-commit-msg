@@ -3,7 +3,6 @@ package main
 import (
 	_ "embed"
 	"net/http"
-	"time"
 
 	"github.com/maccavelli/go-selfupdate-lib/buildinfo"
 	"github.com/maccavelli/go-selfupdate-lib/selfupdate"
@@ -51,8 +50,13 @@ func releaseUnpacker() (selfupdate.Unpacker, error) {
 	return spec.Unpacker()
 }
 
-// updateTimeout bounds each GitHub request. cli.Run bounds the whole run.
-const updateTimeout = 15 * time.Minute
+// updateHTTPClient is the client update's GitHub requests use: the
+// library's, with transport timeouts and no Client.Timeout, so cli.Run's
+// context bounds a large download rather than a per-request cap
+// (docs/decisions/0021-MADR-adopt-go-llmprovider-sdk-v1-22-2-and-go-selfupdate-lib-v1-22-0.md D6).
+func updateHTTPClient() *http.Client {
+	return selfupdate.DefaultHTTPClient()
+}
 
 // buildIdentity is the running binary's identity; tests replace it.
 var buildIdentity = buildinfo.Identity
@@ -66,7 +70,7 @@ var updateOptions = cli.StdioOptions
 func defaultNewUpdateUpdater() (*selfupdate.Updater, error) {
 	src, err := selfupdate.NewGitHubSource(selfupdate.GitHubOptions{
 		Repository: selfupdate.Repository{Owner: "maccavelli", Name: "prepare-commit-msg"},
-		Client:     &http.Client{Timeout: updateTimeout},
+		Client:     updateHTTPClient(),
 		UserAgent:  selfupdate.UserAgent(AppTitle, buildIdentity().Current()),
 		Limits:     selfupdate.DefaultLimits(),
 	})

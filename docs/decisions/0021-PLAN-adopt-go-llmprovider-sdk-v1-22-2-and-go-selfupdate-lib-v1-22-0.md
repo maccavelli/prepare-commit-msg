@@ -214,3 +214,25 @@ guide disagree (MADR, "What the move changes").
 * `make verify` exits 0: total coverage 83.6% (minimum 80.0%), "No
   vulnerabilities found.", workflow-lint through actionlint, the tools'
   25 tests "OK", and the six cross-builds.
+* Committed by the owner as `af7fb4e`.
+
+### Phase 2b, 2026-10-24
+
+* The edit script asserted one occurrence of each replaced text in
+  `update.go` (the `time` import, `updateTimeout` and its comment, the
+  `Client:` line) and of the import anchor and test anchor in
+  `migration_test.go`; the whole diff was read. `gofmt -l` on both files
+  prints nothing; `grep -rn updateTimeout --include='*.go' .` finds
+  nothing.
+* On a scratch copy of the tracked tree with `updateHTTPClient` returning
+  `&http.Client{Timeout: 15 * time.Minute}`, the new test fails:
+
+  ```text
+  --- FAIL: TestUpdateHTTPClientHasNoOverallTimeout (0.00s)
+      migration_test.go:210: Client.Timeout = 15m0s, want 0
+  ```
+
+  In the tree it passes.
+* `make verify` exits 0: total coverage 83.6% (minimum 80.0%), "No
+  vulnerabilities found.", the tools' 25 tests "OK", and the six
+  cross-builds.

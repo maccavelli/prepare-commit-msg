@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -197,6 +198,20 @@ func TestDefaultNewUpdateUpdater(t *testing.T) {
 	}
 	if u == nil {
 		t.Fatal("defaultNewUpdateUpdater returned a nil updater")
+	}
+}
+
+// TestUpdateHTTPClientHasNoOverallTimeout: update's client bounds each
+// request's headers, not the whole download, which cli.Run's context
+// bounds (0021-MADR D6).
+func TestUpdateHTTPClientHasNoOverallTimeout(t *testing.T) {
+	c := updateHTTPClient()
+	if c.Timeout != 0 {
+		t.Fatalf("Client.Timeout = %v, want 0", c.Timeout)
+	}
+	tr, ok := c.Transport.(*http.Transport)
+	if !ok || tr.ResponseHeaderTimeout <= 0 {
+		t.Fatalf("Transport = %T, want an *http.Transport with a ResponseHeaderTimeout", c.Transport)
 	}
 }
 
