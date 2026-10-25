@@ -22,3 +22,6 @@ done < <(
 )
 
 "$ACTIONLINT" "$REPO_ROOT"/.github/workflows/*.yml
+
+# The workflows' filters and their parity with the Markdown code reads (0022-MADR).
+"$PYTHON" "$REPO_ROOT/scripts/check_ci_filters.py"

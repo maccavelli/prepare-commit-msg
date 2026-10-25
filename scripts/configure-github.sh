@@ -68,9 +68,12 @@ DEFAULT_BRANCH="$(jq -r '.default_branch' "$CONFIG_TMP/repository.json")"
 	exit 1
 }
 
-# ci.yml is the one workflow since docs/decisions/0004-MADR-align-cicd-with-magic-cli-remote.md
-# folded quality.yml and release.yml into it
-# (docs/decisions/0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md A1).
+# ci.yml is the one workflow that builds and releases since
+# docs/decisions/0004-MADR-align-cicd-with-magic-cli-remote.md folded
+# quality.yml and release.yml into it
+# (docs/decisions/0012-MADR-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md A1);
+# docs.yml checks Markdown-only changes and holds no write permission
+# (docs/decisions/0022-MADR-align-docs-ci-and-disclosure-gates.md).
 HARDENED_WORKFLOW_SHA="$(git log -1 --format=%H -- .github/workflows/ci.yml)"
 [ -n "$HARDENED_WORKFLOW_SHA" ] || {
 	echo "could not resolve the hardened workflow commit" >&2

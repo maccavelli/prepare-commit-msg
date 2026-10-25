@@ -1,11 +1,19 @@
 name: CI
 
+# Markdown changes that match paths-ignore run docs.yml instead; GitHub does
+# not evaluate path filters for a tag push, so every tag runs this in full.
+# README.md is not listed because readme_test.go reads it, and the operations
+# guide is not listed because documentation_test.go reads it
+# (docs/decisions/0022-MADR-align-docs-ci-and-disclosure-gates.md);
+# scripts/check_ci_filters.py checks this list and docs.yml's paths lists.
 on:
   push:
     branches: [main]
     tags:
       - "v*"
+    paths-ignore: ['docs/README.md', 'docs/architecture.md', 'docs/decisions/*.md', 'docs/reports/*.md', 'AGENTS.md', 'tools/README.md', '.claude/rules/*.md', '.codex/rules/*.md', '.grok/rules/*.md', '.kilo/agent/*.md', '.opencode/rules.md']
   pull_request:
+    paths-ignore: ['docs/README.md', 'docs/architecture.md', 'docs/decisions/*.md', 'docs/reports/*.md', 'AGENTS.md', 'tools/README.md', '.claude/rules/*.md', '.codex/rules/*.md', '.grok/rules/*.md', '.kilo/agent/*.md', '.opencode/rules.md']
   workflow_dispatch:
 
 # One run per ref; a new push to the same PR/branch cancels the older run.

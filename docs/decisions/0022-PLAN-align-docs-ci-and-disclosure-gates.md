@@ -162,3 +162,31 @@ this plan's P-D plants: a planted real-shaped macOS home path fails with
 file, line and category; a planted line demonstrating redaction passes; and
 a planted unreadable file exits 2.
 
+### Phase 2 executed (2026-10-25)
+
+Routing and parity landed, after the owner's standing rule of 2026-10-25
+that agent tooling and multi-part evaluation are modular Python and that
+native whole-file tools replace text-processing one-liners — recorded in
+AGENTS.md the same day and followed from here.
+
+* `ci.yml` gained one `paths-ignore` list under `on.push` (which keeps
+  `branches` and `tags`) and one under `on.pull_request`, both the audited
+  docs-safe set; `docs.yml` gained the `paths` lists `['**.md',
+  '.markdownlint-cli2.jsonc', '.github/workflows/docs.yml']` on both events.
+* `scripts/check_ci_filters.py` (new) implements the extended checker: strict
+  flow-list shapes, exact agreement within each workflow, per-pattern tracked
+  coverage, docs-coverage of ignored paths, the Markdown-readers refusal with
+  its "unless Docs runs the reader" allowance, doc-gate and pin parity, and
+the tags/workflow_dispatch guard. `make workflow-lint` runs it after
+actionlint, and its 21 fixture tests run in `make tools-test`.
+* `configure-github.sh`'s workflow-tracking comment now names `docs.yml` and
+  the 0022 MADR.
+* The scratch clones (one per plant, the phase's uncommitted files applied)
+  each behaved as specified: the clean clone exits 0; the mismatched-path,
+  README-ignored, missing-Docs-gate and differing-pin plants each exit 1 with
+  the expected problem line. Fixture testing caught three real checker
+  defects first, all fixed before staging: the `on:`/`jobs:` section boundary
+  collapsed at the first two-space key, the flow lists anchor at event-child
+  depth, and the embed scanner's regex could never match off byte zero, so
+  `update.go`'s embed was silently unscanned.
+

@@ -109,6 +109,23 @@ docs/reports/NNNN-GATES-short-slug.md
 - Run any additional product check required by the active PLAN phase.
 - A file that fails a required check is not committed.
 
+## Commands and tooling
+
+Standing rule, from the owner:
+
+- Do not script or write tooling in bash, and do not drive multi-part work
+  with chained one-liners. Multi-part commands, and any work whose
+  evaluation feeds a decision, run as Python.
+- Repository tooling is idiomatic, modular Python on the standard library,
+  with tests beside it, like `scripts/` and `tools/`.
+- Prefer the native file tools — a whole-file read, a content search, a
+  pattern listing — over `grep` / `sed` / `cut` / `awk` one-liners: filtered
+  slices can truncate, and an edit must land on what the file actually says.
+- When a decision depends on file content, read the file whole and evaluate
+  it against a scratch temp directory; never conclude from an excerpt.
+- A command whose exit status feeds a decision is captured before any filter,
+  and long output goes to a scratch file.
+
 ## Before a push
 
 The repository installs no Git hooks
