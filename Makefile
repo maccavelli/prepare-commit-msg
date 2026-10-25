@@ -26,9 +26,9 @@ FLEET_LINT_CFG := .golangci.yml
 
 .PHONY: all build clean test coverage test-coverage run install version build-all \
 	linux linux-amd64 linux-arm64 darwin-arm64 darwin-amd64 windows-amd64 windows-arm64 \
-	help tools fmt fmt-check mod-check vet lint vuln workflow-lint verify verify-staged \
+	help tools fmt fmt-check mod-check vet lint vuln 	workflow-lint verify verify-staged \
 	preflight preflight-hosts pre-add-check \
-	check-records markdownlint tools-test
+	check-records markdownlint disclosure-check tools-test
 
 all: help build-all
 
@@ -130,14 +130,18 @@ pre-add-check: tools ## Checks the staged Go snapshot, or FILES=... (scripts/go-
 
 verify-staged: pre-add-check ## Alias of pre-add-check; earlier records cite it
 
-tools-test: ## Checks the maintainer tools in tools/ (0016-MADR)
+tools-test: ## Checks the maintainer tools in tools/ and the scripts' tests (0016-MADR, 0022-MADR)
 	$(PYTHON) -B -m unittest discover -s tools -p 'test_*.py'
+	$(PYTHON) -B -m unittest discover -s scripts -p 'test_*.py'
 
 check-records: ## Checks record naming, pairing, placement and doc links
 	python3 scripts/check_records.py --check-all
 
 markdownlint: ## Lints Markdown with the fleet configuration
 	npx --yes markdownlint-cli2@0.23.2
+
+disclosure-check: ## Scans tracked text for real user-home paths (0022-MADR)
+	$(PYTHON) scripts/check_disclosure.py
 
 run: build ## Builds and executes the local binary
 	@BIN_NAME=$(DIST_DIR)/$(BINARY_NAME)-$(shell go env GOOS)-$(shell go env GOARCH)$(if $(filter windows,$(shell go env GOOS)),.exe,) ; \

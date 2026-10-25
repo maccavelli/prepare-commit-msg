@@ -51,6 +51,9 @@ jobs:
       - name: Lint Markdown
         run: make markdownlint
 
+      - name: Scan tracked text for home-path disclosures
+        run: make disclosure-check
+
       - name: Run repository quality contract
         run: make verify
 

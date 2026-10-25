@@ -11,7 +11,7 @@ while IFS= read -r script; do
 	*) bash -n "$script" ;;
 	esac
 done < <(
-	find "$REPO_ROOT/scripts" -type f 2>/dev/null | LC_ALL=C sort
+	find "$REPO_ROOT/scripts" -type f -not -path '*__pycache__*' 2>/dev/null | LC_ALL=C sort
 )
 
 # tools/ holds Python and a README; only its .py files are scripts (0016-MADR D1).

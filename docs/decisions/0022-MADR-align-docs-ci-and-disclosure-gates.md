@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-25
 ---
 # Align docs-only CI and disclosure gates

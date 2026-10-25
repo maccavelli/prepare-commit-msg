@@ -53,14 +53,14 @@ This tree holds three kinds of document:
 | 0018 | MADR | [Adopt Go 1.27.3, provider SDK v1.21.0 and self-update library v1.17.2](decisions/0018-MADR-adopt-go-llmprovider-sdk-v1-18-0-and-go-selfupdate-lib-v1-17-0.md) | accepted |
 | 0018 | PLAN | [Implement Go 1.27.3, provider SDK v1.21.0 and self-update library v1.17.2](decisions/0018-PLAN-adopt-go-llmprovider-sdk-v1-18-0-and-go-selfupdate-lib-v1-17-0.md) | complete |
 | 0019 | MADR | [Skip the full CI for a change to Markdown that no code reads](decisions/0019-MADR-skip-full-ci-for-docs-only-pushes.md) | accepted |
-| 0019 | PLAN | [Implement skipping the full CI for a change to Markdown that no code reads](decisions/0019-PLAN-skip-full-ci-for-docs-only-pushes.md) | in progress |
+| 0019 | PLAN | [Implement skipping the full CI for a change to Markdown that no code reads](decisions/0019-PLAN-skip-full-ci-for-docs-only-pushes.md) | superseded (its unexecuted Phase 1 by 0022-PLAN, 2026-10-25) |
 | 0020 | MADR | [Reconcile current product and maintainer documentation](decisions/0020-MADR-reconcile-current-product-and-maintainer-documentation.md) | accepted |
 | 0020 | PLAN | [Implement reconciliation of current product and maintainer documentation](decisions/0020-PLAN-reconcile-current-product-and-maintainer-documentation.md) | in progress |
 | 0021 | MADR | [Adopt provider SDK v1.22.2 and self-update library v1.22.0](decisions/0021-MADR-adopt-go-llmprovider-sdk-v1-22-2-and-go-selfupdate-lib-v1-22-0.md) | accepted |
 | 0021 | PLAN | [Implement provider SDK v1.22.2 and self-update library v1.22.0](decisions/0021-PLAN-adopt-go-llmprovider-sdk-v1-22-2-and-go-selfupdate-lib-v1-22-0.md) | complete |
 
-| 0022 | MADR | [Align docs-only CI and disclosure gates](decisions/0022-MADR-align-docs-ci-and-disclosure-gates.md) | proposed |
-| 0022 | PLAN | [Implement aligned docs-only CI and disclosure gates](decisions/0022-PLAN-align-docs-ci-and-disclosure-gates.md) | proposed |
+| 0022 | MADR | [Align docs-only CI and disclosure gates](decisions/0022-MADR-align-docs-ci-and-disclosure-gates.md) | accepted 2026-10-25 (execution approved by the owner) |
+| 0022 | PLAN | [Implement aligned docs-only CI and disclosure gates](decisions/0022-PLAN-align-docs-ci-and-disclosure-gates.md) | in progress |
 | 0023 | MADR | [Split the user documentation into `docs/guides/`, indexed by the READMEs](decisions/0023-MADR-split-user-documentation-into-guides.md) | proposed |
 | 0023 | PLAN | [Implement the split of user documentation into `docs/guides/`](decisions/0023-PLAN-split-user-documentation-into-guides.md) | proposed |
 

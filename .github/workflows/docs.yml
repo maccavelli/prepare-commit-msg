@@ -1,0 +1,41 @@
+name: Docs
+
+# Checks a change to Markdown with the same documentation commands ci.yml's
+# go job runs for it: make check-records, make markdownlint and
+# make disclosure-check. Until the 0022 plan's Phase 2 adds path filters,
+# this workflow runs for every push to main and every pull request; a tag, a
+# workflow_dispatch, and any change to more than Markdown run ci.yml.
+# scripts/check_ci_filters.py, added by that phase, compares the two
+# workflows' filters and refuses a ci.yml ignore set that covers a Markdown
+# file code reads, such as the root README.md.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+jobs:
+  docs:
+    name: Docs (records, Markdown and disclosure)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Check records and documentation links
+        run: make check-records
+
+      - name: Lint Markdown
+        run: make markdownlint
+
+      - name: Scan tracked text for home-path disclosures
+        run: make disclosure-check
