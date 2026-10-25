@@ -352,6 +352,25 @@ above as written. Found at PLAN Phase 1.*
   as before.
 * The PLAN records it as Deviation 1.
 
+### A2 (2026-10-24): which run exercised D6's client
+
+*A2 corrects the Confirmation bullet "D5: … `update` on an installed
+`v1.10.1` moves to it, which exercises D6's client against GitHub", left
+above as written. Found at PLAN Phase 5.*
+
+* **The correction.** An update is performed by the running binary.
+  `v1.10.1` → `v1.10.2` ran `v1.10.1`'s `&http.Client{Timeout: 15 *
+  time.Minute}`, not D6's client **[derived]**.
+* **What confirmed D6 instead.** `update --check` from the installed
+  `v1.10.2` reached GitHub and reported "up to date (v1.10.2)", exit 0
+  **[probed]**. The next update from `v1.10.2` is the first download
+  through D6's client.
+* **What was confirmed for D5.** Release run `40150318042` published
+  through `84805563…`, the first publish through that commit, with the
+  six binaries, `SHA256SUMS` and both installers; the darwin/arm64
+  binary's checksum and build attestation verify; `update` moved this
+  Mac's `v1.10.1` to `v1.10.2` (PLAN, Phase 5).
+
 ## More Information
 
 * The libraries' records, cited by repository and filename:

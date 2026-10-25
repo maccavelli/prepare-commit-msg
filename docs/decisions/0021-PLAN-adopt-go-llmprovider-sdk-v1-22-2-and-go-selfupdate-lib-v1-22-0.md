@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: complete
 date: 2026-10-24
 associated-madr: "0021-MADR-adopt-go-llmprovider-sdk-v1-22-2-and-go-selfupdate-lib-v1-22-0.md"
 ---
@@ -145,10 +145,13 @@ guide disagree (MADR, "What the move changes").
 3. Record the run: its URL, that it published through `84805563…`, and the
    assets (six binaries, `SHA256SUMS`, `install.sh`, `install.ps1`).
 4. `prepare-commit-msg update` on an installed `v1.10.1` reaches
-   `v1.10.2`, the first live run of D6's client, and
-   `prepare-commit-msg version` names it.
+   `v1.10.2`, ~~the first live run of D6's client,~~ and
+   `prepare-commit-msg version` names it. *Deviation 2: that update runs
+   `v1.10.1`'s client; `update --check` from `v1.10.2` is D6's first live
+   run.*
 5. This PLAN becomes `complete`, the index follows, in a records commit
-   on a branch, merged as above.
+   ~~on a branch, merged as above~~ *on `main`, committed by the owner
+   (Deviation 1)*.
 
 ## Verification
 
@@ -249,3 +252,75 @@ guide disagree (MADR, "What the move changes").
   included; `TestCurrentDocumentation`,
   `TestCurrentDocumentationDetectsBrokenFixtures` and
   `TestReadmeCuratedModels` pass.
+* Committed by the owner as `6e1fc11`. Its hook-written subject read
+  "add v1.22.2 release notes"; the owner amended it, before any push, to
+  `7c3cd79`, "add v1.10.2 release notes", with `git commit --amend -F`
+  (an amend's source is `commit`, which the hook skips). `7c3cd79`'s tree
+  is `6e1fc11`'s.
+
+### Phase 4, 2026-10-24
+
+* `make preflight` on `6e1fc11`: "preflight passed"; total coverage 83.7%
+  (minimum 80.0%), "No vulnerabilities found.", the tools' 25 tests "OK".
+* `make preflight-hosts` on the committed `HEAD`, `6e1fc11`:
+
+  ```text
+  linux: exit=0 (74s)
+  wsl-ubuntu-24.04: exit=0 (35s)
+  windows: exit=0 (3s)
+  macos: exit=0 (4s)
+  preflight-hosts: 4/4 hosts passed
+  ```
+
+  The host builds stamp `v1.10.1-6-g6e1fc11`. No host was unreachable.
+* The disclosure guard, as AGENTS.md writes it, exits 0 with no output
+  over `03df92d..6e1fc11`, and again over `03df92d..7c3cd79` after the
+  amend.
+* The owner pushed `main`. CI run `40149400018` on `7c3cd79`: success.
+  "Go (quality contract)", the three native test jobs, "Build release /
+  build" (its log: `Uses: …build-selfupdate-release.yml@84805563ed252df384f59ced45a3daf529702ab4`)
+  and five identity jobs succeed; "Publish GitHub Release" is skipped, as
+  on any push that is not a tag. The identity jobs cover linux/amd64,
+  linux/arm64, windows/amd64, windows/arm64 and darwin/arm64, the same
+  five as `v1.10.1`'s run `39709052042`; darwin/amd64 has none in either.
+
+### Phase 5, 2026-10-24
+
+* The owner tagged and pushed `v1.10.2` (tag object `68baa4c`, peeling to
+  `7c3cd79`), where the PLAN had the agent do it on the owner's ask
+  (Deviation 1 covers the owner's git).
+* Release run `40150318042`:
+  <https://github.com/maccavelli/prepare-commit-msg/actions/runs/40150318042>.
+  Every job succeeds; "Publish GitHub Release / publish" success, its log
+  `Uses: …publish-selfupdate-release.yml@84805563ed252df384f59ced45a3daf529702ab4`;
+  "… / sign" skipped, as `sign` is unset. **The first publish through
+  `84805563…`.**
+* The release <https://github.com/maccavelli/prepare-commit-msg/releases/tag/v1.10.2>,
+  published 2026-10-25T01:25:29Z, not a draft or pre-release, and
+  `releases/latest` names it. Assets: the six binaries, `SHA256SUMS`,
+  `install.sh`, `install.ps1`; no `SHA256SUMS.note`.
+* `prepare-commit-msg-darwin-arm64`, downloaded to the session scratchpad:
+  `shasum -a 256 -c` against `SHA256SUMS` "OK"; `gh attestation verify
+  --signer-workflow maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml`
+  exits 0, one attestation, signer
+  `…publish-selfupdate-release.yml@84805563ed252df384f59ced45a3daf529702ab4`,
+  source `refs/tags/v1.10.2` at `7c3cd79`.
+* This Mac's installed hook was `v1.10.1 (release) 52ad5494ccfe`.
+  `update --check`: "update available: v1.10.1 -> v1.10.2", exit 10.
+  `update --yes`: "updated v1.10.1 -> v1.10.2", "release asset integrity
+  verified", exit 0. `version`: `v1.10.2 (release) 7c3cd796b209`; the
+  installed file's size, 9894866, is the asset's.
+* D6 live: `update --check` from `v1.10.2`: "up to date (v1.10.2)", exit
+  0; `update --check --json`'s last line is `kind` "result", schema 4.
+
+### Deviation 2, 2026-10-24: the `v1.10.1` → `v1.10.2` update did not run D6's client
+
+* **Found.** Phase 5 step 4 called that update "the first live run of
+  D6's client". The update is performed by the running binary,
+  `v1.10.1`, whose client is the old one.
+* **Resolution.** D6's client was run live by `update --check` from the
+  installed `v1.10.2` (Phase 5 above). The MADR's Confirmation is
+  corrected by its Amendment A2. A slow or stalled GitHub reply, which is
+  what D6 changes, was not provoked live; the unit test holds the
+  client's shape.
+* **Files added to scope:** none.
