@@ -236,3 +236,16 @@ guide disagree (MADR, "What the move changes").
 * `make verify` exits 0: total coverage 83.6% (minimum 80.0%), "No
   vulnerabilities found.", the tools' 25 tests "OK", and the six
   cross-builds.
+* Committed by the owner as `c1347a2`.
+
+### Phase 3, 2026-10-24
+
+* `README.md` gains "Changes with go-llmprovider-sdk v1.22.2 and
+  go-selfupdate-lib v1.22.0" after the `v1.10.1` section, opening
+  "Release `v1.10.2` moves …" and citing the MADR, with the MADR's D4
+  bullets for `configure`, `update` and the installers, and its
+  table-of-contents line after the `v1.10.1` one.
+* `make markdownlint` exits 0, with "0 issues", the link-fragment rule
+  included; `TestCurrentDocumentation`,
+  `TestCurrentDocumentationDetectsBrokenFixtures` and
+  `TestReadmeCuratedModels` pass.

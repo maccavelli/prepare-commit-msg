@@ -31,6 +31,7 @@ Commit](https://www.conventionalcommits.org/) messages.
 - [Changes with go-llmprovider-sdk v1.12.0 and go-selfupdate-lib v1.15.2](#changes-with-go-llmprovider-sdk-v1120-and-go-selfupdate-lib-v1152)
 - [Changes with go-llmprovider-sdk v1.15.0](#changes-with-go-llmprovider-sdk-v1150)
 - [Changes with Go 1.27.3, go-llmprovider-sdk v1.21.0 and go-selfupdate-lib v1.17.2](#changes-with-go-1273-go-llmprovider-sdk-v1210-and-go-selfupdate-lib-v1172)
+- [Changes with go-llmprovider-sdk v1.22.2 and go-selfupdate-lib v1.22.0](#changes-with-go-llmprovider-sdk-v1222-and-go-selfupdate-lib-v1220)
 - [CLI Reference](#cli-reference)
 - [Developer Experience](#developer-experience)
 - [Documentation](#documentation)
@@ -710,6 +711,35 @@ What you may notice:
   exited 0. The usage lists a new `--force` (`-Force`). It applies only to
   a `before_uninstall` hook, and this app has none.
 - **`update`** behaves as in `v1.10.0`.
+
+---
+
+## Changes with go-llmprovider-sdk v1.22.2 and go-selfupdate-lib v1.22.0
+
+Release `v1.10.2` moves from go-llmprovider-sdk `v1.21.0` to `v1.22.2`,
+and from go-selfupdate-lib `v1.17.2` to `v1.22.0`
+([0021-MADR](docs/decisions/0021-MADR-adopt-go-llmprovider-sdk-v1-22-2-and-go-selfupdate-lib-v1-22-0.md)).
+What you may notice:
+
+- **`configure`:**
+  - a key the provider accepts is no longer warned about for its shape;
+    the expected shape is named only after the provider refuses a typed
+    key;
+  - a sign-in the model listing refuses no longer replaces your saved
+    session;
+  - a saved session that cannot be used is not offered; a notice says
+    why, and the sign-in menu follows;
+  - a saved fallback model the menu does not recommend is kept, offered
+    as "saved" and preselected;
+  - a pasted key no longer picks up stray characters of the terminal's
+    paste marker;
+  - an empty answer to the browser sign-in's paste prompt is asked again,
+    instead of ending the sign-in.
+- **`update`:** a GitHub request that gets no response fails after 30
+  seconds, where it could wait 15 minutes; run `update` again. A whole
+  run is still limited to 15 minutes, and a slow download is no longer
+  cut off by a per-request limit.
+- **The installers** behave as in `v1.10.1`.
 
 ---
 
