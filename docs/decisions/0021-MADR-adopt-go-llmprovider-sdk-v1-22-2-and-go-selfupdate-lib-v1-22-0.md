@@ -194,7 +194,8 @@ plan step are the same objects, so the released `install.sh` and
 * **The change is a pin move,** plus what the owner adopts by name (D6).
   Other new library features are separate decisions.
 * **Follow the library's advice** for the calls this app already makes.
-* **No commit on `main`** (the organization's Git rule).
+* **No commit on `main`** (the organization's Git rule). *Superseded by
+  Amendment A1 (2026-10-24).*
 
 ## Considered Options
 
@@ -331,6 +332,25 @@ publish, and one version is then pinned in `go.mod` and both workflows.
 **Answered 2026-10-24.** Q1: "adopt now", against the recommendation; D6
 records it. Q2: "yes, we will release v1.10.2"; D5 records it. Option A
 for the workflow pins was not questioned and stands.
+
+## Amendments
+
+### A1 (2026-10-24): the owner commits and pushes on `main`
+
+*A1 supersedes the decision driver "No commit on `main`", which is left
+above as written. Found at PLAN Phase 1.*
+
+* **The decision (owner, 2026-10-24):** "i will commit and push you will
+  not use branches. sysadmin-git-branch-gates is the mandate here". The
+  owner's `sysadmin-git-branch-gates` skill takes priority over the
+  organization's `enforcing-git-branch-gates` for this repository, which
+  has no Jira project.
+* **Consequences.** No branch and no pull request. The agent checks and
+  stages each phase on `main`; the owner commits, with the global hook
+  writing the message, and pushes. The Confirmation's "CI is green on the
+  branch and on `main`" reads "on `main`". The release is tagged on `main`
+  as before.
+* The PLAN records it as Deviation 1.
 
 ## More Information
 

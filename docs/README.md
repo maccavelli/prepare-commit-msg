@@ -57,7 +57,7 @@ This tree holds three kinds of document:
 | 0020 | MADR | [Reconcile current product and maintainer documentation](decisions/0020-MADR-reconcile-current-product-and-maintainer-documentation.md) | accepted |
 | 0020 | PLAN | [Implement reconciliation of current product and maintainer documentation](decisions/0020-PLAN-reconcile-current-product-and-maintainer-documentation.md) | in progress |
 | 0021 | MADR | [Adopt provider SDK v1.22.2 and self-update library v1.22.0](decisions/0021-MADR-adopt-go-llmprovider-sdk-v1-22-2-and-go-selfupdate-lib-v1-22-0.md) | accepted |
-| 0021 | PLAN | [Implement provider SDK v1.22.2 and self-update library v1.22.0](decisions/0021-PLAN-adopt-go-llmprovider-sdk-v1-22-2-and-go-selfupdate-lib-v1-22-0.md) | proposed |
+| 0021 | PLAN | [Implement provider SDK v1.22.2 and self-update library v1.22.0](decisions/0021-PLAN-adopt-go-llmprovider-sdk-v1-22-2-and-go-selfupdate-lib-v1-22-0.md) | in progress |
 
 ## I want to…
 

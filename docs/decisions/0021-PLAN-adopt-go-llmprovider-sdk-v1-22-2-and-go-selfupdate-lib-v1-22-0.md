@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: in-progress
 date: 2026-10-24
 associated-madr: "0021-MADR-adopt-go-llmprovider-sdk-v1-22-2-and-go-selfupdate-lib-v1-22-0.md"
 ---
@@ -50,11 +50,13 @@ Phase 5 unconditional.*
 
 ## Implementation Steps
 
-All work is on a branch, `deps/0021-pin-latest-libraries`, cut from
+~~All work is on a branch, `deps/0021-pin-latest-libraries`, cut from
 `main` at the commit that carries this pair. Nothing is committed on
-`main`. Each phase ends with `make check-records` and `make markdownlint`,
-`make pre-add-check` when Go files or `go.mod`/`go.sum` are staged, then
-`git commit --no-edit`.
+`main`.~~ *Superseded by Deviation 1 (2026-10-24): all work is on `main`,
+and the owner commits and pushes.* Each phase ends with `make
+check-records` and `make markdownlint`, `make pre-add-check` when Go files
+or `go.mod`/`go.sum` are staged, then the phase is staged for the owner's
+`git commit`.
 
 ### Phase 0: preconditions (read-only)
 
@@ -127,11 +129,13 @@ guide disagree (MADR, "What the move changes").
 1. `make preflight`.
 2. `make preflight-hosts` on the committed `HEAD` (Go and `go.mod`
    changed). A host that cannot be reached is reported, not skipped.
-3. The disclosure guard over the branch's outgoing commits, with the
-   branch ref in place of `refs/heads/main` in AGENTS.md's command.
-4. Ask the owner to push the branch and open a pull request into `main`.
-   CI must be green on the branch, its build rehearsal included. The owner
-   merges.
+3. The disclosure guard over the outgoing commits, ~~with the branch ref
+   in place of `refs/heads/main` in~~ *as written in* AGENTS.md's command
+   (Deviation 1).
+4. ~~Ask the owner to push the branch and open a pull request into
+   `main`. CI must be green on the branch, its build rehearsal included.
+   The owner merges.~~ *Deviation 1:* the owner pushes `main`; CI must be
+   green on `main`, its build rehearsal included.
 
 ### Phase 5: the release `v1.10.2` (D5)
 
@@ -171,4 +175,42 @@ guide disagree (MADR, "What the move changes").
 
 ## Execution record
 
-Nothing executed yet.
+### Deviation 1, 2026-10-24: no branch; the owner commits and pushes on `main`
+
+* **Found.** The owner committed this pair on `main` as `03df92d`, before
+  Phase 1 step 3's branch existed. On the question of a branch, the owner
+  answered: "i will commit and push you will not use branches.
+  sysadmin-git-branch-gates is the mandate here", and chose that the owner
+  commits each phase.
+* **Decision.** No branch is created. Each phase is checked and staged on
+  `main` by the agent and committed and pushed by the owner, whose global
+  `prepare-commit-msg` hook writes the message. Phase 4's disclosure guard
+  runs as AGENTS.md writes it; there is no pull request. Phase 5 tags
+  `main`. The MADR's driver on `main` is amended (MADR A1).
+* **Files added to scope:** none.
+
+### Phase 0, 2026-10-24
+
+* `git rev-parse --path-format=absolute --git-path hooks` names the global
+  hooks directory.
+* `go list -m -versions` ends at `v1.22.2` (go-llmprovider-sdk) and
+  `v1.22.0` (go-selfupdate-lib); `git ls-remote --tags` gives
+  `v1.22.0^{}` = `84805563ed252df384f59ced45a3daf529702ab4`.
+
+### Phase 1, 2026-10-24
+
+* The pair and its index rows were committed by the owner as `03df92d`,
+  on `main` (Deviation 1).
+
+### Phase 2, 2026-10-24
+
+* `go get …@v1.22.2 …@v1.22.0` and `go mod tidy` exit 0. `go.mod` changes
+  the two `require` lines, `go.sum` those modules' four lines; `go mod
+  tidy -diff` is empty.
+* The repin script asserted 2 occurrences of the old ref in `ci.yml` and
+  in the operations guide before replacing them. Afterwards, in each:
+  `84805563…` 2, `036289ec…` 0. The comment at `ci.yml:99-105` was
+  rewritten as step 3 says; the whole diff was read.
+* `make verify` exits 0: total coverage 83.6% (minimum 80.0%), "No
+  vulnerabilities found.", workflow-lint through actionlint, the tools'
+  25 tests "OK", and the six cross-builds.
