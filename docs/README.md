@@ -59,6 +59,11 @@ This tree holds three kinds of document:
 | 0021 | MADR | [Adopt provider SDK v1.22.2 and self-update library v1.22.0](decisions/0021-MADR-adopt-go-llmprovider-sdk-v1-22-2-and-go-selfupdate-lib-v1-22-0.md) | accepted |
 | 0021 | PLAN | [Implement provider SDK v1.22.2 and self-update library v1.22.0](decisions/0021-PLAN-adopt-go-llmprovider-sdk-v1-22-2-and-go-selfupdate-lib-v1-22-0.md) | complete |
 
+| 0022 | MADR | [Align docs-only CI and disclosure gates](decisions/0022-MADR-align-docs-ci-and-disclosure-gates.md) | proposed |
+| 0022 | PLAN | [Implement aligned docs-only CI and disclosure gates](decisions/0022-PLAN-align-docs-ci-and-disclosure-gates.md) | proposed |
+| 0023 | MADR | [Split the user documentation into `docs/guides/`, indexed by the READMEs](decisions/0023-MADR-split-user-documentation-into-guides.md) | proposed |
+| 0023 | PLAN | [Implement the split of user documentation into `docs/guides/`](decisions/0023-PLAN-split-user-documentation-into-guides.md) | proposed |
+
 ## I want to…
 
 | I want to… | Start here |
