@@ -190,3 +190,34 @@ actionlint, and its 21 fixture tests run in `make tools-test`.
   depth, and the embed scanner's regex could never match off byte zero, so
   `update.go`'s embed was silently unscanned.
 
+### Phase 3 documents and gates (2026-10-25)
+
+* `AGENTS.md`'s "Before a push" opens with the routing: an ignored
+  Markdown change starts only the Docs workflow, `README.md`, the operations
+  guide, any other change and every tag start the full CI, the local readers
+  stay `readme_test.go` and `documentation_test.go`, `make disclosure-check`
+  screens both workflows, and the private pre-push guard keeps the real
+  patterns.
+* `docs/architecture.md` names the `disclosure-check` step in the delivery
+  boundary, links the Docs workflow and the tag rule to the 0022 MADR, and
+  gains the `.github/workflows/docs.yml` line in the Tree.
+* `docs/guides/cicd-operations.md` states the four commands the `go` job runs,
+  the routing with the MADR link, and, in "Controlled release", the note that
+  ignored-Markdown commits since the last full run tested the same code and
+  the tag's unfiltered run is the release's proof.
+* Plants over fresh clones of the committed HEAD: a broken relative link
+  fails `make check-records` (`broken relative link: docs/README.md:9`), and
+  an MD018 heading fails `make markdownlint` naming the rule and file; the
+  home-path, README-ignored, reader, missing-Docs-gate, differing-pin and
+  mismatched-path plants are recorded under Phases 1 and 2.
+* Gates before the commit: `make check-records`, `make markdownlint`,
+  `make workflow-lint`, `make disclosure-check` and `make preflight` all exit
+  0; the identifier scan of the staged diff found 0 hits for the local
+  account name and the short machine hostname. This phase is docs and records
+  only, so `make preflight-hosts` is exempt; the two phases that changed
+  scripts and workflows each ran it before their commits, 4/4 hosts.
+
+Step 3's live observations wait for the owner's pushes: a docs-only commit's
+"Docs"-only run, a code or mixed commit's full run, and the next tag's full
+run. This PLAN stays `in-progress` until those run IDs are recorded here.
+

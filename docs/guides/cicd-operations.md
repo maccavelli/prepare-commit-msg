@@ -19,7 +19,15 @@ make preflight
 
 It runs `make check-records`, `make markdownlint` and `make verify`, in that
 order, printing `==> <gate>` before each, stopping at the first failure, and
-ending with `preflight passed`. CI's `go` job runs the same three targets.
+ending with `preflight passed`. CI's `go` job runs the same three targets,
+plus `make disclosure-check` after Markdown and before the contract. A
+Markdown-only change under `ci.yml`'s `paths-ignore` starts only the Docs
+workflow, which runs the records, Markdown and disclosure gates; a change to
+anything else, `README.md` and this guide included, starts the full CI, and
+so does every tag, because GitHub does not evaluate path filters for a tag
+push
+([`0022-MADR-align-docs-ci-and-disclosure-gates.md`](../decisions/0022-MADR-align-docs-ci-and-disclosure-gates.md)).
+`make preflight` still runs all three gates locally either way.
 `make verify` checks module tidiness and checksums, formatting and imports,
 static analysis, race-enabled tests, the 80% aggregate coverage threshold,
 reachable vulnerabilities, shell and workflow syntax, the maintainer tools'
@@ -146,6 +154,11 @@ rehearses the build, stamped `rehearsal-<commit> (local)`, and publishes
 nothing.
 
 1. Ensure `main` is up to date and passes verification locally (`make verify`).
+
+   When `main`'s commits since its last full CI run change only ignored
+   Markdown, that run tested the same code: the docs workflow checked them,
+   and the tag's unfiltered run is the release's proof.
+
 2. Create and push an annotated semantic version tag:
 
 ```bash

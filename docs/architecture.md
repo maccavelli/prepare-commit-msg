@@ -49,8 +49,12 @@ The repository installs no Git hooks. Before a push, `make preflight` runs
 `check-records`, `markdownlint` and `verify`, and `make preflight-hosts` runs
 CI's jobs for `HEAD` on the test hosts through `tools/hosts.py`
 ([0017-MADR](decisions/0017-MADR-replace-git-hooks-with-make-preflight-and-host-tests.md)).
-[The CI workflow](../.github/workflows/ci.yml) runs the same three targets and
-the native platform jobs.
+[The CI workflow](../.github/workflows/ci.yml) runs those three targets, the
+`disclosure-check` step beside them, and the native platform jobs. A change
+to Markdown that no code reads starts [the Docs workflow](../.github/workflows/docs.yml)
+instead, with the same records, Markdown and disclosure gates, while every
+tag and every other change starts the full workflow
+([0022-MADR](decisions/0022-MADR-align-docs-ci-and-disclosure-gates.md)).
 
 `selfupdate-release.json` defines release assets and build identity. The CI
 workflow calls pinned reusable build and publish workflows from
@@ -68,6 +72,7 @@ internal/                  git, config, UI, and atomic file writes
 scripts/                   verification and repository utilities
 tools/                     maintainer tools, run by hand: tools/README.md
 .github/workflows/ci.yml   CI, native tests, and release orchestration
+.github/workflows/docs.yml  Markdown-only checks
 selfupdate-release.json    release asset and identity specification
 docs/
   README.md                documentation index and task matrix

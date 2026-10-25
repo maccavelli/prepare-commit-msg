@@ -128,6 +128,19 @@ Standing rule, from the owner:
 
 ## Before a push
 
+A change to Markdown under `ci.yml`'s `paths-ignore` runs only `docs.yml` in
+CI: the records, Markdown and disclosure gates, never the Go contract. A
+change to `README.md`, to the operations guide, to any other file, and every
+tag run `ci.yml` in full, because GitHub does not evaluate path filters for
+a tag push
+(`docs/decisions/0022-MADR-align-docs-ci-and-disclosure-gates.md`). A test,
+`//go:embed` or tool that reads a Markdown file keeps that file out of the
+ignore list in the same commit, and `scripts/check_ci_filters.py` checks it
+in `make workflow-lint`; the local readers stay `readme_test.go` (the root
+README) and `documentation_test.go` (the operations guide). Markdown itself
+is screened for home paths by `make disclosure-check`, in both workflows;
+private identity patterns stay with the owner's pre-push guard below.
+
 The repository installs no Git hooks
 (`docs/decisions/0017-MADR-replace-git-hooks-with-make-preflight-and-host-tests.md`).
 Before asking the owner to push, in this order:
