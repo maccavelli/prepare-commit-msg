@@ -38,13 +38,13 @@ Boundary: The earlier PLAN's Phase 1 scope is expanded here for common disclosur
 
 1. Explain routing, docs-safe paths, common checks, local readers and the private pre-push guard in AGENTS.md and the architecture or CI guide. Verify this pair's exact filenames and current statuses in the records index; use the repository index generator if present.
 2. Run `make check-records markdownlint workflow-lint disclosure-check`; `make preflight`; actionlint; scratch plants for MD018, broken link, real home path, root README incorrectly ignored, a Markdown reader omitted from Docs, and mismatched filters. Capture status before filtering output. Check this pair and edited documents for real-machine identifiers. Read each edited file in full and verify links.
-3. After explicit authorization to push in that same turn, observe a docs-only push, a non-doc or mixed push and the next tag or scheduled run. Record run IDs, conclusions and which workflow started. Mark this PLAN complete only after the criteria below hold; otherwise record the outstanding observation. Commit at the end of each approved phase under repository rules.
+3. After explicit authorization to push in that same turn, observe a docs-only push and a non-doc or mixed push. Tag and dispatch routing is not waited for: GitHub evaluates no path filter for a tag push, `workflow_dispatch` carries none, and `scripts/check_ci_filters.py` fails when `ci.yml` loses its `tags` trigger or `workflow_dispatch`. Record run IDs, conclusions and which workflow started. Mark this PLAN complete only after the criteria below hold; otherwise record the outstanding observation. Commit at the end of each approved phase under repository rules. *Amended 2026-10-25: the wait for the next tag or scheduled run is removed, as acp-go-sdk2's 0037-PLAN-align-docs-ci-and-disclosure-gates.md did in its step 3.*
 
 ## Verification
 
 * Both workflows pass pinned Markdownlint, numbered-record/index and relative-link validation, and portable tracked-text disclosure scanning.
 * Each Markdown reader runs on changes to its input, either in Docs or full CI.
-* A docs-only push starts Docs but not full CI; a non-doc or mixed push starts full CI. Tags, schedules and dispatch retain existing behavior.
+* A docs-only push starts Docs but not full CI; a non-doc or mixed push starts full CI. Tags, schedules and dispatch retain existing behavior, shown by the contract check and the workflows' structure, not by waiting for a run.
 * Scratch plants fail their intended gates; filter or gate drift fails the parity test.
 * Before an authorized push, the local pre-push guard checks outgoing commits. Its private deny list is never copied into CI.
 
@@ -218,6 +218,10 @@ actionlint, and its 21 fixture tests run in `make tools-test`.
   scripts and workflows each ran it before their commits, 4/4 hosts.
 
 Step 3's live observations wait for the owner's pushes: a docs-only commit's
-"Docs"-only run, a code or mixed commit's full run, and the next tag's full
-run. This PLAN stays `in-progress` until those run IDs are recorded here.
+"Docs"-only run and a code or mixed commit's full run. This PLAN stays
+`in-progress` until those run IDs are recorded here. The next tag's run is not
+waited for (amended 2026-10-25, as acp-go-sdk2's
+0037-PLAN-align-docs-ci-and-disclosure-gates.md did in its step 3): GitHub
+evaluates no path filter for a tag push, and `scripts/check_ci_filters.py`
+fails when `ci.yml` loses its `tags` trigger or `workflow_dispatch`.
 
