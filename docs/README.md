@@ -64,7 +64,7 @@ This tree holds three kinds of document:
 | 0023 | MADR | [Split the user documentation into `docs/guides/`, indexed by the READMEs](decisions/0023-MADR-split-user-documentation-into-guides.md) | proposed |
 | 0023 | PLAN | [Implement the split of user documentation into `docs/guides/`](decisions/0023-PLAN-split-user-documentation-into-guides.md) | proposed |
 | 0024 | MADR | [Adopt provider SDK v1.26.1 and self-update library v1.24.0](decisions/0024-MADR-adopt-go-llmprovider-sdk-v1-26-1-and-go-selfupdate-lib-v1-24-0.md) | accepted 2026-11-05 |
-| 0024 | PLAN | [Implement provider SDK v1.26.1 and self-update library v1.24.0](decisions/0024-PLAN-adopt-go-llmprovider-sdk-v1-26-1-and-go-selfupdate-lib-v1-24-0.md) | in progress |
+| 0024 | PLAN | [Implement provider SDK v1.26.1 and self-update library v1.24.0](decisions/0024-PLAN-adopt-go-llmprovider-sdk-v1-26-1-and-go-selfupdate-lib-v1-24-0.md) | complete |
 
 ## I want to…
 

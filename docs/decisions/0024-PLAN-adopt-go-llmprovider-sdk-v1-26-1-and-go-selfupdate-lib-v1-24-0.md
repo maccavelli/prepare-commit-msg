@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: complete
 date: 2026-11-05
 associated-madr: "0024-MADR-adopt-go-llmprovider-sdk-v1-26-1-and-go-selfupdate-lib-v1-24-0.md"
 ---
@@ -444,3 +444,14 @@ Execution approved by the owner, 2026-11-05: "approved to proceed".
   80.0%), "No vulnerabilities found.", "ci filters: 11 patterns, 11 reads
   checked, 0 problems". `make preflight-hosts` is exempt: docs only
   (AGENTS.md).
+* Committed by the agent as `7c9cb2f` on the owner's "Commit to main".
+  The disclosure guard, as AGENTS.md writes it, exits 0 with no output
+  over `79f894a..7c9cb2f`. On the owner's "Push to main", the agent pushed
+  `main`, `79f894a..7c9cb2f`.
+* CI run `42159904658` on `7c9cb2f`: success. "Go (quality contract)",
+  the three native test jobs, "Build release / build" and the five
+  identity jobs succeed; "Publish GitHub Release" is skipped. Docs run
+  `42159904344`: success.
+* No release: `v1.10.3` carries the code; the documentation reaches users
+  from `main`, and the next release carries it.
+* Every phase is done. This PLAN is `complete`.
