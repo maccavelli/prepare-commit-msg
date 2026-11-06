@@ -19,6 +19,10 @@ Apache License 2.0 (MADR D9).*
 run locally. Committing, pushing and Phase 3's live changes each wait for
 the owner's word.*
 
+*Phase 4 carries out MADR Amendment A1. Approved 2026-11-06 ("approve A1
+and phase 4, proceed"). Committing, pushing and the live delete each wait for
+the owner's word.*
+
 ## Goal
 
 * Neither ruleset has a bypass actor, in `scripts/configure-github.sh` or
@@ -184,6 +188,56 @@ Out of scope:
 8. Record the results in this PLAN, mark it `complete`, update the index
    row, and commit and push on the owner's word.
 
+### Phase 4: drop the tag ruleset (MADR A1)
+
+1. **The script.** Edit `scripts/configure-github.sh` with a scratch Python
+   script that asserts each anchor occurs exactly once:
+   * remove the tag ruleset's body, its comment, its `--slurpfile`, its
+     plan entry and its `upsert_ruleset` call;
+   * the comment above the main body cites A1-1 and A1-2: the main ruleset
+     is the only one, and immutable releases protect published tags.
+   * Run `bash -n`, and the dry run with its status captured.
+2. **The dry-run check.** Extend the Phase 1 check:
+   * exactly one ruleset upsert, `prepare-commit-msg-main`, with
+     `bypass_actors == []` and the rules `deletion` and `non_fast_forward`;
+   * no `environments/release` entry.
+
+   It must fail on scratch copies with the tag ruleset put back, and with
+   an Admin bypass on main.
+3. **The docs.** In `docs/guides/cicd-operations.md`, with a scratch
+   script that asserts each anchor:
+   * the converged-state list loses the tag-ruleset item;
+   * the paragraph after it states A1-1, A1-2 and A1-5, and that immutable
+     releases are on, as a repository setting the script does not manage;
+   * failed-release recovery states A1-3. An unreleased failed tag is
+     deleted (`git push --delete origin "$VERSION"`, then
+     `git tag -d "$VERSION"`) and pushed again on the fixed commit. A
+     published release's tag stays, and the next patch version is tagged.
+
+   The Phase 2 docs check gains a check for these statements, and is seen
+   to fail on a scratch copy without them.
+4. **The gates.** `make preflight` and `make disclosure-check`. Then the
+   commit, on the owner's word naming `main`, and `make preflight-hosts` on
+   it.
+5. **Push and CI.** The disclosure guard, then the push on the owner's
+   word. Wait for CI to pass.
+6. **Live, on the owner's word.**
+   * Save a pre-apply audit.
+   * `gh api --method DELETE repos/maccavelli/prepare-commit-msg/rulesets/24842346`,
+     because the script no longer manages that ruleset.
+   * `scripts/configure-github.sh --apply`, to show the script converges on
+     a single ruleset.
+7. **Read back.**
+   * `GET …/rulesets` lists only 24842254, with `bypass_actors: []` and its
+     two rules.
+   * `GET …/immutable-releases` reports `"enabled":true`.
+   * Between the two audits, only `rulesets` changes.
+8. **Records.** This PLAN's execution record; the MADR's A1 marked
+   accepted; the index rows; and the commit and push, on the owner's word.
+
+Phase 4's rollback: revert its commits, push, re-create the tag ruleset
+with `--apply`, and restore D3's recovery text.
+
 ## Verification
 
 * The settings check of Phase 1 step 2 and the docs check of Phase 2
@@ -288,6 +342,144 @@ Out of scope:
     (minimum 80.0%), `verify-scripts.sh` covered the edited script, the tool
     tests ran 25 and 34 tests, OK, and all six cross-builds were made.
 * `make disclosure-check`: 124 files scanned, 0 findings.
-* Not yet run: step 5, the commit, which waits for the owner's word naming
-  `main`, then step 6, `make preflight-hosts`, which tests the committed
-  `HEAD`.
+* Step 5: on the owner's "Commit to main", the agent staged the nine
+  files. No Go file was among them, so `pre-add-check` did not apply.
+  `check-records` and `markdownlint` exited 0 on the staged tree, and
+  `git commit --no-edit` made `2282cc3`, "feat(repo): remove ruleset bypass
+  actors and adopt Apache-2.0 license" (9 files, +877 −118).
+* Step 6: `make preflight-hosts` on `2282cc3`, with a clean tree, exited 0:
+  "4/4 hosts passed". The hosts were `linux` (45s), `wsl-ubuntu-24.04`
+  (38s), `windows` (3s) and `macos` (5s).
+
+### Phase 3 steps 1 to 3 (2026-11-06)
+
+* Step 1: the disclosure guard over `2282cc3`, the one outgoing commit,
+  exited 0.
+* Step 2: on the owner's "Push to main", `git push origin main` pushed
+  `35edce1..2282cc3`.
+* Step 3: Docs run `42248196726` succeeded. CI run `42248197539`, attempt
+  1, failed:
+  * Go (quality contract), Native Tests (Linux) and Native Tests (Windows)
+    succeeded;
+  * Build release and Publish GitHub Release were skipped, as on every
+    non-tag push;
+  * Native Tests (macOS) was cancelled (Deviation 2).
+
+### Deviation 2 (2026-11-06): no macOS runner picked up the CI job
+
+* **Found.** Native Tests (macOS) queued from 15:59:50 to 16:14:51 UTC,
+  had no runner and ran no step. GitHub's annotation reads: "The job was
+  not acquired by Runner of type hosted even after multiple attempts". Its
+  notices read: "Due to capacity constraints, jobs targeting macOS arm64
+  runners may experience longer queue times." It was not a test failure.
+  The same tests passed on the `macos` host in Phase 2 step 6.
+* **Decision (the owner):** "re-run it". `gh run rerun 42248197539
+  --failed` re-runs only that job, on the same commit.
+* **Scope.** No file changes. Phase 3's live steps wait for the re-run to
+  pass.
+* **Result.** Attempt 2 of run `42248197539` succeeded:
+  * Native Tests (macOS) succeeded (16:21:30 to 16:22:07 UTC);
+  * Build release, which attempt 1 had skipped behind the cancelled job,
+    built the rehearsal, and its five identity checks succeeded;
+  * Publish GitHub Release was skipped, as on every non-tag push.
+
+  Step 3 is met.
+
+### Phase 3 steps 4 to 7 (2026-11-06)
+
+* Step 4: `scripts/audit-github.sh` saved a pre-apply audit to the
+  scratchpad (exit 0). It showed both rulesets with the Admin bypass, and
+  the `release` environment present with its `main` branch policy.
+* Step 5, on the owner's "Apply and proceed":
+  * `scripts/configure-github.sh --apply` exited 0: "preserving existing
+    pre-apply audit at `.git/prepare-commit-msg-github-settings-before.json`"
+    and "GitHub repository enforcement converged". GitHub accepted the
+    `update` rule as the script sends it;
+  * `gh api --method DELETE …/environments/release` exited 0;
+  * `gh repo edit … --description "AI commit-message git hook"` exited 0.
+* Step 6, read back by a scratch script (exit 0, `clean`):
+
+  | id | name | enforcement | bypass_actors | current_user_can_bypass | rules |
+  | :--- | :--- | :--- | :--- | :--- | :--- |
+  | 24842254 | `prepare-commit-msg-main` | active | `[]` | `never` | deletion, non_fast_forward |
+  | 24842346 | `prepare-commit-msg-release-tags` | active | `[]` | `never` | deletion, non_fast_forward, update |
+
+  * The ruleset ids are unchanged, and no other ruleset exists.
+  * `GET …/environments/release` returned HTTP 404, and the repository has
+    0 environments.
+  * `GET …` shows the description "AI commit-message git hook" and
+    `license.spdx_id` `Apache-2.0`.
+* Step 7: between the two audits, only `rulesets` (both bypass lists
+  emptied, and the tag ruleset's `creation` replaced by `update`) and
+  `release_environment` (`present` to `absent`) changed. The audit does not
+  report the description; step 6 checked it.
+* Still to come, as Verification says: at the next release, the tag push
+  prints no "Bypassed rule violations", and its rule suite has the result
+  `pass`. That check is recorded in that release's PLAN.
+
+Phases 0 to 3 met their acceptance criteria. The PLAN was marked
+`complete` here, then returned to `in-progress` when Phase 4 was proposed
+for MADR A1 (2026-11-06).
+
+### Phase 4 steps 1 to 3 (2026-11-06)
+
+* On the owner's "approve A1 and phase 4, proceed", A1 was marked accepted
+  in the MADR and the index.
+* **Step 1.** A scratch script edited `scripts/configure-github.sh`,
+  asserting each of its five anchors:
+  * the tag ruleset's body and comment, its `--slurpfile`, its plan entry
+    and its `upsert_ruleset` call are gone;
+  * the main body's comment cites D1, Q1 and A1.
+
+  `bash -n` exited 0. The dry run exited 0 with nothing on stderr. Its
+  mutations are the Actions policy, selected actions, workflow permissions,
+  `automated-security-fixes`, and one ruleset upsert.
+* **Step 2.** The new plan check exited 0 (`clean`). It expects exactly one
+  upsert, `prepare-commit-msg-main`: branch target, `active`, no bypass,
+  `deletion` and `non_fast_forward`, and no environment. On broken copies of
+  the plan it exited 1 each time, naming the fault:
+  * the tag ruleset put back (four findings);
+  * an Admin bypass on main;
+  * `non_fast_forward` removed;
+  * an environment entry put back.
+* **Step 3.** A scratch script edited `docs/guides/cicd-operations.md`,
+  asserting its anchors (Deviation 3 adds the proxy check):
+  * the converged state lists only `main`'s ruleset. The paragraph after it
+    states A1-1, A1-2 and A1-5, and that immutable releases are on, as a
+    setting the script does not manage;
+  * failed-release recovery gives A1-3 as narrowed.
+
+  The docs check, extended for A1, exited 0. On scratch copies it exited 1
+  for each planted fault:
+  * the tag-ruleset item put back;
+  * "Immutable releases are on" removed;
+  * `@v/list` changed to a single-version `.info` query;
+  * the delete step removed;
+  * "permanent" put back.
+
+### Deviation 3 (2026-11-06): re-using a failed tag's version depends on the module proxy
+
+* **Found.** While writing the A1-3 recovery, the agent noted that
+  `proxy.golang.org` lists every `v*` version of this module, and has
+  fetched `v1.10.3` (`@v/v1.10.3.info` names its commit). If the proxy has a
+  version, the checksum database has fixed its content. So deleting a failed
+  tag and pushing the same version on another commit would make
+  `go install …@<version>` fail verification. Asking the proxy for one
+  version (`.info`) can itself make it fetch that version. The `@v/list`
+  endpoint only lists the versions it already has.
+* **Decision (agent, within A1's intent: a recovery that works).** A1-3 is
+  narrowed. An unreleased failed tag is reused only if `@v/list` does not
+  list its version; otherwise the fix takes the next patch version. The MADR
+  notes the narrowing on A1-3. The guide gives the `@v/list` check and says
+  why not to use `.info`.
+* **Scope.** No file is added. The MADR's A1-3 and the guide change.
+
+### Phase 4 step 4, before the commit (2026-11-06)
+
+* The A1 docs check exited 0 on the final tree.
+* `make preflight` exited 0, ending "preflight passed". Total coverage is
+  83.9% (minimum 80.0%), and the tool tests ran 25 and 34 tests, OK.
+* `make disclosure-check`: 127 files scanned, 0 findings.
+* The commit waits for the owner's word naming `main`. After it come
+  `make preflight-hosts`, the push, CI, and the live delete of ruleset
+  24842346, each on the owner's word.

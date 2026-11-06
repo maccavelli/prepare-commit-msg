@@ -116,17 +116,20 @@ The intended converged state is:
 - GitHub-owned actions, plus go-selfupdate-lib's reusable
   `build-selfupdate-release.yml` and `publish-selfupdate-release.yml`
   workflows, all pinned by full SHA;
-- Dependabot security updates disabled by maintainer policy;
+- Dependabot security updates disabled by maintainer policy; and
 - a default-branch ruleset that blocks deletion and non-fast-forward
-  updates; and
-- a `v*` tag ruleset that blocks deletion, non-fast-forward updates, and any
-  update of an existing tag.
+  updates, with no bypass actor, so it binds every actor, the owner
+  included.
 
-Neither ruleset has a bypass actor, so the rules bind every actor, the owner
-included, and no push is reported as a bypass. Creating a `v*` tag is not
-restricted: this is the source repository, where the owner tags releases.
-The script manages no deployment environment
-([`0025-MADR-remove-ruleset-bypass-actors.md`](../decisions/0025-MADR-remove-ruleset-bypass-actors.md)).
+No `v*` tag ruleset is created. Immutable releases are on, a repository
+setting the script does not manage. They lock each published release's tag:
+the tag cannot be moved, and cannot be deleted while its release exists.
+Creating a `v*` tag is not restricted. The owner is the only account with
+write access, and a tag pushed with a workflow's token starts no release. If
+another account is ever given write access, restricting tag creation, as
+go-selfupdate-lib's release guide advises, needs a new decision. The script
+manages no deployment environment
+([`0025-MADR-remove-ruleset-bypass-actors.md`](../decisions/0025-MADR-remove-ruleset-bypass-actors.md) D1, Q1, A1).
 
 The apply path verifies the GitHub host, repository identity, administrator
 access, default branch and origin URL, and that the local `ci.yml` is the
@@ -201,17 +204,36 @@ Verify a downloaded checksum file with:
 
 ## Failed-release recovery
 
-A pushed `v*` tag is permanent: the tag ruleset refuses deleting or moving
-it, for every actor
-([`0025-MADR-remove-ruleset-bypass-actors.md`](../decisions/0025-MADR-remove-ruleset-bypass-actors.md) D3).
-If a release tag's run fails before it publishes:
+If a release tag's run fails before it publishes a release:
 
 1. Fix the underlying issue on `main` and run `make verify`.
-2. Tag the fixed commit with the next patch version (e.g. `v1.2.4`) and push
-   that tag. The failed tag stays, unreleased.
+2. Check whether the Go module proxy already lists the version:
 
-If a release was already published to GitHub, the same holds: increment the
-patch version rather than overwriting an existing release.
+   ```bash
+   curl -fsS https://proxy.golang.org/github.com/maccavelli/prepare-commit-msg/@v/list
+   ```
+
+   Use `@v/list` only. Asking the proxy for one version (`@v/$VERSION.info`)
+   can make it fetch and record that version.
+3. If the version is not listed, delete the remote and local failed tag, and
+   tag the fixed commit with the same version:
+
+   ```bash
+   git push --delete origin "$VERSION"
+   git tag -d "$VERSION"
+   git tag -a "$VERSION" -m "$VERSION"
+   git push origin "$VERSION"
+   ```
+
+4. If the version is listed, leave the tag. The checksum database already
+   holds its content, so the same version on another commit would fail
+   `go install` checks. Tag the fix as the next patch version (e.g.
+   `v1.2.4`) instead.
+
+If the release was published, its tag stays: immutable releases lock it,
+and its name cannot be reused even if the release is deleted. Tag the fix
+as the next patch version
+([`0025-MADR-remove-ruleset-bypass-actors.md`](../decisions/0025-MADR-remove-ruleset-bypass-actors.md) A1-3).
 
 ## Dependency and action-pin updates
 

@@ -126,11 +126,11 @@ jq -n '{
 	can_approve_pull_request_reviews: false
 }' >"$CONFIG_TMP/workflow-permissions.json"
 
-# Neither ruleset has a bypass actor: the rules bind every actor, the
-# owner included, and GitHub reports no push as a bypass. No release
-# environment is managed either; no job used it, and its administrator
-# bypass went with it
-# (docs/decisions/0025-MADR-remove-ruleset-bypass-actors.md D1, Q1).
+# The one ruleset, on main, has no bypass actor: it binds every actor, the
+# owner included. No v* tag ruleset is created: immutable releases, a
+# repository setting this script does not manage, lock each published
+# release's tag. No release environment is managed either; no job used it
+# (docs/decisions/0025-MADR-remove-ruleset-bypass-actors.md D1, Q1, A1).
 jq -n '{
 	name: "prepare-commit-msg-main",
 	target: "branch",
@@ -139,25 +139,6 @@ jq -n '{
 	conditions: {ref_name: {include: ["~DEFAULT_BRANCH"], exclude: []}},
 	rules: [{type: "deletion"}, {type: "non_fast_forward"}]
 }' >"$CONFIG_TMP/main-ruleset.json"
-
-# A pushed v* tag can be neither deleted nor moved, by anyone. Creation is
-# not restricted: with no bypass actor, a `creation` rule would refuse every
-# release tag, and this is the source repository, where the owner tags
-# releases. No workflow creates a v* tag: the publish workflow's
-# `gh release create --verify-tag` requires the tag to exist
-# (docs/decisions/0025-MADR-remove-ruleset-bypass-actors.md D2).
-jq -n '{
-	name: "prepare-commit-msg-release-tags",
-	target: "tag",
-	enforcement: "active",
-	bypass_actors: [],
-	conditions: {ref_name: {include: ["refs/tags/v*"], exclude: []}},
-	rules: [
-		{type: "deletion"},
-		{type: "non_fast_forward"},
-		{type: "update"}
-	]
-}' >"$CONFIG_TMP/tag-ruleset.json"
 
 jq -n -S \
 	--arg mode "$MODE" \
@@ -168,8 +149,7 @@ jq -n -S \
 	--slurpfile actions "$CONFIG_TMP/actions-policy.json" \
 	--slurpfile selected "$CONFIG_TMP/selected-actions.json" \
 	--slurpfile workflow "$CONFIG_TMP/workflow-permissions.json" \
-	--slurpfile main_ruleset "$CONFIG_TMP/main-ruleset.json" \
-	--slurpfile tag_ruleset "$CONFIG_TMP/tag-ruleset.json" '{
+	--slurpfile main_ruleset "$CONFIG_TMP/main-ruleset.json" '{
 	mode: $mode,
 	repository: $repository,
 	hardened_workflow_sha: $hardened_workflow_sha,
@@ -180,8 +160,7 @@ jq -n -S \
 		{method: "PUT", endpoint: "actions/permissions/selected-actions", body: $selected[0]},
 		{method: "PUT", endpoint: "actions/permissions/workflow", body: $workflow[0]},
 		{method: "DELETE", endpoint: "automated-security-fixes", body: null},
-		{method: "UPSERT_BY_NAME", endpoint: "rulesets", body: $main_ruleset[0]},
-		{method: "UPSERT_BY_NAME", endpoint: "rulesets", body: $tag_ruleset[0]}
+		{method: "UPSERT_BY_NAME", endpoint: "rulesets", body: $main_ruleset[0]}
 	]
 }'
 
@@ -250,7 +229,6 @@ upsert_ruleset() {
 }
 
 upsert_ruleset "prepare-commit-msg-main" "$CONFIG_TMP/main-ruleset.json"
-upsert_ruleset "prepare-commit-msg-release-tags" "$CONFIG_TMP/tag-ruleset.json"
 
 echo "GitHub repository enforcement converged; resulting audit follows" >&2
 "$REPO_ROOT/scripts/audit-github.sh"

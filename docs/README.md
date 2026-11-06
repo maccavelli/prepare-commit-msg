@@ -64,8 +64,8 @@ This tree holds three kinds of document:
 | 0023 | PLAN | [Implement the split of user documentation into `docs/guides/`](decisions/0023-PLAN-split-user-documentation-into-guides.md) | proposed |
 | 0024 | MADR | [Adopt provider SDK v1.26.1 and self-update library v1.24.0](decisions/0024-MADR-adopt-go-llmprovider-sdk-v1-26-1-and-go-selfupdate-lib-v1-24-0.md) | accepted 2026-11-05 |
 | 0024 | PLAN | [Implement provider SDK v1.26.1 and self-update library v1.24.0](decisions/0024-PLAN-adopt-go-llmprovider-sdk-v1-26-1-and-go-selfupdate-lib-v1-24-0.md) | complete |
-| 0025 | MADR | [Remove every bypass actor; GitHub as the source of truth](decisions/0025-MADR-remove-ruleset-bypass-actors.md) | accepted 2026-11-06 |
-| 0025 | PLAN | [Implement removing the bypass actors and the source-of-truth docs](decisions/0025-PLAN-remove-ruleset-bypass-actors.md) | in progress |
+| 0025 | MADR | [Remove every bypass actor; GitHub as the source of truth](decisions/0025-MADR-remove-ruleset-bypass-actors.md) | accepted 2026-11-06; A1 accepted 2026-11-06 |
+| 0025 | PLAN | [Implement removing the bypass actors and the source-of-truth docs](decisions/0025-PLAN-remove-ruleset-bypass-actors.md) | in progress (Phase 4) |
 
 ## I want to…
 

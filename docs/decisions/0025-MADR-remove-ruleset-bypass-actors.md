@@ -18,6 +18,9 @@ and delete"; Q2 "apache-2.0 license approved". D9 records the license.*
 *Accepted 2026-11-06. The owner chose option A: "remove the creation rule,
 it is not needed since this is the source repo. proceed."*
 
+*Amendment A1 (accepted 2026-11-06) drops the tag ruleset, replacing D2
+and D3. See "Amendments".*
+
 ## Context and Problem Statement
 
 ### The bypass
@@ -307,8 +310,130 @@ has ended. Those records are left as written, as history.
 * Bad, because the next `scripts/configure-github.sh --apply` restores the
   bypass, and the script and guide go on describing it.
 
+## Amendments
+
+### A1 (2026-11-06, accepted): drop the tag ruleset and rely on immutable releases; keep `main`'s ruleset
+
+*Status: accepted 2026-11-06. The owner chose option 1 of three: "option 1.
+draft the madr for this repo". The owner then approved it: "approve A1 and
+phase 4, proceed". 0025-PLAN's Phase 4 carries it out.*
+
+#### Context
+
+After Phase 3, the owner asked why this repository has rulesets at all,
+"as i am the only maintainer, and no one else has permissions to do
+anything". What was found **[read, GitHub API and docs, 2026-11-06]**:
+
+* **One actor can write.** The repository has one collaborator, the owner,
+  with the `admin` role. It has no pending invitations, no deploy keys and
+  no GitHub App installation. The only other write credential is the
+  publish job's `GITHUB_TOKEN` (`contents: write`). A tag that token pushes
+  starts no workflow run.
+* **Why the rulesets were made.** Neither reason holds now:
+  * 0003-MADR wanted to restrict the actors of a one-way mirror (the export
+    publisher and Actions), with administrators as the exception. There is
+    no mirror (D6).
+  * 0012-MADR applied them because go-selfupdate-lib's
+    `docs/guides/building-releases.md` asks, before the first release, to
+    "Restrict who can create `v*` tags … with creations restricted to the
+    owner or the release managers". The reason it gives: "The publish
+    workflow attests whatever a `v*` tag builds". Here the owner is the only
+    account that can push a tag. A creation rule with an Admin bypass
+    excluded no one, and with no bypass (D1) it refused everyone, which is
+    why D2 dropped it.
+* **Immutable releases are on** (`GET …/immutable-releases`:
+  `"enabled":true`). All 12 releases, `v1.2.0` to `v1.10.3`, report
+  `immutable: true`. GitHub's documentation
+  ([immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)):
+  * "Once an immutable release is published, its associated Git tag is
+    locked to a specific commit, cannot be changed, and cannot be deleted
+    while the release exists."
+  * "If you delete the immutable release, you can delete the tag, but you
+    cannot reuse the same tag name."
+  * Immutability "will only apply to future releases"
+    ([preventing changes to your releases](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/establish-provenance-and-integrity/prevent-release-changes)).
+
+  The documentation does not say whether administrators are exempt, and
+  says nothing about a tag that has no release. Neither page mentions
+  rulesets.
+* **So the tag ruleset adds protection in only two places.**
+  * **15 tags from before `v1.2.0`** (`v0.1.0` to `v1.1.4`) have no release,
+    so only the ruleset keeps them from being moved or deleted.
+    `proxy.golang.org` lists all 27 `v*` versions. The checksum database
+    has fixed each one's content, so moving one of those tags would not
+    change what `go` fetches for that version.
+  * **A tag whose release was never published,** such as a failed release.
+    D3 made such a tag permanent. Deleting and re-pushing it is the
+    recovery a maintainer wants.
+* **`main`'s ruleset still does something.** It refuses a force-push from
+  the owner, from an agent working under the owner's login, and from the
+  workflow token. On the `deletion` rule: GitHub's documentation says to
+  "choose a new default branch first" before deleting one. It does not
+  say a default branch cannot be deleted. So the rule may duplicate
+  GitHub's own refusal, but that is not established, and it costs nothing.
+  *(This corrects the agent's earlier statement to the owner that the
+  `deletion` rule "adds nothing".)*
+
+#### Decision
+
+* **A1-1.** `prepare-commit-msg-release-tags` (24842346) is deleted live,
+  and `scripts/configure-github.sh` no longer creates it. Immutable
+  releases protect each published release's tag. This supersedes D2.
+* **A1-2.** `prepare-commit-msg-main` (24842254) stays as D1 left it:
+  `deletion` and `non_fast_forward`, with no bypass actor.
+* **A1-3, failed-release recovery** (supersedes D3).
+  * A `v*` tag whose release was never published may be deleted and pushed
+    again on the fixed commit, but only if `proxy.golang.org`'s `@v/list`
+    does not list that version. Once the proxy has the version, the checksum
+    database has fixed its content, and the same version on another commit
+    fails `go install`'s checks. A listed version is left, and the fix takes
+    the next patch version. *(Narrowed during Phase 4, 0025-PLAN
+    Deviation 3.)*
+  * A tag whose release was published stays: its release is immutable.
+    The fix is tagged as the next patch version.
+* **A1-4, docs.** `docs/guides/cicd-operations.md`:
+  * the converged state lists `main`'s ruleset only, and states that
+    immutable releases are on. That setting is made in the repository
+    settings, not by the script;
+  * failed-release recovery states A1-3.
+* **A1-5, the library's advice.** This repository departs from
+  go-selfupdate-lib's advice to restrict `v*` creation, for the reasons
+  above: there is one write actor, and a token cannot start a release by
+  pushing a tag. If a second account ever gets write access, that advice
+  applies again, and a tag ruleset restricting creation needs a new
+  decision.
+
+#### Consequences
+
+* Good, because no rule is left that only repeats immutable releases, or
+  that blocks deleting a failed tag.
+* Good, because `main` keeps the one guard that applies to the owner and to
+  agents: no force-push.
+* Bad, because the 15 tags from before `v1.2.0`, and any future tag without
+  a release, can be moved or deleted by the owner or an agent using the
+  owner's login.
+  * Neutral, because the module proxy and checksum database have fixed
+    what `go` fetches for every listed version.
+* Bad, because any write credential can create a `v*` tag, as under D2.
+  * Neutral, because the owner's login is the only one that can start a
+    release that way.
+* Neutral, because the tag ruleset can be re-created with one script change
+  and `--apply`.
+
+#### Confirmation
+
+* `GET …/rulesets` lists only 24842254, with `bypass_actors: []` and the
+  rules `deletion` and `non_fast_forward`.
+* `GET …/immutable-releases` reports `"enabled":true`.
+* The dry-run check shows a single ruleset upsert, for
+  `prepare-commit-msg-main`. It is seen to fail on a copy with the tag
+  ruleset put back.
+* At the next release, the tag push prints no "Bypassed rule violations",
+  and its release reports `immutable: true`.
+
 ## More Information
 
+* [GitHub: immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
 * [GitHub: available rules for rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets)
 * [GitHub: repository ruleset endpoints](https://docs.github.com/en/rest/repos/rules)
 * [GitHub: deployment environments](https://docs.github.com/en/rest/deployments/environments)
