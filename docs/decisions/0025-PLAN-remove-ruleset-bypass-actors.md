@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: complete
 date: 2026-11-06
 associated-madr: "0025-MADR-remove-ruleset-bypass-actors.md"
 ---
@@ -483,3 +483,52 @@ for MADR A1 (2026-11-06).
 * The commit waits for the owner's word naming `main`. After it come
   `make preflight-hosts`, the push, CI, and the live delete of ruleset
   24842346, each on the owner's word.
+* On the owner's "commit to main", the agent staged the five files. No Go
+  file was among them. `check-records` and `markdownlint` exited 0, and
+  `git commit --no-edit` made `785e2e4`, "feat(repo): drop v* tag ruleset in
+  favor of immutable releases" (5 files, +370 −53). The commit also carries
+  Phase 3's records, which had not been committed on their own.
+* `make preflight-hosts` on `785e2e4` exited 0, "4/4 hosts passed":
+  `linux` (54s), `wsl-ubuntu-24.04` (27s), `windows` (3s), `macos` (4s).
+* The disclosure guard over `785e2e4`, the one outgoing commit, exited 0.
+
+### Phase 4 step 5 (2026-11-06)
+
+* On the owner's "push to main", `git push origin main` pushed
+  `2282cc3..785e2e4`.
+* Docs run `42260398684` and CI run `42260399239` both succeeded at the
+  first attempt:
+  * the quality contract and the Linux, Windows and macOS native tests
+    succeeded;
+  * the rehearsal build and its five identity checks succeeded;
+  * Publish GitHub Release was skipped, as on every non-tag push.
+
+### Phase 4 steps 6 to 8 (2026-11-06)
+
+* **Step 6,** on the owner's "apply":
+  * `scripts/audit-github.sh` saved a pre-change audit (exit 0). It listed
+    rulesets 24842254 and 24842346. Ruleset 24842346 was
+    `prepare-commit-msg-release-tags`: target `tag`, rules `deletion`,
+    `non_fast_forward` and `update`, no bypass actor;
+  * `gh api --method DELETE …/rulesets/24842346` exited 0;
+  * `scripts/configure-github.sh --apply` exited 0: "GitHub repository
+    enforcement converged". It kept the original pre-apply snapshot, and
+    created no tag ruleset.
+* **Step 7,** read back by a scratch script (exit 0, `clean`):
+  * the rulesets are 24842254 alone, `prepare-commit-msg-main`: branch
+    `~DEFAULT_BRANCH`, `active`, `bypass_actors: []`,
+    `current_user_can_bypass: never`, rules `deletion` and
+    `non_fast_forward`;
+  * `GET …/rulesets/24842346` returned HTTP 404;
+  * `GET …/immutable-releases` returned `{"enabled":true,"enforced_by_owner":false}`,
+    and all 12 releases report `immutable: true`;
+  * the repository has 0 environments;
+  * between the two audits, only `rulesets` changed: from 24842254 and
+    24842346 to 24842254 alone.
+* **Step 8:** this record; the PLAN's status is `complete`, and the index
+  rows are updated. The commit and push wait for the owner's word.
+* **Deferred:** at the next release, check that the tag push prints no
+  "Bypassed rule violations", and that its release reports
+  `immutable: true`. That release's PLAN records it.
+
+All of Phase 4's acceptance criteria are met. The PLAN is `complete`.
