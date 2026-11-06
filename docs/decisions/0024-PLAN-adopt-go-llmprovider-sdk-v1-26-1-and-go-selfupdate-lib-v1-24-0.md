@@ -191,5 +191,46 @@ Execution approved by the owner, 2026-11-05: "approved to proceed".
 
 ### Phase 1, 2026-11-05
 
-* The pair and its two index rows are staged for the owner, on `main`,
-  with `HEAD` at `6337fa0`; records only.
+* The pair and its two index rows were staged on `main`, with `HEAD` at
+  `6337fa0`; records only. `make check-records`, `make markdownlint` and
+  `make disclosure-check` exit 0.
+* Committed by the agent as `1a1b8ea`, `git commit --no-edit` with the
+  global hook writing the message, on the owner's "Commit to main"
+  (Deviation 1).
+
+### Deviation 1, 2026-11-05: the agent commits on the owner's per-turn word
+
+* **Found.** "Implementation Steps" has the owner commit each phase. After
+  Phase 1 was staged, the owner wrote "You have my permission to commit to
+  master"; the repository has no `master`, so the agent asked, and the
+  owner answered "Commit to main".
+* **Decision.** The agent commits a phase on `main` when the owner
+  authorizes it by branch name in that turn, under
+  `sysadmin-git-branch-gates`; otherwise it stages and stops. Each
+  authorization covers one commit, not a push, which the owner still
+  does. The message is the global hook's, through `git commit --no-edit`.
+  No decision of the MADR changes.
+* **Files added to scope:** none.
+
+### Phase 2, 2026-11-05
+
+* `go get …go-llmprovider-sdk@v1.26.1 …go-selfupdate-lib@v1.24.0` and
+  `go mod tidy` exit 0. `go.mod` changes the two modules' `require` lines
+  and `golang.org/x/mod` v0.42.0, `x/sys` v0.49.0, `x/term` v0.47.0
+  (indirect); `go.sum` replaces those five modules' ten lines. `go mod
+  tidy -diff` is empty. The diff is the MADR's probe's.
+* The repin script asserted 2 occurrences of the old ref in `ci.yml` and
+  in the operations guide, and 1 of the old comment in `ci.yml`, before
+  replacing them. Afterwards, in each file: `74ab5dd3…` 2, `84805563…` 0.
+  The comment at `ci.yml:110-116` names v1.24.0, v1.22.0's publish path,
+  `v1.10.2` run 40150318042 and this MADR. The whole diff was read.
+* `make verify` exits 0: total coverage 83.7% (minimum 80.0%), "No
+  vulnerabilities found.", "ci filters: 11 patterns, 11 reads checked, 0
+  problems", the tools' 25 tests and the scripts' 34 "OK", and the six
+  cross-builds.
+* `make pre-add-check` checks the staged snapshot; run before staging it
+  verified `HEAD`'s v1.22.2 and v1.22.0, so it was run again on the staged
+  phase: exit 0, "all modules verified", go-llmprovider-sdk v1.26.1 and
+  go-selfupdate-lib v1.24.0 "resolved from GitHub", "0 issues.", "No
+  vulnerabilities found.". `make check-records`, `make markdownlint` and
+  `make disclosure-check` exit 0.
