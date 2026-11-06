@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -236,6 +237,7 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 	if pc, ok := conf.Providers[defProvider]; ok {
 		existing.Model = pc.Model
 		existing.Organization = pc.Organization
+		existing.Workspace = pc.Workspace
 		existing.BaseURL = pc.BaseURL
 		if config.IsOAuth(pc) {
 			session, loadErr := store.Load(ctx, llmprovider.ProviderID(defProvider))
@@ -291,6 +293,7 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 	pc.Model = res.Model
 	pc.FallbackModels = res.Fallbacks
 	pc.Organization = res.Organization
+	pc.Workspace = res.Workspace
 	pc.BaseURL = savedBaseURL(res.Provider, res.BaseURL)
 	pc.VendorAuthPath = ""
 	switch res.Kind {
@@ -442,9 +445,15 @@ func runSetupNonInteractive(ctx context.Context, conf *config.Config, opts Setup
 	pc.VendorAuthPath = ""
 	pc.Organization = ""
 
+	// A saved Claude workspace is kept and listed with (0024-MADR D3).
+	listOpts := opts.ClientOptions
+	if ws := strings.TrimSpace(pc.Workspace); ws != "" {
+		listOpts = append(slices.Clone(listOpts), catalog.WithClaudeWorkspace(ws))
+	}
+
 	model := strings.TrimSpace(opts.Model)
 	if model == "" {
-		models, err := discoverModels(ctx, provider, apiKey, baseURL, opts.ClientOptions...)
+		models, err := discoverModels(ctx, provider, apiKey, baseURL, listOpts...)
 		if err != nil {
 			return refusedKeyError(provider, err)
 		}
@@ -461,7 +470,7 @@ func runSetupNonInteractive(ctx context.Context, conf *config.Config, opts Setup
 	if len(opts.Fallbacks) > 0 {
 		pc.FallbackModels = config.ClampFallbacks(opts.Fallbacks)
 	} else if len(pc.FallbackModels) == 0 {
-		models, err := discoverModels(ctx, provider, apiKey, baseURL, opts.ClientOptions...)
+		models, err := discoverModels(ctx, provider, apiKey, baseURL, listOpts...)
 		if err != nil {
 			return refusedKeyError(provider, err)
 		}

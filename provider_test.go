@@ -168,6 +168,65 @@ func TestNewActiveProvider_KiloOrganization(t *testing.T) {
 	}
 }
 
+// TestNewActiveProvider_ClaudeWorkspace: a saved Claude workspace is sent on
+// the hook's generation as anthropic-workspace-id, and none is sent without
+// one; another provider never gets the Claude option (0024-MADR D3).
+func TestNewActiveProvider_ClaudeWorkspace(t *testing.T) {
+	isolateUserDirs(t)
+	t.Setenv("LLMPROVIDER_DISABLE_MODELS_METADATA", "1")
+	for _, tc := range []struct {
+		name, saved, want string
+		named             bool
+	}{
+		{"saved workspace", "wrkspc_Good1", "wrkspc_Good1", true},
+		{"saved workspace trimmed", "  wrkspc_Good1 ", "wrkspc_Good1", true},
+		{"no workspace", "", "", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var hits atomic.Int32
+			var sent []string
+			var named bool
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/v1/messages" {
+					http.NotFound(w, r)
+					return
+				}
+				hits.Add(1)
+				sent = r.Header.Values("anthropic-workspace-id")
+				named = sent != nil
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"id":"msg_1","type":"message","role":"assistant","model":"claude-haiku-4-5",` +
+					`"content":[{"type":"text","text":"feat: run in the saved workspace"}],"stop_reason":"end_turn",` +
+					`"usage":{"input_tokens":1,"output_tokens":1}}`))
+			}))
+			t.Cleanup(srv.Close)
+
+			claudeID := string(llmprovider.ProviderClaude)
+			// Claude's default endpoint ends in /v1, and it posts to /messages.
+			pc := config.ProviderConfig{APIKey: "sk-ant-test-0024", Model: "claude-haiku-4-5", BaseURL: srv.URL + "/v1", Workspace: tc.saved}
+			conf := &config.Config{ActiveProvider: claudeID, Providers: map[string]config.ProviderConfig{claudeID: pc}}
+			p, err := newActiveProvider(conf, pc, pc.Model)
+			if err != nil {
+				t.Fatalf("newActiveProvider: %v", err)
+			}
+			if _, err := generateText(context.Background(), p, "p", 0, time.Millisecond); err != nil {
+				t.Fatalf("generateText: %v", err)
+			}
+			if hits.Load() == 0 {
+				t.Fatal("the Claude fixture received no request")
+			}
+			if named != tc.named || (tc.named && (len(sent) != 1 || sent[0] != tc.want)) {
+				t.Errorf("anthropic-workspace-id = %q (sent %t); want %q (sent %t)", sent, named, tc.want, tc.named)
+			}
+		})
+	}
+	for _, id := range []llmprovider.ProviderID{llmprovider.ProviderKilo, llmprovider.ProviderOpenAI} {
+		if opts := providerOptions(id, config.ProviderConfig{Workspace: "wrkspc_Good1"}); len(opts) != 0 {
+			t.Errorf("%s got %d options from a workspace", id, len(opts))
+		}
+	}
+}
+
 // TestNewActiveProvider_BaseURL: a saved base_url is where the hook sends its
 // request; Ollama also needs no key to get there (0014-MADR D6).
 func TestNewActiveProvider_BaseURL(t *testing.T) {

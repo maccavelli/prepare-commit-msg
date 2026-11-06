@@ -75,6 +75,11 @@ type ProviderConfig struct {
 	// Organization is the Kilo organization a device login chose. Generation
 	// sends it; empty is the personal account.
 	Organization string `json:"organization,omitempty"`
+	// Workspace is the Anthropic workspace a Claude key not scoped to one
+	// runs in, as the wizard asked for it. Generation and the listing send
+	// it; empty is a key scoped to its workspace
+	// (docs/decisions/0024-MADR-adopt-go-llmprovider-sdk-v1-26-1-and-go-selfupdate-lib-v1-24-0.md D3).
+	Workspace string `json:"workspace,omitempty"`
 	// BaseURL is the endpoint configure saved when it differs from the
 	// provider's default; empty uses the default (0014-MADR D6).
 	BaseURL string `json:"base_url,omitempty"`

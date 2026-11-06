@@ -234,3 +234,60 @@ Execution approved by the owner, 2026-11-05: "approved to proceed".
   go-selfupdate-lib v1.24.0 "resolved from GitHub", "0 issues.", "No
   vulnerabilities found.". `make check-records`, `make markdownlint` and
   `make disclosure-check` exit 0.
+* Committed by the agent as `bed1e95` on the owner's "Commit to main"
+  (Deviation 1).
+
+### Phase 2b, 2026-11-05
+
+* `internal/config/config.go`: `Workspace` (`json:"workspace,omitempty"`)
+  after `Organization`, documented with this MADR's D3.
+* `internal/ui/setup.go`: `existing.Workspace = pc.Workspace`;
+  `pc.Workspace = res.Workspace` beside `Organization`; the `--yes` path
+  builds `listOpts`, `opts.ClientOptions` plus
+  `catalog.WithClaudeWorkspace` for a non-empty saved workspace, and passes
+  it to both `discoverModels` calls; it does not clear `pc.Workspace`.
+  Imports `slices`.
+* `main.go`: `providerOptions` appends `claude.WithWorkspace` for
+  `ProviderClaude` with a non-empty, trimmed `pc.Workspace`; imports
+  `providers/claude`. Both options are `ScopedOption`s to Claude in the
+  SDK.
+* Tests, each against a fixture shaped as go-llmprovider-sdk's
+  `wizard/workspace_0064_test.go` measures Anthropic's listing:
+  * `TestProviderConfig_Workspace` (`internal/config`): an old
+    configuration loads; an empty workspace is not written; one round-trips
+    as `"workspace"`.
+  * `TestNewActiveProvider_ClaudeWorkspace` (root): the hook's generation,
+    to an `httptest` Messages endpoint, carries `anthropic-workspace-id`
+    for a saved workspace, trimmed, and none without; Kilo and OpenAI get
+    no option from one.
+  * `TestRunSetupInteractive_SavesClaudeWorkspace`: a refused key is asked
+    for a workspace, listings `-,wrkspc_Good1`, and it is saved.
+  * `TestRunSetupInteractive_KeepsSavedClaudeWorkspace`: a saved key and
+    workspace list in it with no workspace prompt, and are kept.
+  * `TestRunSetupNonInteractive_ClaudeWorkspace`: `--yes` lists only in the
+    saved workspace, saves the listed model, and keeps the workspace.
+* The provider fixture first served `/v1/messages` at the server's root;
+  the Claude provider posts to `<base>/messages` with a default base ending
+  in `/v1`, so the fixture's saved `BaseURL` became `srv.URL + "/v1"`. The
+  assertion did not change.
+* Every replaced text was asserted once by the edits; the whole source diff
+  was read. `gofmt -l` on the six files prints nothing.
+* Seen to fail: on scratch copies of the tree, never in it, one line of D3
+  broken per copy, the targeted test fails, 6 of 6:
+
+  ```text
+  save:        setup_test.go:314: workspace = ""; want wrkspc_Good1 (listings "-,wrkspc_Good1")
+  existing:    setup_test.go:338: runSetupInteractive: wizard: Claude (Anthropic) refused 3 workspaces entered: llmprovider: workspace required: … (listings "-,-,1,-")
+  yes-listing: setup_test.go:365: listings "-"; want every listing in wrkspc_Good1
+  generation:  provider_test.go:219: anthropic-workspace-id = [] (sent false); want "wrkspc_Good1" (sent true)
+  guard:       provider_test.go:225: kilo got 1 options from a workspace
+  omitempty:   config_test.go:134: an empty workspace is written: {"api_key":"k","model":"m","workspace":""}, <nil>
+  ```
+
+  The `yes-listing` copy also saved `claude-haiku-5-5`, the static
+  catalog's model, where the listing was refused: what `--yes` would have
+  done without D3.
+* `make verify` exits 0: total coverage 83.9% (minimum 80.0%), "No
+  vulnerabilities found.", "ci filters: 11 patterns, 11 reads checked, 0
+  problems", the tools' 25 tests and the scripts' 34 "OK", and the six
+  cross-builds.

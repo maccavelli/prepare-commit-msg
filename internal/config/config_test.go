@@ -119,6 +119,33 @@ func TestProviderConfig_Organization(t *testing.T) {
 	}
 }
 
+// TestProviderConfig_Workspace: the Claude workspace round-trips as
+// "workspace", is not written when empty, and a configuration written before
+// it existed loads unchanged (0024-MADR D3).
+func TestProviderConfig_Workspace(t *testing.T) {
+	var old ProviderConfig
+	if err := json.Unmarshal([]byte(`{"api_key":"k","model":"m"}`), &old); err != nil {
+		t.Fatal(err)
+	}
+	if old.Workspace != "" || old.APIKey != "k" || old.Model != "m" {
+		t.Fatalf("old configuration loaded as %+v", old)
+	}
+	if b, err := json.Marshal(old); err != nil || bytes.Contains(b, []byte("workspace")) {
+		t.Fatalf("an empty workspace is written: %s, %v", b, err)
+	}
+	b, err := json.Marshal(ProviderConfig{APIKey: "k", Model: "m", Workspace: "wrkspc_Good1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(b, []byte(`"workspace":"wrkspc_Good1"`)) {
+		t.Fatalf("encoded %s; want the workspace as \"workspace\"", b)
+	}
+	var back ProviderConfig
+	if err := json.Unmarshal(b, &back); err != nil || back.Workspace != "wrkspc_Good1" {
+		t.Fatalf("round trip = %+v, %v", back, err)
+	}
+}
+
 func TestConfig_SaveAndLoad(t *testing.T) {
 	isolateHome(t)
 

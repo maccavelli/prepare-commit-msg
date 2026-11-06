@@ -23,6 +23,7 @@ import (
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/auth"
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/catalog"
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/providers"
+	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/providers/claude"
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider/providers/kilo"
 	"github.com/maccavelli/go-selfupdate-lib/selfupdate/cli"
 )
@@ -348,8 +349,8 @@ func newActiveProvider(conf *config.Config, pc config.ProviderConfig, model stri
 }
 
 // providerOptions are the options a provider's saved configuration adds: the
-// endpoint configure saved (0014-MADR D6), and the Kilo organization a device
-// login chose.
+// endpoint configure saved (0014-MADR D6), the Kilo organization a device
+// login chose, and the Claude workspace the wizard asked for (0024-MADR D3).
 func providerOptions(id llmprovider.ProviderID, pc config.ProviderConfig) []llmprovider.Option {
 	var opts []llmprovider.Option
 	if baseURL := strings.TrimSpace(pc.BaseURL); baseURL != "" {
@@ -357,6 +358,9 @@ func providerOptions(id llmprovider.ProviderID, pc config.ProviderConfig) []llmp
 	}
 	if id == llmprovider.ProviderKilo && strings.TrimSpace(pc.Organization) != "" {
 		opts = append(opts, kilo.WithOrganization(strings.TrimSpace(pc.Organization)))
+	}
+	if id == llmprovider.ProviderClaude && strings.TrimSpace(pc.Workspace) != "" {
+		opts = append(opts, claude.WithWorkspace(strings.TrimSpace(pc.Workspace)))
 	}
 	return opts
 }

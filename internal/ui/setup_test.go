@@ -229,6 +229,147 @@ func TestDiscoverModels_KiloTiersOnly_0015(t *testing.T) {
 	}
 }
 
+// roundTripFunc is an http.RoundTripper from a function.
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+// anthropicWorkspace is Anthropic's model listing for a key not scoped to a
+// workspace, as go-llmprovider-sdk's wizard/workspace_0064_test.go measures
+// it: with no anthropic-workspace-id it refuses the key; with one in usable
+// it lists. It records each listing's workspace, "-" for none.
+type anthropicWorkspace struct {
+	key    string
+	usable string
+	mu     sync.Mutex
+	sent   []string
+}
+
+func (a *anthropicWorkspace) install(t *testing.T) {
+	t.Helper()
+	t.Setenv("LLMPROVIDER_DISABLE_MODELS_METADATA", "1")
+	reply := func(status int, body string) *http.Response {
+		return &http.Response{StatusCode: status, Header: http.Header{"Content-Type": {"application/json"}},
+			Body: io.NopCloser(strings.NewReader(body))}
+	}
+	refuse := func(status int, kind, message string) *http.Response {
+		return reply(status, `{"type":"error","error":{"type":"`+kind+`","message":"`+message+`"}}`)
+	}
+	listingClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if !strings.HasSuffix(r.URL.Path, "/v1/models") {
+			return reply(http.StatusNotFound, `{}`), nil
+		}
+		workspace, named := r.Header.Get("anthropic-workspace-id"), r.Header.Values("anthropic-workspace-id") != nil
+		a.mu.Lock()
+		if named {
+			a.sent = append(a.sent, workspace)
+		} else {
+			a.sent = append(a.sent, "-")
+		}
+		a.mu.Unlock()
+		switch {
+		case r.Header.Get("x-api-key") != a.key:
+			return refuse(http.StatusUnauthorized, "authentication_error", "invalid x-api-key"), nil
+		case !named:
+			return refuse(http.StatusBadRequest, "invalid_request_error", "This API key is not scoped to a workspace, so this "+
+				"request must include the anthropic-workspace-id header with the ID of the workspace to use."), nil
+		case workspace != a.usable:
+			return refuse(http.StatusNotFound, "not_found_error", "Workspace `"+workspace+"` not found."), nil
+		}
+		return reply(http.StatusOK, `{"data":[{"id":"claude-haiku-4-5"}],"has_more":false}`), nil
+	})}
+}
+
+// listings is every listing's workspace so far, joined.
+func (a *anthropicWorkspace) listings() string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return strings.Join(a.sent, ",")
+}
+
+// TestRunSetupInteractive_SavesClaudeWorkspace: a Claude key the listing
+// refuses for want of a workspace is asked for one, and configure saves the
+// workspace it listed with (0024-MADR D3).
+func TestRunSetupInteractive_SavesClaudeWorkspace(t *testing.T) {
+	isolate(t)
+	a := &anthropicWorkspace{key: testKey(t), usable: "wrkspc_Good1"}
+	a.install(t)
+	conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
+	config.ApplyDefaults(conf)
+	pos := slices.IndexFunc(registry.Descriptors(), func(x llmprovider.Descriptor) bool {
+		return x.ID == llmprovider.ProviderClaude
+	}) + 1
+
+	// claude, the key, the workspace, search blank, the first model,
+	// fallback search blank, none, the four operational defaults
+	input := strconv.Itoa(pos) + "\n" + a.key + "\nwrkspc_Good1\n\n1\n\n\n\n\n\n\n"
+	if err := runSetupInteractive(context.Background(), conf, SetupOptions{NoEnv: true}, strings.NewReader(input)); err != nil {
+		t.Fatalf("runSetupInteractive: %v (listings %q)", err, a.listings())
+	}
+	pc := conf.Providers[string(llmprovider.ProviderClaude)]
+	if conf.ActiveProvider != string(llmprovider.ProviderClaude) || pc.APIKey != a.key {
+		t.Fatalf("saved %q with key set %t; want claude with the typed key", conf.ActiveProvider, pc.APIKey == a.key)
+	}
+	if pc.Workspace != "wrkspc_Good1" {
+		t.Errorf("workspace = %q; want wrkspc_Good1 (listings %q)", pc.Workspace, a.listings())
+	}
+	if !strings.HasPrefix(a.listings(), "-,wrkspc_Good1") {
+		t.Errorf("listings %q; want a refused listing, then one in wrkspc_Good1", a.listings())
+	}
+}
+
+// TestRunSetupInteractive_KeepsSavedClaudeWorkspace: reconfiguring a saved
+// Claude key lists in its saved workspace at once, with no workspace prompt,
+// and keeps it (0024-MADR D3).
+func TestRunSetupInteractive_KeepsSavedClaudeWorkspace(t *testing.T) {
+	isolate(t)
+	a := &anthropicWorkspace{key: testKey(t), usable: "wrkspc_Good1"}
+	a.install(t)
+	conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
+	config.ApplyDefaults(conf)
+	claudeID := string(llmprovider.ProviderClaude)
+	conf.ActiveProvider = claudeID
+	conf.Providers[claudeID] = config.ProviderConfig{APIKey: a.key, Model: "claude-haiku-4-5", Workspace: "wrkspc_Good1"}
+
+	// the saved provider, keep the saved key, search blank, the first model,
+	// fallback search blank, none, the four operational defaults
+	input := "\ny\n\n1\n\n\n\n\n\n\n"
+	if err := runSetupInteractive(context.Background(), conf, SetupOptions{NoEnv: true}, strings.NewReader(input)); err != nil {
+		t.Fatalf("runSetupInteractive: %v (listings %q)", err, a.listings())
+	}
+	if got := a.listings(); !strings.HasPrefix(got, "wrkspc_Good1") || strings.Contains(got, "-") {
+		t.Errorf("listings %q; want every listing in the saved wrkspc_Good1", got)
+	}
+	if pc := conf.Providers[claudeID]; pc.Workspace != "wrkspc_Good1" || pc.APIKey != a.key {
+		t.Errorf("saved workspace %q, key kept %t; want wrkspc_Good1 and the saved key", pc.Workspace, pc.APIKey == a.key)
+	}
+}
+
+// TestRunSetupNonInteractive_ClaudeWorkspace: configure --yes lists with a
+// saved Claude workspace and keeps it (0024-MADR D3).
+func TestRunSetupNonInteractive_ClaudeWorkspace(t *testing.T) {
+	isolate(t)
+	a := &anthropicWorkspace{key: testKey(t), usable: "wrkspc_Good1"}
+	a.install(t)
+	conf := &config.Config{Providers: make(map[string]config.ProviderConfig)}
+	config.ApplyDefaults(conf)
+	claudeID := string(llmprovider.ProviderClaude)
+	conf.Providers[claudeID] = config.ProviderConfig{APIKey: a.key, Workspace: "wrkspc_Good1"}
+
+	if err := runSetupNonInteractive(context.Background(), conf, SetupOptions{
+		Provider: claudeID, NoEnv: true, Yes: true,
+	}); err != nil {
+		t.Fatalf("runSetupNonInteractive: %v (listings %q)", err, a.listings())
+	}
+	if got := a.listings(); got == "" || strings.Contains(got, "-") {
+		t.Errorf("listings %q; want every listing in wrkspc_Good1", got)
+	}
+	pc := conf.Providers[claudeID]
+	if pc.Model != "claude-haiku-4-5" || pc.Workspace != "wrkspc_Good1" {
+		t.Errorf("saved model %q, workspace %q; want claude-haiku-4-5 in wrkspc_Good1", pc.Model, pc.Workspace)
+	}
+}
+
 func TestRunSetupInteractive_FallbackMultiSelect(t *testing.T) {
 	isolate(t)
 
