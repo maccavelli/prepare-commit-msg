@@ -13,6 +13,10 @@ provider for a Conventional Commit message, and writes that message into Git's
 commit-message file. The same binary exposes `configure`, `update`,
 `version`, and `identity` commands.
 
+This GitHub repository, `maccavelli/prepare-commit-msg`, is the source of
+truth: work lands on its `main`, and releases are tagged there. It is
+licensed under the Apache License 2.0 ([LICENSE](../LICENSE)).
+
 ## Runtime flow
 
 `main.go` dispatches CLI subcommands or hook execution. The hook skips Git
@@ -43,8 +47,9 @@ verification, repository-settings, and release procedures.
 
 The `Makefile` is the shared local and CI command surface. `make verify`
 checks modules, formatting, lint, vet, race-enabled tests, coverage,
-vulnerabilities, workflow syntax, and all release cross-builds.
-`make verify-staged` remains an explicit staged-snapshot diagnostic.
+vulnerabilities, shell-script and workflow syntax, the maintainer tools'
+tests, and all release cross-builds. `make pre-add-check` checks the staged
+Go snapshot; `make verify-staged` is its alias.
 
 The repository installs no Git hooks. Before a push, `make preflight` runs
 `check-records`, `markdownlint` and `verify`, and `make preflight-hosts` runs
@@ -65,6 +70,7 @@ workflow calls pinned reusable build and publish workflows from
 
 ```text
 README.md                  product entry and documentation link
+LICENSE                    Apache License 2.0
 AGENTS.md                  shared agent workflow
 Makefile                   local and CI command surface
 main.go                    CLI dispatch, hook execution, and the commit-message write

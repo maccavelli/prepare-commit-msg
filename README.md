@@ -792,11 +792,11 @@ What you may notice:
 
 ```text
 Usage:
-  prepare-commit-msg configure [flags]                - run setup wizard or non-interactive configure
-  prepare-commit-msg update [flags]                   - check for and apply updates from GitHub
-  prepare-commit-msg version                          - show binary version, as vX.Y.Z (release) <revision>
-  prepare-commit-msg identity                         - print the build identity alone, as the release checks run it
-  prepare-commit-msg help                             - display help message
+  prepare-commit-msg configure [flags]              - run setup wizard or non-interactive configure
+  prepare-commit-msg update [flags]                 - check for and apply updates from GitHub
+  prepare-commit-msg version                        - show version
+  prepare-commit-msg identity                       - print the build identity alone
+  prepare-commit-msg help                           - show this help
   prepare-commit-msg <commit_msg_file> [source] [sha] - run as git prepare-commit-msg hook
 ```
 
@@ -812,7 +812,7 @@ The repository uses pinned developer tools in `.tools/bin` to ensure identical r
 
 ```bash
 make tools          # Bootstrap pinned tools (golangci-lint, govulncheck, actionlint)
-make verify         # Run complete quality contract: mod-check, fmt-check, lint, vet, test, coverage, vuln, workflow-lint, build-all
+make verify         # Run complete quality contract: tools, mod-check, fmt-check, lint, vet, test, coverage, vuln, workflow-lint, tools-test, build-all
 ```
 
 ### Build & Test Targets
@@ -866,11 +866,13 @@ reports, and task-oriented navigation.
   [the architecture](docs/architecture.md).
 - To run verification, manage repository settings, or perform a release, use
   [the CI/CD operations guide](docs/guides/cicd-operations.md).
-- To understand the workspace and local-hook policy, read
-  [MADR 0013](docs/decisions/0013-MADR-align-repository-with-workspace-scaffolding.md).
+- To understand the workspace, read
+  [MADR 0013](docs/decisions/0013-MADR-align-repository-with-workspace-scaffolding.md);
+  for the hook policy that replaced 0013's, read
+  [MADR 0017](docs/decisions/0017-MADR-replace-git-hooks-with-make-preflight-and-host-tests.md).
 
 ---
 
 ## License
 
-Part of the split Go repository fleet.
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).

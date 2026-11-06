@@ -126,67 +126,36 @@ jq -n '{
 	can_approve_pull_request_reviews: false
 }' >"$CONFIG_TMP/workflow-permissions.json"
 
-if api "repos/$REPOSITORY/environments/release" \
-	>"$CONFIG_TMP/current-environment.json" 2>"$CONFIG_TMP/environment-error"; then
-	jq '{
-		wait_timer: ([.protection_rules[]? | select(.type == "wait_timer") |
-			.wait_timer][0] // 0),
-		prevent_self_review: ([.protection_rules[]? |
-			select(.type == "required_reviewers") | .prevent_self_review][0] // false),
-		reviewers: ([.protection_rules[]? | select(.type == "required_reviewers") |
-			.reviewers[]? | {type, id: .reviewer.id}]),
-		deployment_branch_policy: {
-			protected_branches: false,
-			custom_branch_policies: true
-		}
-	}' "$CONFIG_TMP/current-environment.json" >"$CONFIG_TMP/environment.json"
-elif grep -q '(HTTP 404)' "$CONFIG_TMP/environment-error"; then
-	jq -n '{
-		deployment_branch_policy: {
-			protected_branches: false,
-			custom_branch_policies: true
-		}
-	}' >"$CONFIG_TMP/environment.json"
-else
-	echo "could not read the release environment" >&2
-	sed -n '1,5p' "$CONFIG_TMP/environment-error" >&2
-	exit 1
-fi
-
+# Neither ruleset has a bypass actor: the rules bind every actor, the
+# owner included, and GitHub reports no push as a bypass. No release
+# environment is managed either; no job used it, and its administrator
+# bypass went with it
+# (docs/decisions/0025-MADR-remove-ruleset-bypass-actors.md D1, Q1).
 jq -n '{
 	name: "prepare-commit-msg-main",
 	target: "branch",
 	enforcement: "active",
-	bypass_actors: [{
-		actor_id: 5,
-		actor_type: "RepositoryRole",
-		bypass_mode: "always"
-	}],
+	bypass_actors: [],
 	conditions: {ref_name: {include: ["~DEFAULT_BRANCH"], exclude: []}},
 	rules: [{type: "deletion"}, {type: "non_fast_forward"}]
 }' >"$CONFIG_TMP/main-ruleset.json"
 
-# Administrators alone may bypass. A repository a personal account owns
-# cannot name the GitHub Actions integration as a bypass actor, and no
-# workflow creates or deletes a v* tag: the publish workflow's
+# A pushed v* tag can be neither deleted nor moved, by anyone. Creation is
+# not restricted: with no bypass actor, a `creation` rule would refuse every
+# release tag, and this is the source repository, where the owner tags
+# releases. No workflow creates a v* tag: the publish workflow's
 # `gh release create --verify-tag` requires the tag to exist
-# (docs/decisions/0012-PLAN-adopt-go-1-27-2-go-selfupdate-lib-v1-13-0-and-its-release-pipeline.md D3).
+# (docs/decisions/0025-MADR-remove-ruleset-bypass-actors.md D2).
 jq -n '{
 	name: "prepare-commit-msg-release-tags",
 	target: "tag",
 	enforcement: "active",
-	bypass_actors: [
-		{
-			actor_id: 5,
-			actor_type: "RepositoryRole",
-			bypass_mode: "always"
-		}
-	],
+	bypass_actors: [],
 	conditions: {ref_name: {include: ["refs/tags/v*"], exclude: []}},
 	rules: [
-		{type: "creation"},
 		{type: "deletion"},
-		{type: "non_fast_forward"}
+		{type: "non_fast_forward"},
+		{type: "update"}
 	]
 }' >"$CONFIG_TMP/tag-ruleset.json"
 
@@ -199,7 +168,6 @@ jq -n -S \
 	--slurpfile actions "$CONFIG_TMP/actions-policy.json" \
 	--slurpfile selected "$CONFIG_TMP/selected-actions.json" \
 	--slurpfile workflow "$CONFIG_TMP/workflow-permissions.json" \
-	--slurpfile environment "$CONFIG_TMP/environment.json" \
 	--slurpfile main_ruleset "$CONFIG_TMP/main-ruleset.json" \
 	--slurpfile tag_ruleset "$CONFIG_TMP/tag-ruleset.json" '{
 	mode: $mode,
@@ -212,9 +180,6 @@ jq -n -S \
 		{method: "PUT", endpoint: "actions/permissions/selected-actions", body: $selected[0]},
 		{method: "PUT", endpoint: "actions/permissions/workflow", body: $workflow[0]},
 		{method: "DELETE", endpoint: "automated-security-fixes", body: null},
-		{method: "PUT", endpoint: "environments/release", body: $environment[0]},
-		{method: "RECONCILE", endpoint: "environments/release/deployment-branch-policies",
-			body: {name: "main", type: "branch"}},
 		{method: "UPSERT_BY_NAME", endpoint: "rulesets", body: $main_ruleset[0]},
 		{method: "UPSERT_BY_NAME", endpoint: "rulesets", body: $tag_ruleset[0]}
 	]
@@ -259,30 +224,6 @@ api --method PUT "repos/$REPOSITORY/actions/permissions/workflow" \
 if [ "$(api "repos/$REPOSITORY/automated-security-fixes" --jq '.enabled')" != "false" ]; then
 	api --method DELETE "repos/$REPOSITORY/automated-security-fixes" >/dev/null
 fi
-api --method PUT "repos/$REPOSITORY/environments/release" \
-	--input "$CONFIG_TMP/environment.json" >/dev/null
-
-api "repos/$REPOSITORY/environments/release/deployment-branch-policies" \
-	>"$CONFIG_TMP/branch-policies.json"
-FOUND_MAIN_POLICY=false
-while IFS=$'\t' read -r policy_id policy_name policy_type; do
-	if [ "$policy_name" = "main" ] && [ "$policy_type" = "branch" ]; then
-		FOUND_MAIN_POLICY=true
-	else
-		api --method DELETE \
-			"repos/$REPOSITORY/environments/release/deployment-branch-policies/$policy_id" \
-			>/dev/null
-	fi
-done < <(jq -r '.branch_policies[]? | [.id, .name, (.type // "branch")] | @tsv' \
-	"$CONFIG_TMP/branch-policies.json")
-
-if [ "$FOUND_MAIN_POLICY" != "true" ]; then
-	jq -n '{name: "main", type: "branch"}' >"$CONFIG_TMP/main-policy.json"
-	api --method POST \
-		"repos/$REPOSITORY/environments/release/deployment-branch-policies" \
-		--input "$CONFIG_TMP/main-policy.json" >/dev/null
-fi
-
 api "repos/$REPOSITORY/rulesets?includes_parents=false" \
 	>"$CONFIG_TMP/rulesets.json"
 

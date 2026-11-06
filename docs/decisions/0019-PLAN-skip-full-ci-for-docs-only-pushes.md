@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: superseded
 date: 2026-10-20
 associated-madr: "0019-MADR-skip-full-ci-for-docs-only-pushes.md"
 ---

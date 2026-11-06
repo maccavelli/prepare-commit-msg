@@ -56,8 +56,9 @@ with `scripts/go-precheck.py`; `make verify-staged` is its older name.
 Until 0017-MADR, `make hooks-install` pointed a clone's local
 `core.hooksPath` at `.git/prepare-commit-msg-hooks`, whose `pre-push` ran
 `.githooks/pre-push`. That file is gone, so such a clone fails every push.
-Before pulling this change, run `make hooks-uninstall`. After pulling, restore
-the clone by hand. First see whether the clone had its own setting before:
+Neither `make hooks-install` nor `make hooks-uninstall` exists any more, so
+restore such a clone by hand. First see whether the clone had its own setting
+before:
 
 ```bash
 cat .git/prepare-commit-msg-hooks/.previous-local-present
@@ -112,19 +113,26 @@ scripts/configure-github.sh | jq .
 The intended converged state is:
 
 - read-only default `GITHUB_TOKEN` permissions and no pull-request approvals;
-- GitHub-authored and repository-local actions only, with full-SHA pinning;
+- GitHub-owned actions, plus go-selfupdate-lib's reusable
+  `build-selfupdate-release.yml` and `publish-selfupdate-release.yml`
+  workflows, all pinned by full SHA;
 - Dependabot security updates disabled by maintainer policy;
-- a `release` environment restricted to the `main` branch;
-- a default-branch ruleset that blocks deletion and non-fast-forward updates,
-  with repository administrators able to publish mirror snapshots; and
-- a `v*` tag ruleset that restricts creation to repository administrators and
-  the GitHub Actions integration and blocks deletion and non-fast-forward
-  updates for other actors.
+- a default-branch ruleset that blocks deletion and non-fast-forward
+  updates; and
+- a `v*` tag ruleset that blocks deletion, non-fast-forward updates, and any
+  update of an existing tag.
+
+Neither ruleset has a bypass actor, so the rules bind every actor, the owner
+included, and no push is reported as a bypass. Creating a `v*` tag is not
+restricted: this is the source repository, where the owner tags releases.
+The script manages no deployment environment
+([`0025-MADR-remove-ruleset-bypass-actors.md`](../decisions/0025-MADR-remove-ruleset-bypass-actors.md)).
 
 The apply path verifies the GitHub host, repository identity, administrator
-access, default branch, origin URL, deployed workflow commit, and remote
-workflow blob IDs before its first mutation. It therefore refuses activation
-until the implementation has been pushed to `origin/main`.
+access, default branch and origin URL, and that the local `ci.yml` is the
+one on `origin/main` with no uncommitted workflow changes, before its first
+mutation. It therefore refuses activation until `ci.yml` has been pushed to
+`origin/main`.
 
 Pushing is a separate, explicit maintainer action. After the implementation is
 on `origin/main` and remote activation has been separately authorized:
@@ -136,13 +144,8 @@ scripts/audit-github.sh
 
 The first apply preserves a mode-`0600` baseline at
 `.git/prepare-commit-msg-github-settings-before.json`; later applies preserve
-that original snapshot. Named rulesets are updated in place, the environment
-branch policy is reconciled, and repeated runs converge without duplicates.
-
-Required reviewers are intentionally not configured because no reviewer
-identity was supplied. A repository administrator may add reviewers later,
-but must preserve the `main` deployment branch policy and capture audits before
-and after the change.
+that original snapshot. Named rulesets are updated in place, and repeated
+runs converge without duplicates.
 
 ## Controlled release
 
@@ -198,19 +201,17 @@ Verify a downloaded checksum file with:
 
 ## Failed-release recovery
 
-If a release tag fails verification or build before completion:
+A pushed `v*` tag is permanent: the tag ruleset refuses deleting or moving
+it, for every actor
+([`0025-MADR-remove-ruleset-bypass-actors.md`](../decisions/0025-MADR-remove-ruleset-bypass-actors.md) D3).
+If a release tag's run fails before it publishes:
 
 1. Fix the underlying issue on `main` and run `make verify`.
-2. Delete the remote and local failed tag if unreleased:
+2. Tag the fixed commit with the next patch version (e.g. `v1.2.4`) and push
+   that tag. The failed tag stays, unreleased.
 
-   ```bash
-   git push --delete origin "$VERSION"
-   git tag -d "$VERSION"
-   ```
-
-3. Re-tag the fixed commit and push the tag to trigger the pipeline again.
-
-If a release was already published to GitHub, increment the patch version (e.g. `v1.2.4`) rather than overwriting an existing release.
+If a release was already published to GitHub, the same holds: increment the
+patch version rather than overwriting an existing release.
 
 ## Dependency and action-pin updates
 
@@ -220,9 +221,8 @@ cadence and run `make verify`. For an action update, confirm that the new full
 SHA belongs to the official action and that the end-of-line release comment
 matches it. Never replace a SHA with a mutable major tag.
 
-This GitHub repository is a one-way mirror, so accepted dependency updates must
-also land in the authoritative private source before the next export. Do not
-merge a public pull request that the mirror workflow cannot propagate.
+This GitHub repository is the source of truth: accepted dependency updates
+land on its `main`, and releases are tagged there.
 
 ## Vulnerability failures and exceptions
 

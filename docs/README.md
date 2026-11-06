@@ -58,13 +58,14 @@ This tree holds three kinds of document:
 | 0020 | PLAN | [Implement reconciliation of current product and maintainer documentation](decisions/0020-PLAN-reconcile-current-product-and-maintainer-documentation.md) | in progress |
 | 0021 | MADR | [Adopt provider SDK v1.22.2 and self-update library v1.22.0](decisions/0021-MADR-adopt-go-llmprovider-sdk-v1-22-2-and-go-selfupdate-lib-v1-22-0.md) | accepted |
 | 0021 | PLAN | [Implement provider SDK v1.22.2 and self-update library v1.22.0](decisions/0021-PLAN-adopt-go-llmprovider-sdk-v1-22-2-and-go-selfupdate-lib-v1-22-0.md) | complete |
-
 | 0022 | MADR | [Align docs-only CI and disclosure gates](decisions/0022-MADR-align-docs-ci-and-disclosure-gates.md) | accepted 2026-10-25 (execution approved by the owner) |
 | 0022 | PLAN | [Implement aligned docs-only CI and disclosure gates](decisions/0022-PLAN-align-docs-ci-and-disclosure-gates.md) | in progress |
 | 0023 | MADR | [Split the user documentation into `docs/guides/`, indexed by the READMEs](decisions/0023-MADR-split-user-documentation-into-guides.md) | proposed |
 | 0023 | PLAN | [Implement the split of user documentation into `docs/guides/`](decisions/0023-PLAN-split-user-documentation-into-guides.md) | proposed |
 | 0024 | MADR | [Adopt provider SDK v1.26.1 and self-update library v1.24.0](decisions/0024-MADR-adopt-go-llmprovider-sdk-v1-26-1-and-go-selfupdate-lib-v1-24-0.md) | accepted 2026-11-05 |
 | 0024 | PLAN | [Implement provider SDK v1.26.1 and self-update library v1.24.0](decisions/0024-PLAN-adopt-go-llmprovider-sdk-v1-26-1-and-go-selfupdate-lib-v1-24-0.md) | complete |
+| 0025 | MADR | [Remove every bypass actor; GitHub as the source of truth](decisions/0025-MADR-remove-ruleset-bypass-actors.md) | accepted 2026-11-06 |
+| 0025 | PLAN | [Implement removing the bypass actors and the source-of-truth docs](decisions/0025-PLAN-remove-ruleset-bypass-actors.md) | in progress |
 
 ## I want to…
 
