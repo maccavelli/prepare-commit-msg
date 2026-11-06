@@ -32,6 +32,7 @@ Commit](https://www.conventionalcommits.org/) messages.
 - [Changes with go-llmprovider-sdk v1.15.0](#changes-with-go-llmprovider-sdk-v1150)
 - [Changes with Go 1.27.3, go-llmprovider-sdk v1.21.0 and go-selfupdate-lib v1.17.2](#changes-with-go-1273-go-llmprovider-sdk-v1210-and-go-selfupdate-lib-v1172)
 - [Changes with go-llmprovider-sdk v1.22.2 and go-selfupdate-lib v1.22.0](#changes-with-go-llmprovider-sdk-v1222-and-go-selfupdate-lib-v1220)
+- [Changes with go-llmprovider-sdk v1.26.1 and go-selfupdate-lib v1.24.0](#changes-with-go-llmprovider-sdk-v1261-and-go-selfupdate-lib-v1240)
 - [CLI Reference](#cli-reference)
 - [Developer Experience](#developer-experience)
 - [Documentation](#documentation)
@@ -740,6 +741,37 @@ What you may notice:
   run is still limited to 15 minutes, and a slow download is no longer
   cut off by a per-request limit.
 - **The installers** behave as in `v1.10.1`.
+
+---
+
+## Changes with go-llmprovider-sdk v1.26.1 and go-selfupdate-lib v1.24.0
+
+Release `v1.10.3` moves from go-llmprovider-sdk `v1.22.2` to `v1.26.1`,
+and from go-selfupdate-lib `v1.22.0` to `v1.24.0`
+([0024-MADR](docs/decisions/0024-MADR-adopt-go-llmprovider-sdk-v1-26-1-and-go-selfupdate-lib-v1-24-0.md)).
+What you may notice:
+
+- **`configure`:**
+  - an Anthropic key that is not scoped to a workspace is asked for one,
+    the workspace ID (`wrkspc_…`) from the Anthropic Console; it is saved
+    as `workspace` in `config.json`, offered again next time, and used for
+    every commit message;
+  - model search matches a family or a feature, such as `vision`, `tools`
+    or `128k`, as well as a name, and shows ten matches at a time;
+  - a saved sign-in the model listing refuses no longer ends the run; a
+    notice says so, and the sign-in menu follows;
+  - a model name holding terminal control characters is not shown, and
+    notices no longer quote a service's reply.
+- **The hook:**
+  - a connection that died after sleep or a network change fails within
+    45 seconds, where it could wait 5 minutes;
+  - an HTTP 501 or 505, or a TLS certificate the client refuses, is
+    reported at once instead of retried;
+  - a retry for want of a network is labelled `unavailable`, where it said
+    `cannot reach`; it is retried as before.
+- **`update`:** on macOS and Linux, the new binary is written only into
+  the directory `update` locked.
+- **The installers** behave as in `v1.10.2`.
 
 ---
 

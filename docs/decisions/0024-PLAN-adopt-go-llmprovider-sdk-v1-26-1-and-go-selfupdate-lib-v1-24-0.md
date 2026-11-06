@@ -291,3 +291,24 @@ Execution approved by the owner, 2026-11-05: "approved to proceed".
   vulnerabilities found.", "ci filters: 11 patterns, 11 reads checked, 0
   problems", the tools' 25 tests and the scripts' 34 "OK", and the six
   cross-builds.
+* `make pre-add-check` on the staged phase: exit 0, "all modules
+  verified", "0 issues.", "No vulnerabilities found.".
+* Committed by the agent as `cd8a6a3` on the owner's "Commit to main"
+  (Deviation 1).
+
+### Phase 3, 2026-11-05
+
+* `README.md` gains "Changes with go-llmprovider-sdk v1.26.1 and
+  go-selfupdate-lib v1.24.0" after the `v1.22.2` / `v1.22.0` section,
+  opening "Release `v1.10.3` moves …" and citing the MADR, with the MADR's
+  D5 bullets for `configure` (the workspace first), the hook, `update` and
+  the installers; and its table-of-contents line after README.md:34.
+* Not done: the README's "Configuration File" example and field list do
+  not name `workspace`. D5 and this PLAN's scope name the release-notes
+  section only; the field is described there and in `ProviderConfig`'s
+  doc.
+* `make markdownlint` exits 0, "0 issues", the link-fragment rule
+  included; `TestCurrentDocumentation`,
+  `TestCurrentDocumentationDetectsBrokenFixtures` and
+  `TestReadmeCuratedModels` pass; `make check-records` and `make
+  disclosure-check` exit 0.
