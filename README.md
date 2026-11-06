@@ -110,6 +110,7 @@ You can supply credentials and configure behavior using standard environment var
 | **`GEMINI_API_KEY`** | `gemini` | Google AI Studio API key |
 | **`OPENAI_API_KEY`** | `openai` | OpenAI platform API key |
 | **`ANTHROPIC_API_KEY`** | `claude` | Anthropic Claude API key (`CLAUDE_API_KEY` is read when this is unset) |
+| **`ANTHROPIC_WORKSPACE_ID`** | `claude` | Anthropic workspace ID (`wrkspc_…`) that `configure` offers as the answer when it asks for one. Read by `configure` only, never by the hook, and not under `--no-env` |
 | **`XAI_API_KEY`** | `grok` | xAI Grok API key |
 | **`KILO_API_KEY`** | `kilo` | Kilo Gateway (Kilo Code) API key |
 | **`OPENCODE_API_KEY`** | `opencode-zen`, `opencode-go` | OpenCode API key (serves both Zen and Go gateways) |
@@ -250,7 +251,8 @@ The wizard guides you through:
 1. Provider selection across all 10 supported cloud, gateway, and local backends.
 2. Endpoint resolution (for Ollama or custom gateway endpoints).
 3. API Key detection from environment or prompt entry; a saved sign-in is
-   offered first.
+   offered first. An Anthropic key that is not scoped to a workspace is
+   asked for its workspace ID (`wrkspc_…`).
 4. Live model discovery from the provider API.
 5. Fallback model multi-selection (up to 3 fallbacks), with your saved
    fallbacks preselected.
@@ -334,6 +336,10 @@ prepare-commit-msg configure --yes \
 | `--no-env` | `bool` | `false` | Do not read API keys from environment variables |
 | `--yes` | `bool` | `false` | Apply non-interactively without prompting |
 
+`configure --yes` keeps a saved Claude `workspace` and lists models with it.
+No flag sets one, so configure a Claude key that needs a workspace
+interactively first.
+
 ---
 
 ### Configuration File
@@ -376,7 +382,8 @@ The configuration is saved as JSON with secure permissions (`0600`) at standard 
     "claude": {
       "api_key": "",
       "model": "claude-haiku-5-5",
-      "fallback_models": ["claude-sonnet-5-5"]
+      "fallback_models": ["claude-sonnet-5-5"],
+      "workspace": "wrkspc_EXAMPLE"
     }
   },
   "timeout_seconds": 120,
@@ -391,6 +398,12 @@ when `configure` saved an endpoint other than the provider's default (see
 [Supported Providers & Models](#supported-providers--models)), from the
 endpoint you typed in the wizard or from `--base-url`. Only `opencode-zen`,
 `opencode-go`, `huggingface`, `kilo`, `together` and `ollama` take one.
+
+`workspace` is the Anthropic workspace a Claude key that is not scoped to
+one runs in. It is present only when `configure` asked for one, because the
+model listing refused the key without it. The hook's Claude requests and
+`configure`'s model listing send it as `anthropic-workspace-id`. A key
+scoped to its workspace needs none.
 
 ---
 

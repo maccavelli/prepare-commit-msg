@@ -418,3 +418,29 @@ Execution approved by the owner, 2026-11-05: "approved to proceed".
 * Every Confirmation bullet of the MADR holds. Phases 0 to 5 are
   complete; Phase 6 was added afterwards (MADR A1), and the PLAN stays
   `in-progress` until it lands.
+* The records for Phases 4 and 5 and MADR A1 were committed by the agent
+  as `42dad6e` on the owner's "Commit to main then proceed", which also
+  approved Phase 6.
+
+### Phase 6, 2026-11-05
+
+* A Python script asserted each of its six anchors once before replacing
+  it: in `README.md`, "Interactive Wizard" step 3, the
+  `ANTHROPIC_WORKSPACE_ID` row after `ANTHROPIC_API_KEY`'s, the sentence
+  after the "Non-Interactive CLI Flags" table, `"workspace":
+  "wrkspc_EXAMPLE"` in the `claude` example, and the `workspace` paragraph
+  after `base_url`'s; in `docs/architecture.md`, the workspace clause
+  after the `base_url` sentence. The whole diff was read.
+* The README's example `config.json` parses; its `claude` entry carries
+  `workspace` "wrkspc_EXAMPLE", and every provider entry uses only
+  `ProviderConfig`'s JSON tags, read from `internal/config/config.go`.
+  On a scratch copy of the README with the key spelled `work_space`, the
+  check fails: `AssertionError: {… 'work_space': 'wrkspc_EXAMPLE'}`.
+* `make markdownlint` exits 0, "0 issues"; `TestCurrentDocumentation`,
+  `TestCurrentDocumentationDetectsBrokenFixtures` and
+  `TestReadmeCuratedModels` pass; `make check-records` and `make
+  disclosure-check` exit 0.
+* `make preflight`: "preflight passed"; total coverage 83.9% (minimum
+  80.0%), "No vulnerabilities found.", "ci filters: 11 patterns, 11 reads
+  checked, 0 problems". `make preflight-hosts` is exempt: docs only
+  (AGENTS.md).

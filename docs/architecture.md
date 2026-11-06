@@ -25,7 +25,8 @@ generation cannot complete.
 The list of providers, whether each needs a key, and each one's default
 endpoint come from the SDK's provider registry (`providers.Default()`),
 from which `internal/config` builds its provider list. A provider's saved
-`base_url`, when present, replaces that default endpoint. Configuration is
+`base_url`, when present, replaces that default endpoint, and a saved
+Claude `workspace` is sent with that provider's requests. Configuration is
 stored in the platform configuration directory; it supports API keys, saved
 OAuth sessions kept separately from `config.json`, and vendor-CLI credentials
 read from their existing auth files. `internal/fsutil` owns safe file writes.
