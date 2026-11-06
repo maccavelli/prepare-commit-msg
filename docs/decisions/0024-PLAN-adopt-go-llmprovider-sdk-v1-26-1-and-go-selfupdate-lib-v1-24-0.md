@@ -155,6 +155,42 @@ guide disagree.
 5. This PLAN becomes `complete`, the index follows, in a records commit
    on `main`.
 
+### Phase 6: the reference documentation (MADR A1)
+
+*Added 2026-11-05, after Phase 5, for the owner's "Update the docs".
+Proposed; it runs on the owner's approval.*
+
+1. `README.md`, each edit asserted once before it is made:
+   * "Interactive Wizard" step 3: add that an Anthropic key not scoped to
+     a workspace is asked for its workspace ID (`wrkspc_…`).
+   * "LLM Provider Credentials": a row after `ANTHROPIC_API_KEY` for
+     `ANTHROPIC_WORKSPACE_ID` (`claude`): the workspace ID `configure`
+     offers as its answer when it asks for one; read by `configure` only,
+     never by the hook, and not under `--no-env`.
+   * "Non-Interactive CLI Flags": a sentence after the table: `--yes`
+     keeps a saved `workspace` and lists with it; no flag sets one, so a
+     key that needs one is configured interactively first.
+   * "Configuration File": `"workspace": "wrkspc_EXAMPLE"` in the `claude`
+     example, and a paragraph after `base_url`'s: the Anthropic workspace
+     a Claude key not scoped to one runs in; present only when `configure`
+     asked for one; sent as `anthropic-workspace-id` with the hook's Claude
+     requests and with `configure`'s listing.
+2. `docs/architecture.md` "Runtime flow": after the `base_url` sentence,
+   a saved Claude `workspace` is sent with that provider's requests.
+3. Check: `make markdownlint`; `TestCurrentDocumentation`,
+   `TestCurrentDocumentationDetectsBrokenFixtures` and
+   `TestReadmeCuratedModels` pass; the README's example parses as JSON
+   into `config.Config` with the workspace on `claude`; `make
+   check-records` and `make disclosure-check`. Read the whole diff.
+4. Before a push: `make preflight` (`README.md` is outside `ci.yml`'s
+   `paths-ignore`, so the push runs the full CI). Docs only, so `make
+   preflight-hosts` is exempt (AGENTS.md); the disclosure guard over the
+   outgoing commits.
+5. The owner pushes `main`; CI on `main` is green. No release: the
+   documentation reaches users from `main`, and the next release carries
+   it.
+6. This PLAN becomes `complete`, the index follows.
+
 ## Verification
 
 * Phase 2: `make verify` exits 0, as in the MADR's probe; the `grep -c`
@@ -312,3 +348,73 @@ Execution approved by the owner, 2026-11-05: "approved to proceed".
   `TestCurrentDocumentationDetectsBrokenFixtures` and
   `TestReadmeCuratedModels` pass; `make check-records` and `make
   disclosure-check` exit 0.
+* Committed by the agent as `79f894a` on the owner's "Commit to main"
+  (Deviation 1). Its hook-written subject reads "add v1.26.1 release
+  notes", the SDK's version, where the release is `v1.10.3`; the owner was
+  told before the push and pushed it unamended, so it stands as published.
+
+### Phase 4, 2026-11-05
+
+* `make preflight` on `79f894a`: "preflight passed"; total coverage 83.9%
+  (minimum 80.0%), "No vulnerabilities found.", the tools' 25 tests and
+  the scripts' 34 "OK".
+* `make preflight-hosts` on the committed `HEAD`, `79f894a`:
+
+  ```text
+  linux: exit=0 (218s)
+  wsl-ubuntu-24.04: exit=0 (66s)
+  windows: exit=0 (6s)
+  macos: exit=0 (5s)
+  preflight-hosts: 4/4 hosts passed
+  ```
+
+  The linux and WSL builds stamp `v1.10.2-11-g79f894a`. windows and macos
+  run CI's native `go test ./...` on the bundle of `HEAD`, every package
+  `ok`; windows downloaded go-llmprovider-sdk v1.26.1. No host was
+  unreachable.
+* The disclosure guard, as AGENTS.md writes it, exits 0 with no output
+  over `6337fa0..79f894a`.
+* The owner pushed `main`. CI run `42155771518` on `79f894a`: success.
+  "Go (quality contract)", the three native test jobs, "Build release /
+  build" (`rehearsal=true`; its log: `Uses: …build-selfupdate-release.yml@74ab5dd376a4c864debb32b2d8abfc7856059ba3`)
+  and five identity jobs succeed, linux/amd64, linux/arm64, darwin/arm64,
+  windows/amd64 and windows/arm64, the five of `v1.10.2`'s run; "Publish
+  GitHub Release" is skipped, as on any push that is not a tag. Docs run
+  `42155770890`: success.
+
+### Phase 5, 2026-11-05
+
+* On the owner's "Tag it on main", the agent made `v1.10.3`, annotated,
+  message `v1.10.3`, as `v1.10.2` is (tag object `b374088`, peeling to
+  `79f894a`), and on "Push the v1.10.3 tag" pushed it. GitHub answered
+  "Bypassed rule violations for refs/tags/v1.10.3: Cannot create ref due
+  to creations being restricted": a ruleset restricts tag creation, and
+  the account's bypass let the push through. The owner was told.
+* Release run `42156906268`:
+  <https://github.com/maccavelli/prepare-commit-msg/actions/runs/42156906268>.
+  Every job succeeds; "Publish GitHub Release / publish" success, its log
+  `Uses: …publish-selfupdate-release.yml@74ab5dd376a4c864debb32b2d8abfc7856059ba3`;
+  "… / sign" skipped, as `sign` is unset. **The first publish through
+  `74ab5dd3…`.**
+* The release <https://github.com/maccavelli/prepare-commit-msg/releases/tag/v1.10.3>,
+  published 2026-11-06T03:34:02Z, not a draft or pre-release, and
+  `releases/latest` names it. Assets: the six binaries, `SHA256SUMS`,
+  `install.sh`, `install.ps1`; no `SHA256SUMS.note`.
+* `prepare-commit-msg-darwin-arm64`, downloaded to the session scratchpad:
+  `shasum -a 256 -c` against `SHA256SUMS` "OK"; `gh attestation verify
+  --signer-workflow maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml`
+  exits 0, one attestation, signer
+  `…publish-selfupdate-release.yml@74ab5dd376a4c864debb32b2d8abfc7856059ba3`,
+  source `refs/tags/v1.10.3` at `79f894a`.
+* This Mac's installed hook was `v1.10.2 (release) 7c3cd796b209`.
+  `update --check`: "update available: v1.10.2 -> v1.10.3", exit 10.
+  `update --yes`: "updated v1.10.2 -> v1.10.3", "release asset integrity
+  verified", exit 0. `version`: `v1.10.3 (release) 79f894aea2e6`; the
+  installed file's size, 10247778, is the asset's. That update ran
+  `v1.10.2`'s updater.
+* go-selfupdate-lib v1.24.0's updater live: `update --check` from
+  `v1.10.3`: "up to date (v1.10.3)", exit 0; `update --check --json`'s
+  last line is `kind` "result", `schema_version` 4, `operation` "none".
+* Every Confirmation bullet of the MADR holds. Phases 0 to 5 are
+  complete; Phase 6 was added afterwards (MADR A1), and the PLAN stays
+  `in-progress` until it lands.

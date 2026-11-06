@@ -386,6 +386,40 @@ v1.10.3". Q1: Option A, as recommended; D3 records it. Q2: release
 `v1.10.3`, as recommended; D6 records it. The workflow pins were not
 questioned and stand.
 
+## Amendments
+
+### A1 (2026-11-05): D5 reaches the reference documentation
+
+*A1 widens D5, "The README states what changed", which is left above as
+written. Found after PLAN Phase 5; the owner asked "Update the docs".*
+
+* **The gap.** D5 put the workspace in the release notes only. The
+  README's reference sections describe each saved field and variable a
+  user meets, and `docs/architecture.md` describes `base_url`'s effect;
+  none names `workspace` or `ANTHROPIC_WORKSPACE_ID` **[read]**.
+* **What reads `ANTHROPIC_WORKSPACE_ID`.** Only the wizard: it is the
+  first workspace prompt's default under `Options.AllowEnv` (the SDK's
+  `wizard/configure.go:636-655`), which `configure` sets unless `--no-env`
+  (`internal/ui/setup.go:273-274`); `config.LookupEnv` passes it through
+  unchanged. Neither the hook nor the Claude provider reads it **[read]**.
+* **The decision.** The current-system documentation names the workspace
+  where it names its neighbours:
+  * README "Interactive Wizard": step 3 says an Anthropic key not scoped
+    to a workspace is asked for its workspace ID;
+  * README "LLM Provider Credentials": a row for `ANTHROPIC_WORKSPACE_ID`,
+    read by `configure` only, as the prompt's default, and not under
+    `--no-env`;
+  * README "Non-Interactive CLI Flags": `--yes` keeps and lists with a
+    saved workspace, and has no flag to set one;
+  * README "Configuration File": the `claude` example carries a
+    placeholder `workspace`, and a paragraph after `base_url`'s says what
+    it is, when it is present and where it is sent;
+  * `docs/architecture.md` "Runtime flow": a saved Claude `workspace` is
+    sent with that provider's requests.
+* **Not changed.** The release-notes section, which already says it; the
+  code; the earlier README "Changes with" sections.
+* The PLAN records it as Phase 6.
+
 ## More Information
 
 * The libraries' records, cited by repository and filename:
