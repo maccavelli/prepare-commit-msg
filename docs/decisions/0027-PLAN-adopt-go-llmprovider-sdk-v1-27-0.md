@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: complete
 date: 2026-11-06
 associated-madr: "0027-MADR-adopt-go-llmprovider-sdk-v1-27-0.md"
 ---
@@ -391,3 +391,87 @@ A scratchpad script, read-only, exit 0, "clean":
   `v1.27.0`, so the tests ran against it.
 * The disclosure guard, as `AGENTS.md` gives it, exits 0 with no output
   over `e56c281..cb8558b` (`33bc3d0`, `cb8558b`).
+
+### Phase 4, 2026-11-06
+
+* The owner committed the execution record of Phases 0 to 3 as `28e1a7e`,
+  and pushed `main`, `e56c281..28e1a7e`. The agent ran the disclosure
+  guard over that range afterwards, since `28e1a7e` followed its first run:
+  exit 0, no output.
+* CI run `42319794531` on `28e1a7e`: success. The push's diff holds
+  `go.mod` and `README.md`, so `ci.yml` ran in full, though `28e1a7e`
+  alone is a record. "Go (quality contract)", the three native test jobs,
+  "Build release / build" (`rehearsal=true`, its log naming
+  `build-selfupdate-release.yml@74ab5dd376a4c864debb32b2d8abfc7856059ba3`)
+  and the five identity jobs succeed. "Publish GitHub Release" is skipped.
+  Docs run `42319794328`: success.
+
+### Phase 5, 2026-11-06
+
+* The owner made and pushed the tag `v1.10.4` (Deviation 2). It is
+  annotated, tag object `58f0c04`, message `v1.10.4`, and peels to
+  `28e1a7e`, which is `origin/main`.
+* **The bypass check** that `0025-PLAN-remove-ruleset-bypass-actors.md`
+  deferred: the agent did not see the push's output. The rule-suites API
+  records each push a ruleset evaluates. It holds no suite for
+  `refs/tags/v1.10.4`, and every suite of the day is a `refs/heads/main`
+  push with result `pass`. No ruleset applies to the tag, so none could be
+  bypassed. `v1.10.3`'s push, by contrast, was recorded as a bypass.
+* **Release run `42321034534`:**
+  <https://github.com/maccavelli/prepare-commit-msg/actions/runs/42321034534>.
+  It succeeds. "Go (quality contract)", the three native test jobs, "Build
+  release / build" and the five identity jobs succeed. "Publish GitHub
+  Release / publish" succeeds, and its log names
+  `publish-selfupdate-release.yml@74ab5dd376a4c864debb32b2d8abfc7856059ba3`.
+  "… / sign" is skipped, as `sign` is unset.
+* **The release:**
+  <https://github.com/maccavelli/prepare-commit-msg/releases/tag/v1.10.4>.
+  * Published 2026-11-07T00:59:03Z; not a draft and not a prerelease;
+    `immutable: true`. `releases/latest` names it.
+  * Its nine assets: the six binaries, `SHA256SUMS`, `install.sh` and
+    `install.ps1`.
+* **One binary,** `prepare-commit-msg-darwin-arm64`, downloaded to the
+  session scratchpad:
+  * its SHA-256, `8f824503c5a84533…`, is `SHA256SUMS`'s;
+  * `gh attestation verify --signer-workflow
+    maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml`
+    exits 0. The signer is
+    `…publish-selfupdate-release.yml@74ab5dd376a4c864debb32b2d8abfc7856059ba3`,
+    and the source is `refs/tags/v1.10.4` at
+    `28e1a7ecfa9df9ba1e8188bbf1fe9e917c598991`;
+  * it holds "second in the Grok CLI's built-in list" once and "previous
+    flagship" not at all, so `v1.27.0`'s labels are built in.
+* **The update path,** on this Mac's installed hook, `v1.10.3 (release)
+  79f894aea2e6`:
+  * `update --check`: "update available: v1.10.3 -> v1.10.4", exit 10;
+  * `update --yes`: "release asset integrity verified", "updated v1.10.3
+    -> v1.10.4", exit 0;
+  * `version`: `v1.10.4 (release) 28e1a7ecfa9d`. The installed file is
+    10265122 bytes with SHA-256 `8f824503c5a84533…`, the asset's;
+  * `update --check` again: "up to date (v1.10.4)", exit 0.
+* The proxy's `@v/list` still has 27 versions, without `v1.10.4`, an hour
+  after the tag. It lists a version once something asks for it.
+
+### Deviation 2, 2026-11-06: the owner tagged and pushed
+
+* **Found.** Phase 5 step 1 has the agent make and push the tag on the
+  owner's word, and step 2 reads the push's output for a bypass message.
+  The owner made and pushed `v1.10.4` themselves, so the agent had no push
+  output.
+* **Decision.** Step 2's check was made from the rule-suites API, which
+  records what a push's ruleset evaluation found. It shows no evaluation
+  of the tag, and so no bypass. The tag's shape was checked from the
+  repository: annotated, message `v1.10.4`, on `origin/main`. No decision
+  of the MADR changes.
+* **Files added to scope:** none.
+
+### Phase 6, 2026-11-06
+
+* This record, and this PLAN and its index row set to complete.
+* **For 0026:** `v1.10.4` is verified.
+  `0026-PLAN-keep-five-stable-releases.md` Phase 3 step 1 will find 13
+  releases and 28 tags. By its MADR's D1 to D4, the expected plan keeps
+  `v1.10.0` to `v1.10.4`. It deletes the 8 releases `v1.2.0` to `v1.9.0`
+  and their tags, and the 15 tags with no release: 8 releases and 23
+  tags. Nothing in 0026 was edited.
+* Every Confirmation bullet of the MADR holds. This PLAN is complete.
