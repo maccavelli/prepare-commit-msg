@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: complete
 date: 2026-11-07
 associated-madr: "0026-MADR-keep-five-stable-releases.md"
 ---
@@ -470,3 +470,78 @@ committing this pair's revision to eight releases as `897480f`.
   row, annotated, and adds "the tag-only bound taken from the newest kept
   release", which fails test 5. Test 5's row in Step 2 is annotated. No
   file outside Scope changed, and the MADR's decisions and facts stand.
+
+* **Step 6.** The owner committed Phases 0 and 1 as `4c0c13c`
+  ("feat(tools): add prune_releases.py to keep eight newest stable
+  releases"), 8 files. `make preflight-hosts` on it: exit 0, 4/4 hosts
+  passed: linux (48s) and wsl-ubuntu-24.04 (46s), each running
+  `make verify` with "Ran 42 tests … OK" for the tools, and windows and
+  macos running `go test ./...`.
+
+### Phase 2 (2026-11-07)
+
+1. The disclosure guard over `897480f` and `4c0c13c`: exit 0, no output.
+2. The owner pushed `main`. `HEAD` and `origin/main` are both `4c0c13c`.
+3. On `4c0c13c`: CI run 42391297623, success, in full; Docs run
+   42391297278, success.
+
+### Phase 3 (2026-11-07)
+
+Each step's output is in the session scratchpad, under `p3/`.
+
+1. **The state against the MADR's "What exists":** each item matched. 13
+   releases, `v1.2.0` to `v1.10.4`, none a draft or prerelease, each
+   immutable. Latest `v1.10.4`. 28 annotated tags. The proxy's `@v/list`
+   is the same 28. One ruleset, `prepare-commit-msg-main`, on a branch.
+   Immutable releases on. 2 attestations for `v1.2.0`'s linux-amd64 digest.
+   No release had landed, so the expected plan was test 2's.
+2. **Before-state saved:** the releases with each asset's name and digest,
+   the tag refs, `git ls-remote --tags origin` (56 lines, each tag and its
+   peeled commit), the proxy list, and the attestation count.
+3. **Dry run:** exit 1. Its 31 lines were identical to the expected plan:
+   keep `v1.7.0` to `v1.10.4`; delete the releases `v1.2.0` to `v1.6.0`
+   with their tags, and the 15 tags `v0.1.0` to `v1.1.4`; "5 releases and
+   20 tags to delete".
+4. **Shown to the owner,** who answered "approved to apply".
+5. **Apply:** `python3 tools/prune_releases.py --apply`, exit 0. It printed
+   25 deletions in order: each release, then its tag, for `v1.2.0`
+   (id 381632739), `v1.3.0` (388617164), `v1.4.0` (398583245), `v1.5.0`
+   (402676268) and `v1.6.0` (405225661); then the 15 tags with no release.
+   It ended "pruned: 5 releases and 20 tags", after its own read-back.
+6. **Read back, independent of the tool:**
+   * releases: exactly `v1.7.0`, `v1.8.0`, `v1.9.0`, `v1.10.0`, `v1.10.1`,
+     `v1.10.2`, `v1.10.3` and `v1.10.4`, each immutable, not a draft or
+     prerelease, with the same asset names and digests as the
+     before-state;
+   * latest: `v1.10.4`;
+   * `v*` tags: exactly those eight;
+   * the ruleset and the immutable-releases setting unchanged;
+   * the proxy's `@v/list`: the 28 saved versions;
+   * the `v1.2.0` linux-amd64 attestation count: **1, not 2**. The build
+     provenance (`https://slsa.dev/provenance/v1`) stayed; GitHub's
+     immutable-release attestation
+     (`https://in-toto.io/attestation/release/v0.2`) went with the
+     release. Recorded in the MADR as A1, a corrected fact, as this step
+     says. It did not stop the phase;
+   * the second dry run: exit 0, "0 releases and 0 tags to delete",
+     "nothing to prune".
+7. **This clone:** before the fetch, 28 `v*` tags.
+   `git fetch --prune --prune-tags origin`: exit 0, 20 tags deleted.
+   `git tag -l 'v*'`: `v1.7.0`, `v1.8.0`, `v1.9.0`, `v1.10.0`, `v1.10.1`,
+   `v1.10.2`, `v1.10.3`, `v1.10.4`.
+
+### Phase 4 (2026-11-07)
+
+* The MADR has A1, and its two lines on the attestations point to it. Its
+  index row adds A1.
+* This PLAN is `status: complete`, and its index row says complete.
+* The gates are run on these records before the commit, and their results
+  are given in the handoff.
+
+### Not done
+
+* Other clones keep the deleted tags until they run
+  `git fetch --prune --prune-tags origin`. Only this clone was pruned.
+* A deleted release's build provenance could not be checked with
+  `gh attestation verify`, because no copy of its binary was kept. The API
+  shows the attestation is there.

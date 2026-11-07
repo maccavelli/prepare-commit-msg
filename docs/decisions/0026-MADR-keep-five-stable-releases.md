@@ -7,6 +7,10 @@ informed: users of the installed hook, whose `update --version` and installer `-
 ---
 # Keep only the eight newest stable releases, pruned by a hand-run maintainer tool
 
+*Amendment A1 (2026-11-07, after the first run) corrects a fact: deleting
+a release removed GitHub's release attestation for its assets, and kept
+their build-provenance attestation. See "Amendments".*
+
 *Revised 2026-11-07, before approval. The owner changed the window from
 five releases to eight. The facts were read again: `v1.10.4` has been
 released
@@ -99,7 +103,7 @@ Read again on 2026-11-07 **[read]**:
   `v1.2.0`'s `prepare-commit-msg-linux-amd64` digest, on 2026-11-06 and
   again on 2026-11-07 **[read]**. They are kept by subject digest, not by
   release, so they should stay after the release is deleted **[derived]**.
-  The first run checks it.
+  The first run checks it. *Corrected by A1: one of the two stayed.*
 
 ### What may change before the first run
 
@@ -237,11 +241,44 @@ retraction would add a step to every release for a hiding that
   * `v*` tags: exactly those eight;
   * `proxy.golang.org`'s `@v/list`: the same 28 versions;
   * the attestations for `v1.2.0`'s `prepare-commit-msg-linux-amd64`: still
-    2.
+    2. *The first run found 1; see A1.*
 
   If a release has landed first, the lists are the eight newest stable
   releases at that time.
 * After that, a dry run exits 0, with nothing to prune.
+
+## Amendments
+
+### A1 (2026-11-07): deleting a release removes its release attestation
+
+#### Context
+
+The MADR expected both attestations for `v1.2.0`'s
+`prepare-commit-msg-linux-amd64` digest to stay after that release was
+deleted **[derived]**, and the PLAN's Phase 3 read-back checked the count:
+"If it is not, record it in the MADR as a corrected fact; it does not stop
+the phase."
+
+#### Corrected fact
+
+After the first `--apply` (2026-11-07), the attestations API returns 1 for
+that digest, not 2 **[read]**:
+
+* **Kept:** the build-provenance attestation, predicate
+  `https://slsa.dev/provenance/v1`, whose 7 subjects are that release's
+  binaries and `SHA256SUMS`. The release workflow signs it.
+* **Removed:** GitHub's immutable-release attestation, predicate
+  `https://in-toto.io/attestation/release/v0.2`. The kept `v1.7.0` still
+  has both kinds for its `prepare-commit-msg-linux-amd64` **[read]**, so
+  each release carries one, and deleting the release takes it.
+
+#### Consequences
+
+* Neutral, because `gh attestation verify --signer-workflow …` checks the
+  build provenance, which stays: a copy of a deleted release's binary
+  should still verify **[derived]**; no copy was kept to run it.
+* Bad, because a deleted release's release attestation is gone with it,
+  like its assets. No decision changes: D1 to D8 stand.
 
 ## More Information
 
