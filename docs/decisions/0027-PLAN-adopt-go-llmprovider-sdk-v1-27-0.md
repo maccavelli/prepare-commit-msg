@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: in-progress
 date: 2026-11-06
 associated-madr: "0027-MADR-adopt-go-llmprovider-sdk-v1-27-0.md"
 ---

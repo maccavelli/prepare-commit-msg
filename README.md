@@ -33,6 +33,7 @@ Commit](https://www.conventionalcommits.org/) messages.
 - [Changes with Go 1.27.3, go-llmprovider-sdk v1.21.0 and go-selfupdate-lib v1.17.2](#changes-with-go-1273-go-llmprovider-sdk-v1210-and-go-selfupdate-lib-v1172)
 - [Changes with go-llmprovider-sdk v1.22.2 and go-selfupdate-lib v1.22.0](#changes-with-go-llmprovider-sdk-v1222-and-go-selfupdate-lib-v1220)
 - [Changes with go-llmprovider-sdk v1.26.1 and go-selfupdate-lib v1.24.0](#changes-with-go-llmprovider-sdk-v1261-and-go-selfupdate-lib-v1240)
+- [Changes with go-llmprovider-sdk v1.27.0](#changes-with-go-llmprovider-sdk-v1270)
 - [CLI Reference](#cli-reference)
 - [Developer Experience](#developer-experience)
 - [Documentation](#documentation)
@@ -785,6 +786,24 @@ What you may notice:
 - **`update`:** on macOS and Linux, the new binary is written only into
   the directory `update` locked.
 - **The installers** behave as in `v1.10.2`.
+
+---
+
+## Changes with go-llmprovider-sdk v1.27.0
+
+Release `v1.10.4` moves from go-llmprovider-sdk `v1.26.1` to `v1.27.0`
+([0027-MADR](docs/decisions/0027-MADR-adopt-go-llmprovider-sdk-v1-27-0.md)).
+What you may notice:
+
+- **`configure`:**
+  - Grok's `grok-4.20` models are ranked by when xAI released them, below
+    `grok-4.3`, not above every Grok model, so the model menu's last
+    place may show another Grok model. The default model, Grok 4.6, and
+    the fallbacks `configure --yes` picks are as before;
+  - some model descriptions in the menus are reworded so that none places
+    a model in time: Grok 4.5 is no longer "previous flagship", and
+    Claude Sonnet 5.5 and Opus 5.5 are no longer "latest".
+- **The hook, `update` and the installers** behave as in `v1.10.3`.
 
 ---
 
