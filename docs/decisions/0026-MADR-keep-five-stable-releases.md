@@ -1,11 +1,20 @@
 ---
 status: proposed
-date: 2026-11-06
+date: 2026-11-07
 decision-makers: Project Owner
-consulted: the repository's releases, tags, rulesets and settings (GitHub API, read twice on 2026-11-06); `proxy.golang.org`'s version list for this module; the attestations API for one `v1.2.0` asset; GitHub's immutable-releases documentation; go-selfupdate-lib at `74ab5dd376a4c864debb32b2d8abfc7856059ba3` (`v1.24.0`), its release lookup, channel policy and release scripts; `tools/` and its tests; the owner's answers of 2026-11-06
+consulted: the repository's releases, tags, rulesets and settings (GitHub API, read on 2026-11-06 and again on 2026-11-07); `proxy.golang.org`'s version list for this module; the attestations API for one `v1.2.0` asset; GitHub's immutable-releases documentation; go-selfupdate-lib at `74ab5dd376a4c864debb32b2d8abfc7856059ba3` (`v1.24.0`), its release lookup, channel policy and release scripts; `tools/` and its tests; the owner's answers of 2026-11-06 and 2026-11-07
 informed: users of the installed hook, whose `update --version` and installer `--version` reach only the kept releases
 ---
-# Keep only the five newest stable releases, pruned by a hand-run maintainer tool
+# Keep only the eight newest stable releases, pruned by a hand-run maintainer tool
+
+*Revised 2026-11-07, before approval. The owner changed the window from
+five releases to eight. The facts were read again: `v1.10.4` has been
+released
+([0027-MADR-adopt-go-llmprovider-sdk-v1-27-0.md](0027-MADR-adopt-go-llmprovider-sdk-v1-27-0.md)),
+so there are 13 releases and 28 tags, and the expected first pruning is
+recomputed. The four choices among options stand; only the count they apply
+to changed. The filename keeps its slug, `keep-five-stable-releases`,
+because the 0027 records cite and link this file by that name.*
 
 *Revised 2026-11-06, before approval. The facts were re-read and hold.
 Corrections: the tool is `tools/prune_releases.py`, because `tools/`'s tests
@@ -19,7 +28,8 @@ first run.*
 ## Context and Problem Statement
 
 The owner (2026-11-06): "how can we ensure that only 5 releases are saved
-and available, not the 27 as now".
+and available, not the 27 as now". Then (2026-11-07): "Change 0026 madr
+spec to keep 8 releases".
 
 Each claim is marked:
 
@@ -29,15 +39,16 @@ Each claim is marked:
 
 ### What exists
 
-Re-read on 2026-11-06 **[read]**:
+Read again on 2026-11-07 **[read]**:
 
 | Layer | Count | Detail |
 | :--- | :--- | :--- |
-| GitHub releases | 12 | `v1.2.0` to `v1.10.3`. None is a draft or a prerelease. Each reports `immutable: true`. `v1.2.0` to `v1.7.0` carry 7 assets each; `v1.8.0` to `v1.10.3` carry 9, the installers included |
-| Latest release | 1 | `v1.10.3` |
-| `v*` tags | 27 | `v0.1.0` to `v1.10.3`. Each is an annotated tag and a semantic version. The 15 tags `v0.1.0` to `v1.1.4` have no release. No tag is outside `v*`, and no release lacks its tag |
-| Go module versions | 27 | `proxy.golang.org`'s `@v/list` names exactly the 27 tags |
+| GitHub releases | 13 | `v1.2.0` to `v1.10.4`. None is a draft or a prerelease. Each reports `immutable: true`. `v1.2.0` to `v1.7.0` carry 7 assets each: the six binaries and `SHA256SUMS`. `v1.8.0` to `v1.10.4` carry 9, the installers included |
+| Latest release | 1 | `v1.10.4` |
+| `v*` tags | 28 | `v0.1.0` to `v1.10.4`. Each is an annotated tag and a semantic version. The 15 tags `v0.1.0` to `v1.1.4` have no release. No tag is outside `v*`, and no release lacks its tag |
+| Go module versions | 28 | `proxy.golang.org`'s `@v/list` names exactly the 28 tags |
 | Rulesets | 1 | `prepare-commit-msg-main`, on the default branch. No ruleset targets tags |
+| Immutable releases | on | enabled for the repository, not enforced by the owner account |
 | Collaborators | 1 | the owner |
 
 ### What can and cannot be removed
@@ -66,7 +77,11 @@ Re-read on 2026-11-06 **[read]**:
 * **`update --version <v>`** asks for that tag's release
   (`GitHubSource.ByTag`). **The installers' `--version`** downloads from
   that tag's release. Once a release is deleted, neither can install it.
-  `README.md:480`'s example names `v1.2.0` **[read]**.
+  `README.md:481`'s example names `v1.2.0` **[read]**.
+* **The installers themselves** are fetched from the latest release
+  (`releases/latest/download/install.sh`), so `v1.7.0` lacking them does not
+  stop `--version v1.7.0`: that release has the binaries and `SHA256SUMS`
+  **[read]** **[derived]**.
 * **`update --channel rc`** lists every release, 30 to a page
   (`ListReleases`), and takes the highest one the channel admits. A stable
   release is admitted on every channel (`semverPolicy.Admits`). So a
@@ -81,23 +96,23 @@ Re-read on 2026-11-06 **[read]**:
   The README and `documentation_test.go` name only
   `releases/latest/download/…` **[read]**.
 * **Attestations.** The attestations API returns 2 attestations for
-  `v1.2.0`'s `prepare-commit-msg-linux-amd64` digest **[read]**. They are
-  kept by subject digest, not by release, so they should stay after the
-  release is deleted **[derived]**. The first run checks it.
+  `v1.2.0`'s `prepare-commit-msg-linux-amd64` digest, on 2026-11-06 and
+  again on 2026-11-07 **[read]**. They are kept by subject digest, not by
+  release, so they should stay after the release is deleted **[derived]**.
+  The first run checks it.
 
 ### What may change before the first run
 
-go-llmprovider-sdk `v1.27.0` was tagged on 2026-11-06, and its pin may be
-released as `v1.10.4` **[read]**. If that release lands before the first
-`--apply`, the newest five stable releases are `v1.10.0` to `v1.10.4`, and
-`v1.9.0` is deleted too **[derived]**. The rules below choose the set at run
-time; only the expected lists in the Confirmation and the PLAN assume no
-release lands first.
+A release may land before the first `--apply`. The rules below choose the
+set at run time; only the expected lists in the Confirmation and the PLAN
+assume no release lands first. If `v1.10.5` lands first, the newest eight
+stable releases are `v1.8.0` to `v1.10.5`, and `v1.7.0` is deleted too
+**[derived]**.
 
 ## Decision Drivers
 
-* At most five releases are available, and the five newest stable ones are
-  always among them.
+* At most eight releases are available, and the eight newest stable ones
+  are always among them.
 * No workflow gets the power to delete releases or tags.
 * A deletion is irreversible, so each one is seen before it happens.
 * The tool follows `tools/`'s conventions (0016-MADR): Python 3 on the
@@ -106,20 +121,22 @@ release lands first.
 
 ## Considered Options
 
-The owner chose among three options on each of four questions (2026-11-06).
+The owner chose among three options on each of four questions
+(2026-11-06), when the window was five. On 2026-11-07 the owner set it to
+eight; the options below are stated with that count.
 
 * **What counts.**
-  * A, chosen: the five newest stable releases; a prerelease is deleted once
-    a newer stable release exists.
+  * A, chosen: the eight newest stable releases; a prerelease is deleted
+    once a newer stable release exists.
   * B: stable releases only; prereleases are never pruned.
-  * C: the five newest releases of any kind.
+  * C: the eight newest releases of any kind.
 * **The 15 tags without a release.**
   * A, chosen: delete all 15 now.
   * B: keep them all.
   * C: delete the `v0.x` tags, and keep `v1.0.0` to `v1.1.4`.
 * **Go retraction.**
   * A, chosen: none.
-  * B: retract everything older than the kept five, at each release.
+  * B: retract everything older than the kept eight, at each release.
   * C: retract `v0.1.0` to `v1.1.4` once.
 * **The mechanism.**
   * A, chosen: a hand-run tool.
@@ -128,12 +145,13 @@ The owner chose among three options on each of four questions (2026-11-06).
 
 ## Decision Outcome
 
-Chosen options: "A" on all four. Each was the agent's recommendation, and
-the owner chose it. A hand-run tool keeps the policy without handing a
-workflow delete rights. Go retraction would add a step to every release
-for a hiding that `go install …@<version>` ignores.
+Chosen options: "A" on all four, with a window of eight. Each was the
+agent's recommendation, and the owner chose it; the owner set the count. A
+hand-run tool keeps the policy without handing a workflow delete rights. Go
+retraction would add a step to every release for a hiding that
+`go install …@<version>` ignores.
 
-* **D1, the window.** The five newest stable releases are kept, ordered by
+* **D1, the window.** The eight newest stable releases are kept, ordered by
   semantic version, so `v1.10.0` is above `v1.9.0`. A stable release is not
   a draft, not a prerelease, and has a tag of the form
   `vMAJOR.MINOR.PATCH`. Older stable releases are deleted, with their tags.
@@ -152,7 +170,7 @@ for a hiding that `go install …@<version>` ignores.
   never deleted, and never counted in the window.
 * **D5, the tool.** `tools/prune_releases.py`:
   * takes the repository from `git remote get-url origin` (an HTTPS or SSH
-    GitHub URL), or `--repo OWNER/REPO`, and `--keep N` (default 5, at
+    GitHub URL), or `--repo OWNER/REPO`, and `--keep N` (default 8, at
     least 1). It reads the releases, the latest release and the tag refs
     with `gh api`;
   * by default prints the plan and deletes nothing: each release and tag it
@@ -170,12 +188,12 @@ for a hiding that `go install …@<version>` ignores.
     error.
 * **D6, when it runs.** By hand, once a new release is verified. Running it
   is a step in the operations guide's controlled release. It also runs once
-  now, to bring the repository to five releases.
+  now, to bring the repository to eight releases.
 * **D7, no Go retraction.** `go.mod` gets no `retract` directive. The proxy
   keeps serving every version by name.
 * **D8, docs.**
-  * `README.md:163` and `:480`: `update --version` and the installers'
-    `--version` reach the five newest stable releases only. The `v1.2.0`
+  * `README.md:164` and `:481`: `update --version` and the installers'
+    `--version` reach the eight newest stable releases only. The `v1.2.0`
     example becomes `vX.Y.Z`.
   * `docs/guides/cicd-operations.md`: the pruning step in the controlled
     release, and how a clone drops the deleted tags
@@ -184,15 +202,15 @@ for a hiding that `go install …@<version>` ignores.
 
 ### Consequences
 
-* Good, because the releases page and the tag list show at most five
+* Good, because the releases page and the tag list show at most eight
   versions, plus any newer prerelease, draft or unreleased tag, each of
   which the tool reports.
 * Good, because only the owner deletes anything, through a tool that shows
   its plan first.
 * Good, because `update`, `update --channel` and the publish workflow see
   the same answers as before.
-* Bad, because rolling back by version reaches only the five kept releases.
-  Today that is `v1.9.0` and later.
+* Bad, because rolling back by version reaches only the eight kept
+  releases. Today that is `v1.7.0` and later.
 * Bad, because a deleted release is gone for good. Its binaries,
   `SHA256SUMS` and installers cannot be restored, and its tag name can never
   be reused.
@@ -202,22 +220,26 @@ for a hiding that `go install …@<version>` ignores.
   name. Pruning changes what GitHub offers, not what Go tooling can fetch.
 * Neutral, because other clones keep the deleted tags until they fetch with
   `--prune-tags`.
+* Neutral, because `v1.7.0`, the oldest kept today, carries no installers.
+  Installing it by version uses the latest release's installer, which
+  downloads only the binary and `SHA256SUMS`.
 
 ### Confirmation
 
-* The tool's tests in `tools/test_tools.py` cover the plan, the order of
-  deletions, the refusals, the exit codes and the read-back, against a fake
-  `gh`. Each is seen to fail on a planted break.
+* The tool's tests in `tools/test_tools.py` cover the plan, the default
+  window and `--keep`, the order of deletions, the refusals, the exit codes
+  and the read-back, against a fake `gh`. Each is seen to fail on a planted
+  break.
 * After the first `--apply`, read back. If no release has landed first:
-  * releases: exactly `v1.9.0`, `v1.10.0`, `v1.10.1`, `v1.10.2` and
-    `v1.10.3`, each `immutable: true`;
-  * GitHub's latest release: `v1.10.3`;
-  * `v*` tags: exactly those five;
-  * `proxy.golang.org`'s `@v/list`: the same 27 versions;
+  * releases: exactly `v1.7.0`, `v1.8.0`, `v1.9.0`, `v1.10.0`, `v1.10.1`,
+    `v1.10.2`, `v1.10.3` and `v1.10.4`, each `immutable: true`;
+  * GitHub's latest release: `v1.10.4`;
+  * `v*` tags: exactly those eight;
+  * `proxy.golang.org`'s `@v/list`: the same 28 versions;
   * the attestations for `v1.2.0`'s `prepare-commit-msg-linux-amd64`: still
     2.
 
-  If a release has landed first, the lists are the five newest stable
+  If a release has landed first, the lists are the eight newest stable
   releases at that time.
 * After that, a dry run exits 0, with nothing to prune.
 
