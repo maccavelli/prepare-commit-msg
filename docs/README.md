@@ -66,6 +66,8 @@ This tree holds three kinds of document:
 | 0024 | PLAN | [Implement provider SDK v1.26.1 and self-update library v1.24.0](decisions/0024-PLAN-adopt-go-llmprovider-sdk-v1-26-1-and-go-selfupdate-lib-v1-24-0.md) | complete |
 | 0025 | MADR | [Remove every bypass actor; GitHub as the source of truth](decisions/0025-MADR-remove-ruleset-bypass-actors.md) | accepted 2026-11-06; A1 accepted 2026-11-06 |
 | 0025 | PLAN | [Implement removing the bypass actors and the source-of-truth docs](decisions/0025-PLAN-remove-ruleset-bypass-actors.md) | complete |
+| 0026 | MADR | [Keep only the eight newest stable releases](decisions/0026-MADR-keep-five-stable-releases.md) | accepted 2026-11-07 |
+| 0026 | PLAN | [Implement keeping only the eight newest stable releases](decisions/0026-PLAN-keep-five-stable-releases.md) | in progress |
 | 0027 | MADR | [Adopt provider SDK v1.27.0](decisions/0027-MADR-adopt-go-llmprovider-sdk-v1-27-0.md) | accepted 2026-11-06 |
 | 0027 | PLAN | [Implement provider SDK v1.27.0 and release v1.10.4](decisions/0027-PLAN-adopt-go-llmprovider-sdk-v1-27-0.md) | complete |
 

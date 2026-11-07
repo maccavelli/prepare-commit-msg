@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-07
 decision-makers: Project Owner
 consulted: the repository's releases, tags, rulesets and settings (GitHub API, read on 2026-11-06 and again on 2026-11-07); `proxy.golang.org`'s version list for this module; the attestations API for one `v1.2.0` asset; GitHub's immutable-releases documentation; go-selfupdate-lib at `74ab5dd376a4c864debb32b2d8abfc7856059ba3` (`v1.24.0`), its release lookup, channel policy and release scripts; `tools/` and its tests; the owner's answers of 2026-11-06 and 2026-11-07

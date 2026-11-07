@@ -161,10 +161,11 @@ curl -fsSL https://github.com/maccavelli/prepare-commit-msg/releases/latest/down
 - **The installer never changes your Git configuration.** A global hooks
   directory can hold other hooks, so pointing Git at it is step 2's, and
   yours.
-- `--version vX.Y.Z` installs another release; `--verify-attestation` also
-  checks each download's build attestation with a logged-in `gh`;
-  `--uninstall` removes the binary and its `.prev`. On Windows the same are
-  `-Version`, `-VerifyAttestation`, and `-Uninstall`.
+- `--version vX.Y.Z` installs another of the eight newest stable releases;
+  older releases are deleted. `--verify-attestation` also checks each
+  download's build attestation with a logged-in `gh`; `--uninstall` removes
+  the binary and its `.prev`. On Windows the same are `-Version`,
+  `-VerifyAttestation`, and `-Uninstall`.
 
 #### Pre-built binaries (manual)
 
@@ -478,7 +479,7 @@ prepare-commit-msg update [flags]
 | `prepare-commit-msg update --check` | Check for newer releases without modifying binary (exits code `10` when update available). |
 | `prepare-commit-msg update` | Interactive update check and prompt to apply. |
 | `prepare-commit-msg update --yes` | Non-interactive in-place update. |
-| `prepare-commit-msg update --version v1.2.0 --yes` | Pin or rollback to a specific release version. |
+| `prepare-commit-msg update --version vX.Y.Z --yes` | Pin or roll back to one of the eight newest stable releases. |
 | `prepare-commit-msg update --force --yes` | Force reinstall / overwrite local or dev builds. |
 | `prepare-commit-msg update --dry-run` | Download and verify the release; install nothing. |
 | `prepare-commit-msg update --json` | Write JSON Lines to stdout, ending with one `{"kind":"result",…}` object whose `result` carries `"schema_version":4`. |

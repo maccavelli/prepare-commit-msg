@@ -202,6 +202,22 @@ Verify a downloaded checksum file with:
 (cd download && sha256sum --check SHA256SUMS)
 ```
 
+After the release is verified, prune the releases and tags below the eight
+newest stable releases
+([`0026-MADR-keep-five-stable-releases.md`](../decisions/0026-MADR-keep-five-stable-releases.md)):
+
+```bash
+python3 tools/prune_releases.py            # read the plan; exit 1 means work to do
+python3 tools/prune_releases.py --apply
+git fetch --prune --prune-tags origin
+```
+
+A deleted release cannot be restored, and its tag name cannot be used
+again. `update` and the installers' default path follow the latest release,
+which is always kept. Other clones drop the deleted tags with the same
+fetch. [`tools/README.md`](../../tools/README.md#pruning-releases) lists what
+the tool reports instead of deleting, and its refusals.
+
 ## Failed-release recovery
 
 If a release tag's run fails before it publishes a release:

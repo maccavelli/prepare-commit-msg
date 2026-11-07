@@ -17,6 +17,7 @@ Exit codes, for every tool: **0** clean, **1** a finding, **2** a tool error.
 | `fakeprovider.py` | a local OpenAI-compatible API on `127.0.0.1` that answers the first generations with an error and `Retry-After`, then a commit message; it logs each request's method, path and status, and never a header | `tools/fakeprovider.py [--fail N] [--status CODE] [--retry-after S] [--message TEXT] [--port-file FILE] [--log FILE] [--max-requests N]` |
 | `hosts.py` | runs CI's jobs for `HEAD` on the test hosts, in parallel, and reports one line per host ([0017-MADR](../docs/decisions/0017-MADR-replace-git-hooks-with-make-preflight-and-host-tests.md) D4) | `make preflight-hosts [HOSTS_FLAGS='--only LABEL --config PATH']` |
 | `hostrun.py` | what each host runs: a clone of `HEAD` from a bundle, the command, then cleanup. `hosts.py` sends its source to the host's `python3 -`; it is not run by hand | — |
+| `prune_releases.py` | keeps the newest stable GitHub releases and deletes older releases and tags, after a dry run ([0026-MADR](../docs/decisions/0026-MADR-keep-five-stable-releases.md)) | `python3 tools/prune_releases.py [--repo OWNER/REPO] [--keep N] [--apply]` |
 
 ## The cross-host run
 
@@ -69,6 +70,33 @@ TOGETHER_API_KEY=made-up-key ./prepare-commit-msg configure --yes --provider tog
 
 Then run the hook in a scratch repository with a staged file. Its stderr
 holds one `retrying in` line, and the message is the fake's.
+
+## Pruning releases
+
+`prune_releases.py` keeps the eight newest stable releases, or `--keep N`.
+A stable release is not a draft, not a prerelease, and is tagged
+`vMAJOR.MINOR.PATCH`. It deletes:
+
+- each older stable release, then its tag;
+- each prerelease at or below the newest stable release, then its tag;
+- each `v*` tag with no release below the oldest kept release.
+
+It reports, and never deletes, drafts, newer prereleases, newer tags with no
+release, and any tag or release whose tag is not a semantic `v*` version.
+None of these counts toward the window.
+
+A run prints the plan and deletes nothing; it exits 1 when there is
+something to delete and 0 when there is not. `--apply` deletes, each release
+before its tag, as immutable releases require. It then reads the releases
+and tags back and checks them against the plan. It refuses, deleting
+nothing, when fewer stable releases exist than `--keep`, when the plan would
+delete the latest release, or when a listing fails. It stops at the first
+failed deletion and lists what it deleted; running `--apply` again finishes
+the work.
+
+The repository is this clone's `origin` unless `--repo` names one. `gh` must
+be logged in as an account that can delete releases and tags. A deleted
+release cannot be restored, and its tag name cannot be used again.
 
 ## Tests
 

@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: in-progress
 date: 2026-11-07
 associated-madr: "0026-MADR-keep-five-stable-releases.md"
 ---
@@ -199,7 +199,7 @@ Tests 1 to 6 call `plan(…, keep=8)`. Tests 7 to 14 and 16 go through
 | 2 | `test_live_state_gives_the_expected_plan` | `LIVE` deletes the releases `v1.2.0` to `v1.6.0` and the 15 tags `v0.1.0` to `v1.1.4`, and reports nothing: 5 releases and 20 tags |
 | 3 | `test_prerelease_below_newest_stable_is_deleted` | `v1.10.4-rc.1` and `v1.10.0-rc.2` are deleted; `v1.11.0-rc.1` is kept and reported |
 | 4 | `test_draft_is_reported_never_deleted` | a draft `v1.2.5`, below the window, is in `report`, not in `delete_releases` |
-| 5 | `test_tag_without_release_is_pruned_below_the_window_only` | `v1.6.5`, with no release, is deleted; `v1.10.5` is kept and reported; `v1.7.0`, the oldest kept, has its release and is kept |
+| 5 | `test_tag_without_release_is_pruned_below_the_window_only` | `v1.6.5`, with no release, is deleted; `v1.10.5` is kept and reported; `v1.7.0`, the oldest kept, has its release and is kept. *Deviation 1 adds: `v1.8.5`, with no release and inside the window, is kept and reported* |
 | 6 | `test_other_tags_and_releases_are_left_alone` | the tags `nightly`, `v1`, `v1.2` and `v01.2.3`, and a release tagged `release-1`, are reported, not deleted and not counted |
 | 7 | `test_apply_deletes_each_release_before_its_tag` | through `main(["--repo", "o/r", "--apply"])` on `LIVE`: exit 0. In `calls.jsonl`, each release DELETE comes before its tag's, and the 15 tag-only DELETEs come last |
 | 8 | `test_refuses_with_fewer_stable_releases_than_keep` | seven stable releases and no `--keep`, dry run and `--apply`: exit 2, "only 7 stable releases; --keep is 8" on stderr, no DELETE call |
@@ -231,7 +231,8 @@ first runs the clean copy, which passes.
 | prereleases never deleted | 3 |
 | a prerelease's core compared with `<`, not `<=`, so `v1.10.4-rc.1` is kept beside `v1.10.4` | 3 |
 | drafts treated as stable | 4 |
-| the tag-only bound at or below the oldest kept, not below | 5 |
+| the tag-only bound at or below the oldest kept, not below | 5. *Deviation 1: equivalent; no input can tell it apart, because a tag equal to the oldest kept release has that release and never reaches the tag-only rule* |
+| the tag-only bound taken from the newest kept release, not the oldest (Deviation 1) | 5 |
 | non-versions treated as `v0.0.0` | 6 |
 | tags deleted before releases | 7 (the fake refuses the tag), 12 |
 | each of the three refusals removed, one at a time | 8 and 17; 9; 10 |
@@ -384,3 +385,88 @@ that cannot be reached.
   * A tag whose release was deleted cannot be pushed again.
 * The tool and the docs roll back with a revert commit. Without the tool,
   the window is not kept, and nothing else changes.
+
+## Execution record
+
+The owner approved execution on 2026-11-07 ("committed, proceed"), after
+committing this pair's revision to eight releases as `897480f`.
+
+### Phase 0 (2026-11-07)
+
+* The MADR is `status: accepted`, and this PLAN `status: in-progress`.
+* `docs/README.md` has both rows, after 0025's and before 0027's.
+* `make check-records`: exit 0. `make markdownlint`: exit 0.
+
+### Phase 1 (2026-11-07)
+
+* **Step 1.** `tools/prune_releases.py`, mode `100644`, as Step 1 sets it
+  out. Two details beyond the step: the `Plan` carries the latest release's
+  tag and the listed tag names, for `read_back` and `apply`; and a release
+  whose tag ref does not exist is deleted without a tag DELETE, and printed
+  as "(it has no tag)". Test 13 uses that case.
+* **Step 2.** `PruneReleasesTest`, 17 tests, against `FAKE_GH`. Test 13
+  plants the sticky release DELETE on `v1.2.0` with its tag ref removed from
+  the fixture. A sticky release with its tag still present would stop at
+  the tag DELETE, which the fake refuses, before the read-back, so the test
+  would not separate the read-back from the refusal.
+  `python3 -B -m unittest -v test_tools.PruneReleasesTest`: 17 ok.
+* **Step 3.** `prune_mutants.py`, in the session scratchpad, on a temp
+  copy of `tools/`, with the whole `test_tools.py` run for each break. The
+  clean copy passes before and after. Each break, and the
+  `PruneReleasesTest` numbers it failed (no other class failed):
+
+  | Break | Failed |
+  | :--- | :--- |
+  | stable releases sorted by tag text | 1, 2, 3, 5, 6, 7, 9, 11, 12, 13, 14, 17 |
+  | `keep` off by one | 1, 2, 5, 6, 7, 11, 12, 14, 17 |
+  | `DEFAULT_KEEP = 5` | 7, 8, 11, 12, 14 |
+  | `--keep` ignored | 17 |
+  | prereleases never deleted | 3 |
+  | a prerelease's core compared with `<` | 3 |
+  | drafts treated as stable | 4 |
+  | the tag-only bound at or below the oldest kept | none: equivalent (Deviation 1) |
+  | the tag-only bound taken from the newest kept (Deviation 1) | 5 |
+  | non-versions treated as `v0.0.0` | 6 |
+  | tags deleted before releases | 7, 12, 13, 14 |
+  | the fewer-than-`--keep` refusal removed | 8, 17 |
+  | the latest-release refusal removed | 9 |
+  | the failed-listing refusal removed (a failed listing read as empty) | 10 |
+  | the dry run calls `apply` | 11, 17 |
+  | `read_back` skipped | 13 |
+  | `apply` carries on after a failure | 14 |
+  | the `scp`-form URL not parsed | 15 |
+  | `--keep 0` accepted | 16 |
+
+* **Step 4.** `tools/README.md`: the table row and "Pruning releases".
+  `README.md`: the installer bullet now reads "installs another of the
+  eight newest stable releases; older releases are deleted", and the CLI
+  table row is `update --version vX.Y.Z --yes`, "Pin or roll back to one of
+  the eight newest stable releases." `docs/guides/cicd-operations.md`:
+  the pruning step after the checksum command in "Controlled release",
+  citing the MADR, and linking `tools/README.md#pruning-releases`.
+* **Step 5.** `make tools-test`: exit 0, 42 tool tests and 34 script
+  tests. `make preflight`: exit 0, "preflight passed".
+  `make disclosure-check`: exit 0, 131 files, 0 findings. That check reads
+  tracked files only, so the untracked `tools/prune_releases.py` was also
+  searched for home paths, the local account name and the host name: no
+  hits. `git status`: only the files in Scope.
+
+#### Deviation 1 (2026-11-07): an equivalent break, and test 5's bound
+
+* **Found.** In Step 3's first run, the break "the tag-only bound at or
+  below the oldest kept, not below" failed no test (exit 0). It cannot fail
+  one: a tag equal to the oldest kept release is that release's tag, so it
+  never reaches the tag-only rule. A scratchpad probe
+  (`prune_bound_probe.py`) then showed that test 5 as written also passed
+  with the bound taken from the *newest* kept release, which would delete
+  every unreleased tag inside the window. With a tag `v1.8.5` added to
+  test 5, that break fails and the clean run passes.
+* **Options put to the owner.** Swap the break and extend test 5
+  (recommended); extend test 5 and keep the original row, marked
+  equivalent; or record the break as equivalent and change no test.
+* **Chosen** by the owner: extend test 5, and keep the original row,
+  marked equivalent. Test 5 also asserts that `v1.8.5`, with no release
+  and inside the window, is kept and reported. The mutant table keeps its
+  row, annotated, and adds "the tag-only bound taken from the newest kept
+  release", which fails test 5. Test 5's row in Step 2 is annotated. No
+  file outside Scope changed, and the MADR's decisions and facts stand.
