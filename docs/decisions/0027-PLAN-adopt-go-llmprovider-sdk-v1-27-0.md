@@ -285,3 +285,109 @@ covered by its existing tests.
 * **A user** can return to `v1.10.3` with `update --version v1.10.3 --yes`
   while that release is kept. Nothing in the configuration changes between
   the two, so either reads the other's `config.json`.
+
+## Execution record
+
+Execution approved by the owner, 2026-11-06: "committed, proceed". The
+owner had committed the two 0027 records as `33bc3d0`.
+
+### Phase 0, 2026-11-06
+
+A scratchpad script, read-only, exit 0, "clean":
+
+* `git rev-parse --path-format=absolute --git-path hooks` names the global
+  hooks directory.
+* `git status --short` lists only the two untracked 0026 records. `HEAD`
+  is `33bc3d0`, one commit ahead of `origin/main` (`e56c281`) and none
+  behind.
+* `go list -m -versions` ends at go-llmprovider-sdk `v1.27.0`, and
+  go-selfupdate-lib's newest tag is `v1.24.0`.
+* The latest release is `v1.10.3`. The immutable-releases setting is
+  `{"enabled": true, "enforced_by_owner": false}`. The only ruleset is
+  `24842254`, `prepare-commit-msg-main`, on a branch. The proxy's
+  `@v/list` has 27 versions, without `v1.10.4`, and the remote has no tag
+  `v1.10.4`.
+
+### Phase 1, 2026-11-06
+
+* `33bc3d0`, committed by the owner, holds the MADR and this PLAN only, with
+  this PLAN `proposed` and no index rows (Deviation 1).
+* In the tree: this PLAN's status became `in-progress`. The two index rows
+  went into `docs/README.md` after the 0025 rows: MADR "Adopt provider SDK
+  v1.27.0", accepted 2026-11-06; PLAN "Implement provider SDK v1.27.0 and
+  release v1.10.4", in progress.
+
+### Phase 2, 2026-11-06
+
+* `go get github.com/maccavelli/go-llmprovider-sdk@v1.27.0` ("upgraded
+  … v1.26.1 => v1.27.0") and `go mod tidy` exit 0. `go.mod` changes the one
+  `require` line. `go.sum` replaces the module's two lines with
+  `h1:7tSn5DyOaGh+/eGC9wQe0xR497Vq2MtPPAMoCulTPfM=` and the `/go.mod` hash
+  `h1:dE+W7oDyvVmAxpSOuIJO3qSD3bDTh/olLt/TbByBE1M=`, as the MADR found.
+  `go mod tidy -diff` is empty, and `go mod verify` prints "all modules
+  verified".
+* A scratchpad script asserted the README's anchor (the `v1.26.1`
+  section's last bullet, `---` and `## CLI Reference`) and the `v1.26.1`
+  contents line once each. It inserted the section and the contents line,
+  and asserted each new text once. The whole diff was read: `go.mod`,
+  `go.sum`, `README.md`, `docs/README.md` and this PLAN's status.
+* `make verify` exits 0: total coverage 83.9% (minimum 80.0%), "No
+  vulnerabilities found.", "ci filters: 11 patterns, 11 reads checked, 0
+  problems", the tools' 25 tests and the scripts' 34 "OK", and the six
+  cross-builds. `TestReadmeCuratedModels`, `TestCurrentDocumentation` and
+  `TestCurrentDocumentationDetectsBrokenFixtures` pass.
+* `make check-records`, `make markdownlint` (8 files, 0 issues) and
+  `make disclosure-check` (129 files, 0 findings) exit 0.
+  `74ab5dd376a4c864debb32b2d8abfc7856059ba3` occurs 2 times in `ci.yml`
+  and 2 times in the operations guide, as before.
+* `make pre-add-check` on the staged `go.mod`, `go.sum` and `README.md`
+  exits 0: "all modules verified"; go-llmprovider-sdk `v1.27.0` "resolved
+  from GitHub" with the `h1:` above; "0 issues."; "No vulnerabilities
+  found.".
+* The agent stopped before committing, and offered three resolutions for
+  the Phase 1 records (Deviation 1).
+* The owner committed `cb8558b`, "chore(deps): bump go-llmprovider-sdk to
+  v1.27.0". It holds Phase 2's three files, the index rows, this PLAN's
+  status, and both 0026 records.
+
+### Deviation 1, 2026-11-06: the owner's commits carry the records differently
+
+* **Found.** Phase 1 has one records commit: the pair, the index rows and
+  this PLAN's `in-progress` status. The owner's `33bc3d0` holds the pair
+  alone. The agent offered three resolutions: (1) the index rows and status
+  in Phase 2's commit, recommended; (2) a separate records commit first;
+  (3) leaving them to Phase 6.
+* **Decision.** The owner committed `cb8558b`, which is resolution 1. It
+  also holds `0026-MADR-keep-five-stable-releases.md` and
+  `0026-PLAN-keep-five-stable-releases.md`, both `proposed`. This PLAN's
+  Scope had kept them untracked.
+* **Effect.** The 0027 records are indexed from `cb8558b` onward. The 0026
+  records are committed with no index rows, which `0026-PLAN` Phase 0 adds.
+  `make check-records` passes, because it checks names, pairs and links,
+  not the index. No decision of the MADR changes.
+* **Files added to scope:** the two 0026 records, as committed by the
+  owner, unchanged by the agent.
+
+### Phase 3, 2026-11-06
+
+* `make preflight` on `cb8558b`: "preflight passed". Total coverage 83.9%,
+  "No vulnerabilities found.", the ci-filters line, and the tools' 25 and
+  the scripts' 34 tests "OK".
+* `make preflight-hosts` on `cb8558b`, exit 0:
+
+  ```text
+  linux: exit=0 (100s)
+  wsl-ubuntu-24.04: exit=0 (36s)
+  windows: exit=0 (3s)
+  macos: exit=0 (5s)
+  preflight-hosts: 4/4 hosts passed
+  ```
+
+  The Linux build stamps `v1.10.3-8-gcb8558b`. windows and macos run
+  `go test ./...` on the bundle of `HEAD`, 5 packages `ok` each; linux 8.
+  No host was unreachable. Phase 3 step 2 expected the Windows host to
+  download go-llmprovider-sdk `v1.27.0`. Its log shows no download, so the
+  module was already in that host's cache. The bundle's `go.mod` requires
+  `v1.27.0`, so the tests ran against it.
+* The disclosure guard, as `AGENTS.md` gives it, exits 0 with no output
+  over `e56c281..cb8558b` (`33bc3d0`, `cb8558b`).
