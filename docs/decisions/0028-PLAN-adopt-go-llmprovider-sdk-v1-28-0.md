@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: complete
 date: 2026-11-07
 associated-madr: "0028-MADR-adopt-go-llmprovider-sdk-v1-28-0.md"
 ---
@@ -273,4 +273,65 @@ A scratchpad script, read-only:
   exits 0: "all modules verified"; go-llmprovider-sdk `v1.28.0` "resolved
   from GitHub" with the `h1:` above; "0 issues."; "No vulnerabilities
   found.".
-* Step 6, the commit, waits for the owner's word naming `main`.
+* The owner committed `3af1a8d`, "chore(deps): bump go-llmprovider-sdk to
+  v1.28.0". It holds exactly the five staged files.
+
+### Phase 3, 2026-11-07
+
+* `make preflight` on `3af1a8d`: "preflight passed". Total coverage 83.9%,
+  "No vulnerabilities found.", the ci-filters line, and the tools' 42 and
+  the scripts' 34 tests.
+* `make preflight-hosts` on `3af1a8d` refused: "commit first: preflight-hosts
+  tests HEAD, and the tree has changes". `tools/hosts.py:161-167` rejects any
+  `git status --porcelain` output, and the untracked 0029 pair counted
+  (Deviation 2).
+* After the owner committed the 0029 pair as `0184093`, `make
+  preflight-hosts` on `0184093` exits 0:
+
+  ```text
+  linux: exit=0 (71s)
+  wsl-ubuntu-24.04: exit=0 (41s)
+  windows: exit=0 (9s)
+  macos: exit=0 (10s)
+  preflight-hosts: 4/4 hosts passed
+  ```
+
+  No host was unreachable. `0184093` adds only records to `3af1a8d`, so the
+  Go code tested is this PLAN's.
+* The disclosure guard, as `AGENTS.md` gives it, exits 0 with no output over
+  `870639c..3af1a8d`, and again over `870639c..0184093`.
+
+### Deviation 2, 2026-11-07: the cross-host run needs a clean tree
+
+* **Found.** Phase 3 step 2 runs `make preflight-hosts` on the committed
+  `HEAD`. The tool refuses while `git status --porcelain` lists anything,
+  and Deviation 1 had left the 0029 pair untracked.
+* **Decision.** The owner committed the 0029 pair alone as `0184093`, records
+  only, under the bootstrap exception. The other resolutions offered were
+  moving the two files aside for the run, or stopping before the push.
+* **Effect.** The push carries `3af1a8d` and `0184093`. Deviation 1's
+  resolution holds for this PLAN's own commits: no step of it staged or
+  edited the 0029 pair. `0029-PLAN-harden-the-hooks-generation-request.md`
+  Phase 1 step 3 expects its pair committed alone. No decision of the MADR
+  changes.
+* **Files added to scope:** none.
+
+### Phase 4, 2026-11-07
+
+* The owner pushed `main`, `870639c..0184093`.
+* CI run `42429506312` on `0184093`: success. `go.mod` changed in the push,
+  so `ci.yml` ran in full. "Go (quality contract)", the three native test
+  jobs, "Build release / build" and the five identity jobs succeed;
+  "Publish GitHub Release" is skipped.
+* Docs run `42429505992`: success.
+
+### Phase 5
+
+Not run: Q1 is A. The move ships in `v1.11.0`, released by
+`0029-PLAN-harden-the-hooks-generation-request.md` Phase 8.
+
+### Phase 6, 2026-11-07
+
+* This record, and this PLAN and its index row set to complete.
+* Every Confirmation bullet of the MADR holds. Its release bullet, Q1 A, is
+  met by making no tag here.
