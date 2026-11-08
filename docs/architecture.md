@@ -22,9 +22,16 @@ licensed under the Apache License 2.0 ([LICENSE](../LICENSE)).
 `main.go` dispatches CLI subcommands or hook execution. The hook skips Git
 sources with an already supplied or generated message, collects staged changes
 through `internal/git`, loads user settings through `internal/config`, and
-calls providers through `go-llmprovider-sdk`. It tries the configured primary
-model followed by at most three fallbacks, retries eligible transient failures,
-and soft-fails so Git leaves the commit editor available when analysis or
+calls providers through `go-llmprovider-sdk`. It builds the provider once,
+then tries the configured primary model followed by at most three fallbacks,
+naming each in its request, with the hook's instructions as the system prompt
+and the staged change as the user message. It retries eligible transient
+failures, and ends the run at once on a failure every model would meet: a
+refused key, no network, or a Claude workspace the key lacks. It never writes
+an answer cut at the output limit, and before it exits it waits for a
+signed-in provider's token refresh still in flight
+(`docs/decisions/0029-MADR-harden-the-hooks-generation-request.md`). It
+soft-fails so Git leaves the commit editor available when analysis or
 generation cannot complete.
 The list of providers, whether each needs a key, and each one's default
 endpoint come from the SDK's provider registry (`providers.Default()`),

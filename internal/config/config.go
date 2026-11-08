@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/maccavelli/go-llmprovider-sdk/llmprovider"
@@ -83,6 +84,63 @@ type ProviderConfig struct {
 	// BaseURL is the endpoint configure saved when it differs from the
 	// provider's default; empty uses the default (0014-MADR D6).
 	BaseURL string `json:"base_url,omitempty"`
+	// ReasoningEffort is the reasoning effort the hook asks of every model
+	// of this provider, one of ReasoningEfforts; empty asks for none, which
+	// leaves each model's own default
+	// (docs/decisions/0029-MADR-harden-the-hooks-generation-request.md D3).
+	ReasoningEffort string `json:"reasoning_effort,omitempty"`
+}
+
+// ReasoningEfforts are the values reasoning_effort takes, besides empty: the
+// SDK's named efforts, lowest first.
+var ReasoningEfforts = []llmprovider.Effort{llmprovider.EffortLow, llmprovider.EffortMedium,
+	llmprovider.EffortHigh, llmprovider.EffortXHigh, llmprovider.EffortMax}
+
+// ReasoningEffortDefault, given to configure's --reasoning-effort, clears a
+// saved effort, so each model's own default applies.
+const ReasoningEffortDefault = "default"
+
+// ReasoningEffortNames is ReasoningEfforts joined for a message.
+func ReasoningEffortNames() string {
+	names := make([]string, len(ReasoningEfforts))
+	for i, e := range ReasoningEfforts {
+		names[i] = string(e)
+	}
+	return strings.Join(names, ", ")
+}
+
+// ReasoningFor is the reasoning the hook requests for provider's models: nil
+// when pc names none, or an error naming the value when it is not one of
+// ReasoningEfforts. The SDK drops an effort it does not know without a
+// word, so the hook refuses one instead.
+func ReasoningFor(provider string, pc ProviderConfig) (*llmprovider.Reasoning, error) {
+	v := strings.ToLower(strings.TrimSpace(pc.ReasoningEffort))
+	if v == "" {
+		return nil, nil
+	}
+	if !slices.Contains(ReasoningEfforts, llmprovider.Effort(v)) {
+		return nil, fmt.Errorf("reasoning_effort %q for provider %q is not one of %s; run 'prepare-commit-msg configure'",
+			pc.ReasoningEffort, provider, ReasoningEffortNames())
+	}
+	return &llmprovider.Reasoning{Effort: llmprovider.Effort(v)}, nil
+}
+
+// SetReasoningEffort applies configure's --reasoning-effort to pc: empty
+// keeps the saved value, ReasoningEffortDefault clears it, and an effort
+// sets it.
+func SetReasoningEffort(pc *ProviderConfig, flag string) error {
+	v := strings.ToLower(strings.TrimSpace(flag))
+	switch {
+	case v == "":
+		return nil
+	case v == ReasoningEffortDefault:
+		pc.ReasoningEffort = ""
+		return nil
+	case slices.Contains(ReasoningEfforts, llmprovider.Effort(v)):
+		pc.ReasoningEffort = v
+		return nil
+	}
+	return fmt.Errorf("--reasoning-effort %q is not one of %s, or %s", flag, ReasoningEffortNames(), ReasoningEffortDefault)
 }
 
 var (

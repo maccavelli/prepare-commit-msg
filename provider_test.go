@@ -42,7 +42,7 @@ func TestGenerateText_ResponsesRefusal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := generateText(context.Background(), p, "write a commit message", 0, time.Millisecond)
+	got, err := generateTextOnly(context.Background(), p, "write a commit message", 0, time.Millisecond)
 	if !errors.Is(err, errRefused) || got != "" {
 		t.Fatalf("generateText() = %q, %v; want errRefused and no text", got, err)
 	}
@@ -58,7 +58,7 @@ func TestGenerateText_ResponsesRefusal(t *testing.T) {
 func TestGenerateText(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		fake := llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).ReplyText("feat: add x")
-		got, err := generateText(context.Background(), fake, "the prompt", 2, time.Millisecond)
+		got, err := generateTextOnly(context.Background(), fake, "the prompt", 2, time.Millisecond)
 		if err != nil || got != "feat: add x" {
 			t.Fatalf("generateText() = %q, %v", got, err)
 		}
@@ -74,7 +74,7 @@ func TestGenerateText(t *testing.T) {
 	t.Run("rate limit retried", func(t *testing.T) {
 		fake := llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).
 			Fail(llmprovider.ErrRateLimited).ReplyText("feat: after retry")
-		got, err := generateText(context.Background(), fake, "p", 1, time.Millisecond)
+		got, err := generateTextOnly(context.Background(), fake, "p", 1, time.Millisecond)
 		if err != nil || got != "feat: after retry" || len(fake.Requests()) != 2 {
 			t.Fatalf("generateText() = %q, %v after %d requests", got, err, len(fake.Requests()))
 		}
@@ -82,7 +82,7 @@ func TestGenerateText(t *testing.T) {
 	t.Run("auth failure not retried", func(t *testing.T) {
 		fake := llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).
 			Fail(llmprovider.ErrAuthFailure).ReplyText("never")
-		_, err := generateText(context.Background(), fake, "p", 3, time.Millisecond)
+		_, err := generateTextOnly(context.Background(), fake, "p", 3, time.Millisecond)
 		if !errors.Is(err, llmprovider.ErrAuthFailure) || len(fake.Requests()) != 1 {
 			t.Fatalf("generateText() error %v after %d requests, want ErrAuthFailure after 1", err, len(fake.Requests()))
 		}
@@ -96,7 +96,7 @@ func TestGenerateText(t *testing.T) {
 	t.Run("refusal is an error", func(t *testing.T) {
 		fake := llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).
 			Reply(answer("I'm sorry, but I can't help with that request.\nSecond line.", llmprovider.FinishContentFilter))
-		got, err := generateText(context.Background(), fake, "p", 3, time.Millisecond)
+		got, err := generateTextOnly(context.Background(), fake, "p", 3, time.Millisecond)
 		if !errors.Is(err, errRefused) || got != "" || len(fake.Requests()) != 1 {
 			t.Fatalf("generateText() = %q, %v after %d requests; want errRefused after 1", got, err, len(fake.Requests()))
 		}
@@ -107,7 +107,7 @@ func TestGenerateText(t *testing.T) {
 	t.Run("long refusal is cut", func(t *testing.T) {
 		fake := llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).
 			Reply(answer(strings.Repeat("x", 500), llmprovider.FinishContentFilter))
-		_, err := generateText(context.Background(), fake, "p", 0, time.Millisecond)
+		_, err := generateTextOnly(context.Background(), fake, "p", 0, time.Millisecond)
 		if !errors.Is(err, errRefused) || strings.Count(err.Error(), "x") != refusalNoteRunes {
 			t.Fatalf("error %q should quote %d runes of the refusal", err, refusalNoteRunes)
 		}
@@ -115,7 +115,7 @@ func TestGenerateText(t *testing.T) {
 	t.Run("stop keeps its text", func(t *testing.T) {
 		fake := llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).
 			Reply(answer("feat: add y", llmprovider.FinishStop))
-		got, err := generateText(context.Background(), fake, "p", 0, time.Millisecond)
+		got, err := generateTextOnly(context.Background(), fake, "p", 0, time.Millisecond)
 		if err != nil || got != "feat: add y" {
 			t.Fatalf("generateText() = %q, %v", got, err)
 		}
@@ -123,7 +123,7 @@ func TestGenerateText(t *testing.T) {
 	t.Run("no response is incomplete", func(t *testing.T) {
 		fake := llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).
 			Handle(func(context.Context, *llmprovider.Request) (*llmprovider.Response, error) { return nil, nil })
-		_, err := generateText(context.Background(), fake, "p", 0, time.Millisecond)
+		_, err := generateTextOnly(context.Background(), fake, "p", 0, time.Millisecond)
 		if !errors.Is(err, llmprovider.ErrIncomplete) {
 			t.Fatalf("generateText() error %v, want ErrIncomplete", err)
 		}
@@ -155,7 +155,7 @@ func TestNewActiveProvider_KiloOrganization(t *testing.T) {
 	}{{"org-1", 1}, {"", 0}} {
 		pc := config.ProviderConfig{AuthKind: "oauth", Model: "m", Organization: tc.org}
 		conf := &config.Config{ActiveProvider: string(llmprovider.ProviderKilo), Providers: map[string]config.ProviderConfig{string(llmprovider.ProviderKilo): pc}}
-		if _, err := newActiveProvider(conf, pc, "m"); err != nil {
+		if _, _, err := newActiveProvider(conf, pc, "m"); err != nil {
 			t.Fatalf("organization %q: %v", tc.org, err)
 		}
 		if gotOpts != tc.want {
@@ -205,11 +205,11 @@ func TestNewActiveProvider_ClaudeWorkspace(t *testing.T) {
 			// Claude's default endpoint ends in /v1, and it posts to /messages.
 			pc := config.ProviderConfig{APIKey: "sk-ant-test-0024", Model: "claude-haiku-4-5", BaseURL: srv.URL + "/v1", Workspace: tc.saved}
 			conf := &config.Config{ActiveProvider: claudeID, Providers: map[string]config.ProviderConfig{claudeID: pc}}
-			p, err := newActiveProvider(conf, pc, pc.Model)
+			p, _, err := newActiveProvider(conf, pc, pc.Model)
 			if err != nil {
 				t.Fatalf("newActiveProvider: %v", err)
 			}
-			if _, err := generateText(context.Background(), p, "p", 0, time.Millisecond); err != nil {
+			if _, err := generateTextOnly(context.Background(), p, "p", 0, time.Millisecond); err != nil {
 				t.Fatalf("generateText: %v", err)
 			}
 			if hits.Load() == 0 {
@@ -288,7 +288,7 @@ func TestProvider_UserAgentNamesApp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := generateText(context.Background(), p, "prompt", 0, 0); err != nil {
+	if _, err := generateTextOnly(context.Background(), p, "prompt", 0, 0); err != nil {
 		t.Fatalf("generateText: %v", err)
 	}
 	got, _ := agent.Load().(string)
@@ -318,7 +318,7 @@ func TestGenerateText_RetryLine_0015(t *testing.T) {
 		out := captureRetries(t)
 		fake := llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).
 			Fail(llmprovider.ErrRateLimited).ReplyText("feat: after retry")
-		if got, err := generateText(context.Background(), fake, "p", 1, time.Millisecond); err != nil || got != "feat: after retry" {
+		if got, err := generateTextOnly(context.Background(), fake, "p", 1, time.Millisecond); err != nil || got != "feat: after retry" {
 			t.Fatalf("generateText() = %q, %v", got, err)
 		}
 		if !retryLine.MatchString(out.String()) {
@@ -328,7 +328,7 @@ func TestGenerateText_RetryLine_0015(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		out := captureRetries(t)
 		fake := llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).ReplyText("feat: x")
-		if _, err := generateText(context.Background(), fake, "p", 2, time.Millisecond); err != nil {
+		if _, err := generateTextOnly(context.Background(), fake, "p", 2, time.Millisecond); err != nil {
 			t.Fatal(err)
 		}
 		if out.Len() != 0 {
@@ -339,7 +339,7 @@ func TestGenerateText_RetryLine_0015(t *testing.T) {
 		out := captureRetries(t)
 		fake := llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).
 			Fail(llmprovider.ErrAuthFailure).ReplyText("never")
-		if _, err := generateText(context.Background(), fake, "p", 2, time.Millisecond); !errors.Is(err, llmprovider.ErrAuthFailure) {
+		if _, err := generateTextOnly(context.Background(), fake, "p", 2, time.Millisecond); !errors.Is(err, llmprovider.ErrAuthFailure) {
 			t.Fatalf("err = %v; want ErrAuthFailure", err)
 		}
 		if out.Len() != 0 {
@@ -369,4 +369,11 @@ func TestRetryKind_0015(t *testing.T) {
 			t.Errorf("reportRetry(%v) wrote %q; want %q", c.err, out.String(), want)
 		}
 	}
+}
+
+// generateTextOnly is generateText for a prompt alone, giving the text: what
+// the tests written before 0029 call.
+func generateTextOnly(ctx context.Context, p llmprovider.Provider, prompt string, retries int, delay time.Duration) (string, error) {
+	a, err := generateText(ctx, p, generation{Prompt: prompt}, retries, delay)
+	return a.Text, err
 }

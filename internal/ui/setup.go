@@ -50,6 +50,9 @@ type SetupOptions struct {
 	MaxDiffBytes      int
 	RetryCount        int
 	RetryDelaySeconds int
+	// ReasoningEffort is configure's --reasoning-effort for the provider
+	// configured: empty keeps the saved value (0029-MADR D3).
+	ReasoningEffort string
 	// NoEnv disables reading provider API keys from the environment.
 	NoEnv bool
 	// Yes runs non-interactively; missing required fields become errors or defaults.
@@ -296,6 +299,9 @@ func runSetupInteractive(ctx context.Context, conf *config.Config, opts SetupOpt
 	pc.Workspace = res.Workspace
 	pc.BaseURL = savedBaseURL(res.Provider, res.BaseURL)
 	pc.VendorAuthPath = ""
+	if err := config.SetReasoningEffort(&pc, opts.ReasoningEffort); err != nil {
+		return err
+	}
 	switch res.Kind {
 	case wizard.CredOAuth:
 		pc.AuthKind = string(wizard.CredOAuth)
@@ -419,6 +425,9 @@ func runSetupNonInteractive(ctx context.Context, conf *config.Config, opts Setup
 	pc, ok := conf.Providers[provider]
 	if !ok {
 		pc = config.ProviderConfig{}
+	}
+	if err := config.SetReasoningEffort(&pc, opts.ReasoningEffort); err != nil {
+		return err
 	}
 
 	apiKey := strings.TrimSpace(opts.APIKey)

@@ -95,8 +95,8 @@ func TestRunAnalyzer_OAuthDoesNotCallNewProviderWithAccessToken(t *testing.T) {
 		capturedSource = source
 		return llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).ReplyText("feat: use OAuth session"), nil
 	}
-	generateWithRetry = func(context.Context, llmprovider.Provider, string, int, time.Duration) (string, error) {
-		return "feat: use OAuth session", nil
+	generateWithRetry = func(context.Context, llmprovider.Provider, generation, int, time.Duration) (answer, error) {
+		return answer{Text: "feat: use OAuth session"}, nil
 	}
 
 	conf := &config.Config{
@@ -155,8 +155,8 @@ func TestRunAnalyzer_VendorCLIReadsThrough(t *testing.T) {
 		capturedSource = source
 		return llmtest.NewFake(llmprovider.ProviderOpenAI, llmprovider.Capabilities{}).ReplyText("feat: use OAuth session"), nil
 	}
-	generateWithRetry = func(context.Context, llmprovider.Provider, string, int, time.Duration) (string, error) {
-		return "feat: use the Grok CLI login", nil
+	generateWithRetry = func(context.Context, llmprovider.Provider, generation, int, time.Duration) (answer, error) {
+		return answer{Text: "feat: use the Grok CLI login"}, nil
 	}
 
 	conf := &config.Config{
