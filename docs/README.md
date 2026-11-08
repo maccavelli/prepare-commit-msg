@@ -73,7 +73,7 @@ This tree holds three kinds of document:
 | 0028 | MADR | [Adopt provider SDK v1.28.0](decisions/0028-MADR-adopt-go-llmprovider-sdk-v1-28-0.md) | accepted 2026-11-07 |
 | 0028 | PLAN | [Implement provider SDK v1.28.0](decisions/0028-PLAN-adopt-go-llmprovider-sdk-v1-28-0.md) | complete |
 | 0029 | MADR | [Harden the hook's generation request](decisions/0029-MADR-harden-the-hooks-generation-request.md) | accepted 2026-11-07 |
-| 0029 | PLAN | [Implement hardening the hook's generation request](decisions/0029-PLAN-harden-the-hooks-generation-request.md) | in progress |
+| 0029 | PLAN | [Implement hardening the hook's generation request](decisions/0029-PLAN-harden-the-hooks-generation-request.md) | complete |
 
 ## I want to…
 
