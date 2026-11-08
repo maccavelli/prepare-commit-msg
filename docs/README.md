@@ -70,6 +70,8 @@ This tree holds three kinds of document:
 | 0026 | PLAN | [Implement keeping only the eight newest stable releases](decisions/0026-PLAN-keep-five-stable-releases.md) | complete |
 | 0027 | MADR | [Adopt provider SDK v1.27.0](decisions/0027-MADR-adopt-go-llmprovider-sdk-v1-27-0.md) | accepted 2026-11-06 |
 | 0027 | PLAN | [Implement provider SDK v1.27.0 and release v1.10.4](decisions/0027-PLAN-adopt-go-llmprovider-sdk-v1-27-0.md) | complete |
+| 0028 | MADR | [Adopt provider SDK v1.28.0](decisions/0028-MADR-adopt-go-llmprovider-sdk-v1-28-0.md) | accepted 2026-11-07 |
+| 0028 | PLAN | [Implement provider SDK v1.28.0](decisions/0028-PLAN-adopt-go-llmprovider-sdk-v1-28-0.md) | in progress |
 
 ## I want to…
 
