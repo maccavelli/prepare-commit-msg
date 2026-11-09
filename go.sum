@@ -1,7 +1,7 @@
 github.com/maccavelli/go-llmprovider-sdk v1.28.0 h1:Q1XMpmJzR8apF06whzRscIG2h3dRgLtvtJ65wWoaD34=
 github.com/maccavelli/go-llmprovider-sdk v1.28.0/go.mod h1:dE+W7oDyvVmAxpSOuIJO3qSD3bDTh/olLt/TbByBE1M=
-github.com/maccavelli/go-selfupdate-lib v1.24.0 h1:XbAG8g1xlslRCKiKdjoH4HSjgm490kilDRJJK9hvXa4=
-github.com/maccavelli/go-selfupdate-lib v1.24.0/go.mod h1:DIqb0hzmxkYhVTj6iyaHpntadoHkeOkHWyTsdw+MBHE=
+github.com/maccavelli/go-selfupdate-lib v1.25.0 h1:K3IxUbldgxkssYQo3eW+b5gtJpBcz/CUjAMwGIMY8VE=
+github.com/maccavelli/go-selfupdate-lib v1.25.0/go.mod h1:DIqb0hzmxkYhVTj6iyaHpntadoHkeOkHWyTsdw+MBHE=
 golang.org/x/mod v0.42.0 h1:ICeL3t2L30ljSPHHxDnR4fqVcBt/zR2zJAb9juavmQg=
 golang.org/x/mod v0.42.0/go.mod h1:u5fzIrRInkL8MaO1cbRkUHT64v303YIT5KEqpNr7jRs=
 golang.org/x/sys v0.49.0 h1:XbzkgYJHdqh/8m2Uu0W/dQv8nktxx4BFHp1M0gROTXA=

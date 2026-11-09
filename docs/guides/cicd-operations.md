@@ -178,11 +178,11 @@ The tag run then:
   cross-builds;
 - runs native `go test ./...` on Linux, macOS, and Windows;
 - calls the pinned build workflow
-  `maccavelli/go-selfupdate-lib/.github/workflows/build-selfupdate-release.yml@74ab5dd376a4c864debb32b2d8abfc7856059ba3 # v1.24.0` with
+  `maccavelli/go-selfupdate-lib/.github/workflows/build-selfupdate-release.yml@875dec3c9d475ca47c4b012ca43742de832ef626 # v1.25.0` with
   `spec-path: selfupdate-release.json`, checks build identity, and writes
   `SHA256SUMS`;
 - calls the pinned
-  `maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml@74ab5dd376a4c864debb32b2d8abfc7856059ba3 # v1.24.0` only when
+  `maccavelli/go-selfupdate-lib/.github/workflows/publish-selfupdate-release.yml@875dec3c9d475ca47c4b012ca43742de832ef626 # v1.25.0` only when
   `needs.build.outputs.rehearsal` is `'false'`.
 
 Published assets are the six binaries, `SHA256SUMS`, `install.sh`,

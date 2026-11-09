@@ -35,6 +35,7 @@ Commit](https://www.conventionalcommits.org/) messages.
 - [Changes with go-llmprovider-sdk v1.26.1 and go-selfupdate-lib v1.24.0](#changes-with-go-llmprovider-sdk-v1261-and-go-selfupdate-lib-v1240)
 - [Changes with go-llmprovider-sdk v1.27.0](#changes-with-go-llmprovider-sdk-v1270)
 - [Changes with go-llmprovider-sdk v1.28.0](#changes-with-go-llmprovider-sdk-v1280)
+- [Changes with go-selfupdate-lib v1.25.0](#changes-with-go-selfupdate-lib-v1250)
 - [CLI Reference](#cli-reference)
 - [Developer Experience](#developer-experience)
 - [Documentation](#documentation)
@@ -213,6 +214,9 @@ Symlink or copy the binary into a single repository's `.git/hooks/` directory:
 ln -sf /path/to/prepare-commit-msg .git/hooks/prepare-commit-msg
 chmod +x .git/hooks/prepare-commit-msg
 ```
+
+Run `update` on `/path/to/prepare-commit-msg`, not on the link: `update`
+refuses a binary started through a symlink.
 
 #### Windows Installation
 
@@ -517,6 +521,7 @@ so delete it once the hook works. If something else replaces the binary while an
 update fails instead of overwriting it.
 
 > **Security Note:** Self-update only modifies regular binaries located within the user's home directory. System paths (`/usr`, Homebrew Cellar, Nix store) are rejected.
+> It also refuses a binary started through a symlink: run `update` on the file the link points to.
 
 ---
 
@@ -851,6 +856,24 @@ What you may notice:
   refresh is still running as the hook finishes, the hook says so and waits
   for it, at most 50 seconds, so the refreshed sign-in is saved.
 - **`update` and the installers** behave as in `v1.10.4`.
+
+---
+
+## Changes with go-selfupdate-lib v1.25.0
+
+Release `v1.11.1` moves from go-selfupdate-lib `v1.24.0` to `v1.25.0`
+([0030-MADR](docs/decisions/0030-MADR-adopt-go-selfupdate-lib-v1-25-0.md)).
+What you may notice:
+
+- **`update` started through a symlink is refused on Linux,** as it
+  already was on macOS and Windows. Before, Linux replaced the file the
+  link points to. Run the binary itself, such as
+  `~/.global-git-hooks/prepare-commit-msg update`.
+- **The refusal names the link and its target,** and says to run the
+  target.
+- **`update --json`** reports that refusal's `failed` event with the
+  class `symlink-invocation`, where it was `error`.
+- **The hook, `configure` and the installers** behave as in `v1.11.0`.
 
 ---
 
