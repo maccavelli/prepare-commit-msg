@@ -460,6 +460,7 @@ A scratchpad script, read-only, every check passing:
   `errors.As`. It names no host or path.
 * **Step 8.** Not needed: the run succeeded.
 * **Step 9.** Not run. The pruning waits for the owner's word.
+  *Run later the same day, below.*
 
 ### Phase 6, 2026-11-10
 
@@ -470,3 +471,21 @@ A scratchpad script, read-only, every check passing:
   for, and is not one of them.
 * `make check-records`, `make markdownlint` and `make disclosure-check` are
   run before the commit, which the owner makes and pushes.
+* The owner committed and pushed `d86e7fa`; Docs run `42873927623`
+  succeeds.
+
+### Phase 5 step 9, the pruning, 2026-11-10
+
+On the owner's word, "prune the releases", as the operations guide's
+"Controlled release" gives it:
+
+* `python3 tools/prune_releases.py` exits 1 with its plan: keep the 8
+  newest stable releases, `v1.11.1` (latest) to `v1.9.0`; delete release
+  `v1.8.0` and its tag; "1 releases and 1 tags to delete".
+* `python3 tools/prune_releases.py --apply` exits 0: "deleted release
+  v1.8.0 (id 409003366)", "deleted tag v1.8.0", "pruned: 1 releases and 1
+  tags".
+* `git fetch --prune --prune-tags origin` exits 0 and deletes the local
+  `v1.8.0` tag.
+* A second dry run exits 0, "nothing to prune". `git tag -l v1.8.0` is
+  empty, and the tag's ref on GitHub returns 404.

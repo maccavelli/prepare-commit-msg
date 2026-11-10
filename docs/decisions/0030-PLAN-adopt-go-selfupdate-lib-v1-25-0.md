@@ -422,7 +422,9 @@ libraries, with go-selfupdate-lib `v1.26.0` in place of `v1.25.0`.
 * Step 7, on the Linux host: `update` through a symlink is refused, exit 1,
   class `symlink-invocation`, the target unchanged; on the target itself it
   succeeds. The line it prints is Deviation 3's.
-* The pruning waits for the owner's word.
+* The pruning waits for the owner's word. *Run later the same day, on the
+  owner's word: `v1.8.0` and its tag deleted, eight releases kept (0031-PLAN,
+  "Phase 5 step 9, the pruning").*
 
 The commands and the output each check read are in 0031-PLAN's execution
 record.
