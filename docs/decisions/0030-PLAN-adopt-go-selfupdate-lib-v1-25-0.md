@@ -1,6 +1,6 @@
 ---
-status: in-progress
-date: 2026-11-09
+status: complete
+date: 2026-11-10
 associated-madr: "0030-MADR-adopt-go-selfupdate-lib-v1-25-0.md"
 ---
 # Implement the move to go-selfupdate-lib v1.25.0
@@ -403,3 +403,46 @@ A scratchpad script, read-only:
   makes the release corrects this pair's README section and runs Phase 5's
   checks against that tag, step 7's Linux check included. Phases 1–4 stand.
 * **Files added to scope:** none.
+
+### Phase 5, 2026-11-10
+
+Run once, with `0031-PLAN-adopt-go-llmprovider-sdk-v1-29-0-and-go-selfupdate-lib-v1-26-0.md`
+Phase 5, as Deviation 2 foresaw. The release is `v1.11.1`, as this pair's
+README section named it; 0031-MADR D4 folds that section into one for both
+libraries, with go-selfupdate-lib `v1.26.0` in place of `v1.25.0`.
+
+* The owner made and pushed the annotated tag `v1.11.1` on `423321d`. CI run
+  `42869640645` succeeds, "… / sign" skipped as `sign` is unset, and
+  publishes through
+  `publish-selfupdate-release.yml@7c677842dface4b14b65b2e8b46aa0a7543bed13`
+  (`v1.26.0`), whose publish path is this PLAN's `875dec3c…`'s.
+* The release is immutable, has the nine assets and is the latest; its
+  darwin-arm64 checksum and attestation check out; `update` moved this
+  Mac's installed `v1.11.0` to `v1.11.1`.
+* Step 7, on the Linux host: `update` through a symlink is refused, exit 1,
+  class `symlink-invocation`, the target unchanged; on the target itself it
+  succeeds. The line it prints is Deviation 3's.
+* The pruning waits for the owner's word.
+
+The commands and the output each check read are in 0031-PLAN's execution
+record.
+
+### Deviation 3, 2026-11-10: step 7's stderr line
+
+* **Found.** Step 7 says stderr "starts with `selfupdate: refusing to update
+  through a symlink:`". The released `v1.11.1` prints
+  `update failed: selfupdate: prepare-commit-msg: selfupdate: refusing to
+  update through a symlink: <link> links to <target>; start <target> itself
+  to update it`: `cli.Exit` adds `update failed: `, and the Updater adds
+  `selfupdate: <product>: `, as at `v1.25.0`.
+* **Decision.** The owner's, 2026-11-10, "option 2", recorded as 0031-PLAN
+  Deviation 1 and 0031-MADR A1: the line printed is the one expected,
+  matched exactly; the doubled prefix is raised as go-selfupdate-lib
+  issue #11.
+* **Effect.** Step 7 is met with that line. This MADR's Confirmation says
+  the refusal names the link and its target, which holds.
+* **Files added to scope:** none.
+
+### Phase 6, 2026-11-10
+
+* This PLAN and its index row are complete, in 0031-PLAN's Phase 6.

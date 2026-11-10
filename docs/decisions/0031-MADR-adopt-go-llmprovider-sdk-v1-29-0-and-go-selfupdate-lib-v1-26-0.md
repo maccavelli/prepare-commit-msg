@@ -116,7 +116,8 @@ files. It answers go-selfupdate-lib issue #10, raised from 0030-MADR:
   the refusal's stderr line begins `update failed: selfupdate: refusing to
   update through a symlink:`. 0030-PLAN Phase 5 step 7 says the stderr
   "starts with" the library's prefix; the line contains it after `update
-  failed: ` **[derived]**.
+  failed: ` **[derived]**. *Corrected by A1: the Updater adds
+  `selfupdate: prepare-commit-msg: ` before the refusal.*
 * **The hook, for OpenCode's budget or credit limit and for a Gemini daily
   quota reported in a stream:** the attempt is not retried. The quota is not
   a `stopError` (`main.go:342`), so the hook tries the next model at once
@@ -269,7 +270,7 @@ Phase 5's, run once by this record's PLAN, with step 7's stderr read as
   host `v1.11.1` started through a symlink refuses `update` with
   `update failed: selfupdate: refusing to update through a symlink: <link>
   links to <target>; start <target> itself to update it`, leaving the target
-  unchanged.
+  unchanged. *Corrected by A1: the line is A1's.*
 
 ## Pros and Cons of the Options
 
@@ -316,6 +317,35 @@ Phase 5's, run once by this record's PLAN, with step 7's stderr read as
 passes. accept the madr and plan approved to proceed." That is Q1 A, and
 D5 records it. The chosen option, A, was not questioned and stands. The
 same message accepted this record and approved its PLAN.
+
+## Amendments
+
+### A1 (2026-11-10): the refused run's stderr line
+
+*A1 corrects a fact this record derived and did not run. Found in PLAN
+Phase 5 step 7, on the Linux host, against the released `v1.11.1`.*
+
+* **Found.** `update --force --yes` run through a symlink exits 1, reports
+  the class `symlink-invocation`, and leaves the target unchanged, as
+  decided. Its stderr line is:
+
+  ```text
+  update failed: selfupdate: prepare-commit-msg: selfupdate: refusing to update through a symlink: <link> links to <target>; start <target> itself to update it
+  ```
+
+  "What reaches this app" and "Confirmation" gave it without
+  `selfupdate: prepare-commit-msg: `. The Updater wraps every error of a
+  run as `selfupdate: <product>: <error>` (go-selfupdate-lib
+  `selfupdate/updater.go:772`, and the same at `v1.24.0` and `v1.25.0`), so
+  the prefix is not new in this release **[read]** **[probed]**.
+* **Now:** that line is the one Confirmation expects, matched exactly with
+  the scratch link and target as its paths.
+* **The doubled `selfupdate:`** is the library's to change. At the owner's
+  request (2026-11-10, "option 2") it is raised with go-selfupdate-lib as
+  issue #11 (<https://github.com/maccavelli/go-selfupdate-lib/issues/11>); this record's decisions do not depend on its
+  outcome.
+* **Unchanged:** D1–D5, and option A. The README says the refusal names
+  the link and its target and says to start the target, which holds.
 
 ## More Information
 
