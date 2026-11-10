@@ -76,6 +76,8 @@ This tree holds three kinds of document:
 | 0029 | PLAN | [Implement hardening the hook's generation request](decisions/0029-PLAN-harden-the-hooks-generation-request.md) | complete |
 | 0030 | MADR | [Adopt go-selfupdate-lib v1.25.0](decisions/0030-MADR-adopt-go-selfupdate-lib-v1-25-0.md) | accepted 2026-11-09 |
 | 0030 | PLAN | [Implement go-selfupdate-lib v1.25.0](decisions/0030-PLAN-adopt-go-selfupdate-lib-v1-25-0.md) | in progress |
+| 0031 | MADR | [Adopt provider SDK v1.29.0 and self-update library v1.26.0](decisions/0031-MADR-adopt-go-llmprovider-sdk-v1-29-0-and-go-selfupdate-lib-v1-26-0.md) | accepted 2026-11-10 |
+| 0031 | PLAN | [Implement provider SDK v1.29.0 and self-update library v1.26.0](decisions/0031-PLAN-adopt-go-llmprovider-sdk-v1-29-0-and-go-selfupdate-lib-v1-26-0.md) | in progress |
 
 ## I want to…
 

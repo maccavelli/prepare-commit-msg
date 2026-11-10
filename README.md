@@ -35,7 +35,7 @@ Commit](https://www.conventionalcommits.org/) messages.
 - [Changes with go-llmprovider-sdk v1.26.1 and go-selfupdate-lib v1.24.0](#changes-with-go-llmprovider-sdk-v1261-and-go-selfupdate-lib-v1240)
 - [Changes with go-llmprovider-sdk v1.27.0](#changes-with-go-llmprovider-sdk-v1270)
 - [Changes with go-llmprovider-sdk v1.28.0](#changes-with-go-llmprovider-sdk-v1280)
-- [Changes with go-selfupdate-lib v1.25.0](#changes-with-go-selfupdate-lib-v1250)
+- [Changes with go-llmprovider-sdk v1.29.0 and go-selfupdate-lib v1.26.0](#changes-with-go-llmprovider-sdk-v1290-and-go-selfupdate-lib-v1260)
 - [CLI Reference](#cli-reference)
 - [Developer Experience](#developer-experience)
 - [Documentation](#documentation)
@@ -859,21 +859,31 @@ What you may notice:
 
 ---
 
-## Changes with go-selfupdate-lib v1.25.0
+## Changes with go-llmprovider-sdk v1.29.0 and go-selfupdate-lib v1.26.0
 
-Release `v1.11.1` moves from go-selfupdate-lib `v1.24.0` to `v1.25.0`
-([0030-MADR](docs/decisions/0030-MADR-adopt-go-selfupdate-lib-v1-25-0.md)).
+Release `v1.11.1` moves from go-llmprovider-sdk `v1.28.0` to `v1.29.0`,
+and from go-selfupdate-lib `v1.24.0` to `v1.26.0`
+([0030-MADR](docs/decisions/0030-MADR-adopt-go-selfupdate-lib-v1-25-0.md),
+[0031-MADR](docs/decisions/0031-MADR-adopt-go-llmprovider-sdk-v1-29-0-and-go-selfupdate-lib-v1-26-0.md)).
 What you may notice:
 
 - **`update` started through a symlink is refused on Linux,** as it
   already was on macOS and Windows. Before, Linux replaced the file the
   link points to. Run the binary itself, such as
   `~/.global-git-hooks/prepare-commit-msg update`.
-- **The refusal names the link and its target,** and says to run the
-  target.
+- **The refusal names the link and its target,** and says to start the
+  target to update it.
 - **`update --json`** reports that refusal's `failed` event with the
-  class `symlink-invocation`, where it was `error`.
-- **The hook, `configure` and the installers** behave as in `v1.11.0`.
+  class `symlink-invocation`, a target with a setuid or setgid bit with
+  `special-mode-bits`, and a target outside the allowed directories with
+  `no-allowed-root`. Each was `error`.
+- **An OpenCode budget or credit limit is not retried,** nor is a Gemini
+  daily quota reported partway through an answer. The hook tries the
+  next model at once.
+- **A failure partway through an answer** that states how long to wait
+  is retried after that wait, up to 30 seconds. A longer one moves to
+  the next model at once.
+- **`configure` and the installers** behave as in `v1.11.0`.
 
 ---
 

@@ -308,6 +308,30 @@ D5 records it. The chosen option, A, was not questioned and stands. The
 owner then accepted this record and approved its PLAN, the same day: "set
 madr to accepted, approve the plan, proceed".
 
+## Amendments
+
+### A1 (2026-11-09): D5's release waits for the next library releases
+
+*A1 changes when D5's release is made. D5 is left above as written. Found
+after PLAN Phase 4, with the move on `main` and CI green.*
+
+* **The owner (2026-11-09):** "2 of the libraries this includes, including
+  selfupdate-lib are being updated with enhancements and bugfixes. i am
+  going to wait until we can pin latest again before i tag a release. i will
+  let you know."
+* **Now:** no tag is made for this move until the owner says so. The
+  release follows the moves to the next releases of go-selfupdate-lib and
+  go-llmprovider-sdk, and ships this move with them.
+* **The README section** this record added names `v1.11.1`
+  (`README.md`, "Changes with go-selfupdate-lib v1.25.0"). If the release
+  that ships this move has another tag, the record that makes that release
+  corrects the section.
+* **Unchanged:** D1–D4, and option A. `main` carries the pin from
+  `121879f`. Until a release, a `go install …@main` build differs from
+  `v1.11.0` in this move only.
+* **Consequence:** go-selfupdate-lib's Linux symlink fix reaches users with
+  the later release, not on its own.
+
 ## More Information
 
 * The library's record, cited by repository and filename: go-selfupdate-lib

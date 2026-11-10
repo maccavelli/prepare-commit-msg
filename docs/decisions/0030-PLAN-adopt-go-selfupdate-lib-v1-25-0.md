@@ -325,3 +325,81 @@ A scratchpad script, read-only:
   says the note "adds" the sentence and does not change. No other step
   changes.
 * **Files added to scope:** none.
+
+### Phase 2, 2026-11-09
+
+* `go get github.com/maccavelli/go-selfupdate-lib@v1.25.0` ("upgraded
+  … v1.24.0 => v1.25.0") and `go mod tidy` exit 0. `go.mod` changes the one
+  `require` line. `go.sum` replaces the module's two lines with
+  `h1:K3IxUbldgxkssYQo3eW+b5gtJpBcz/CUjAMwGIMY8VE=` and the `/go.mod` hash
+  `h1:DIqb0hzmxkYhVTj6iyaHpntadoHkeOkHWyTsdw+MBHE=`, as the MADR found.
+  `go mod tidy -diff` is empty, and `go mod verify` prints "all modules
+  verified".
+* A scratchpad Python script made steps 2 and 3's edits, asserting each
+  anchor once and each new text once: both `uses:` pins and the comment in
+  `ci.yml`, both quotes in the operations guide, and the README's contents
+  line, section, Security Note and Option B sentences. Deviation 1 then
+  moved the Security Note sentence to its own line.
+* The whole diff was read. The changes are `go.mod`, `go.sum`,
+  `.github/workflows/ci.yml`, `docs/guides/cicd-operations.md`,
+  `README.md`, `docs/README.md` and this pair. No `.go` file changed.
+* After Deviation 1, `make verify` exits 0: "0 issues."; total coverage
+  84.9% (minimum 80.0%); "No vulnerabilities found."; "ci filters: 11
+  patterns, 11 reads checked, 0 problems"; the tools' 42 tests and the
+  scripts' 34 "OK"; the six cross-builds. `make check-records`,
+  `make markdownlint` and `make disclosure-check` exit 0.
+* `875dec3c9d475ca47c4b012ca43742de832ef626` occurs 2 times in `ci.yml` and
+  2 times in the operations guide; `74ab5dd376a4c864debb32b2d8abfc7856059ba3`
+  0 times in each.
+* Staged: the eight files above. `make pre-add-check` on the staged
+  snapshot exits 0: "all modules verified"; go-selfupdate-lib `v1.25.0`
+  "resolved from GitHub" with the `h1:` above; "0 issues."; "No
+  vulnerabilities found.".
+* The owner committed `121879f`, "chore(deps): pin go-selfupdate-lib to
+  v1.25.0". It holds exactly the eight staged files.
+
+### Phase 3, 2026-11-09
+
+* `make preflight` on `121879f`: "preflight passed". Total coverage 84.9%,
+  "No vulnerabilities found.", the ci-filters line, and the tools' 42 and
+  the scripts' 34 tests.
+* `make preflight-hosts` on `121879f`, with a clean tree, exits 0:
+
+  ```text
+  linux: exit=0 (68s)
+  wsl-ubuntu-24.04: exit=0 (53s)
+  windows: exit=0 (4s)
+  macos: exit=0 (5s)
+  preflight-hosts: 4/4 hosts passed
+  ```
+
+  No host was unreachable. The Windows and macOS logs each show `ok`, not
+  cached, for all five packages.
+* The disclosure guard, as `AGENTS.md` gives it, exits 0 with no output
+  over `d0da9ae..121879f`.
+
+### Phase 4, 2026-11-09
+
+* The owner pushed `main`, `d0da9ae..121879f`.
+* CI run `42724069596` on `121879f`: success. "Go (quality contract)", the
+  three native test jobs, "Build release / build" and the five identity
+  jobs succeed; "Publish GitHub Release" is skipped. The build job's log
+  names `build-selfupdate-release.yml@875dec3c9d475ca47c4b012ca43742de832ef626`,
+  with `rehearsal=true`.
+* Docs run `42724069203`: success.
+
+### Deviation 2, 2026-11-09: the release waits for the next library releases
+
+* **Found.** After Phase 4, before Phase 5's tag. The owner: "2 of the
+  libraries this includes, including selfupdate-lib are being updated with
+  enhancements and bugfixes. i am going to wait until we can pin latest
+  again before i tag a release. i will let you know."
+* **Decision.** The owner's. Phase 5 does not run now. No tag is made until
+  the owner says so, after go-selfupdate-lib and go-llmprovider-sdk are
+  moved to their next releases. The MADR records it as A1.
+* **Effect.** Phase 5 is on hold, and with it Phase 6's completion: this
+  PLAN stays `in-progress`. When the owner releases, the release ships this
+  move with the next library moves. If it is not `v1.11.1`, the record that
+  makes the release corrects this pair's README section and runs Phase 5's
+  checks against that tag, step 7's Linux check included. Phases 1–4 stand.
+* **Files added to scope:** none.
