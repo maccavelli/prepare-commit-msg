@@ -1,6 +1,6 @@
 ---
-status: in-progress
-date: 2026-11-18
+status: complete
+date: 2026-11-19
 associated-madr: "0032-MADR-adopt-go-1-27-4-and-go-selfupdate-lib-v1-26-3.md"
 ---
 # Implement the move to Go 1.27.4 and go-selfupdate-lib v1.26.3
@@ -248,3 +248,46 @@ once more after this record's last edit; the handoff gives that result.
 `make preflight-hosts` tests the committed `HEAD`, and nothing is committed.
 No push, tag, release or install was made, and no hooks directory or Git
 configuration outside the temporary test repositories was written.
+
+### Close-out, 2026-11-19
+
+Added; no earlier line of this record is rewritten. The status line and the
+`date` line above change from `in-progress` and 2026-11-18 to `complete` and
+2026-11-19, and nothing else is removed.
+
+* **Release from hold.** The owner's instruction was to commit the bump. The
+  work was committed and pushed to `main` by the coordinator: the records in
+  `d9a5a0e`, the change in `d377e88`.
+* **Gate on the tree.** `make preflight` through `run-heavy` in the
+  throwaway environment: exit 0, "preflight passed", ten packages ok under
+  the race detector, no failure, the tree unchanged by the gate. After the
+  record commit, with the seven change files staged, `make pre-add-check` on
+  that staged snapshot through `run-heavy` with the proxy and checksum
+  database on: exit 0, "0 issues.", "No vulnerabilities found." This is the
+  run Deviation 3 asked for. Nothing was installed and no hooks directory was
+  written.
+* **CI on `d377e88`, run 44604053367.** Attempt 1: Go (quality contract),
+  Native Tests (Linux) and Native Tests (Windows) succeeded; Native Tests
+  (macOS) was cancelled with zero steps, GitHub's annotation reading "The job
+  was not acquired by Runner of type hosted even after multiple attempts", a
+  hosted-runner capacity fault and not a test result; Build release was
+  skipped because of it. The failed job was re-run once. Attempt 2 succeeded:
+  Native Tests on macOS, Linux and Windows (7 steps each), Go (quality
+  contract, 10 steps), Build release / build (18 steps), Build release /
+  identity for darwin/arm64, linux/arm64, windows/arm64, linux/amd64 and
+  windows/amd64 (5 steps each); Publish GitHub Release skipped (no tag).
+  Docs succeeded. This closes the "Not verified" items of the first handoff:
+  the native Linux and Windows tests and the `build` rehearsal at the pinned
+  `v1.26.3` workflow commit.
+* **Acceptance criteria**, against `d377e88` and the evidence above:
+
+| Criterion | Result | Evidence |
+| :--- | :--- | :--- |
+| `go.mod` and `go.sum` change only on D1 and D2's lines | met | the commit's diff of both files is `go.mod:3`, `go.mod:7` and `go.sum:3-4` alone |
+| `go mod tidy -diff` is empty; `go mod verify` passes | met | `make mod-check` exit 0 (Phase 3); `go mod tidy -diff` exit 0 on `d377e88` |
+| `1dffdc9d…` twice in `ci.yml` and in the operations guide; `7c677842…` in neither | met | counts 2 and 0 in each file at `d377e88` |
+| Every gate in Phase 3 exits 0 | met | the Phase 3 table, with Deviations 1 to 3 resolved as recorded, and the coordinator's `make preflight` exit 0 |
+| `govulncheck ./...` under Go 1.27.4 exits 0 | met | `make vuln` exit 0, "No vulnerabilities found." |
+| No `.go` file changes (MADR D4) | met | the seven files of `d377e88` include none |
+| No tag, release or installed binary | met | CI's Publish GitHub Release skipped; nothing installed |
+| CI green on `main` | met | run 44604053367 attempt 2, with the macOS capacity fault re-run once |
