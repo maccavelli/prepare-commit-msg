@@ -907,7 +907,7 @@ Brief guide for contributors and local development.
 
 ### Toolchain & Quality Gates
 
-The repository uses pinned developer tools in `.tools/bin` to ensure identical results across local machines and CI. Building from source needs Go 1.27.3.
+The repository uses pinned developer tools in `.tools/bin` to ensure identical results across local machines and CI. Building from source needs Go 1.27.4.
 
 ```bash
 make tools          # Bootstrap pinned tools (golangci-lint, govulncheck, actionlint)
