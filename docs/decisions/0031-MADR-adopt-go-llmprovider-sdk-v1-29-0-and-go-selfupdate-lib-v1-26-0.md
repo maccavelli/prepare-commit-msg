@@ -369,3 +369,7 @@ Phase 5 step 7, on the Linux host, against the released `v1.11.1`.*
   [0026-MADR-keep-five-stable-releases.md](0026-MADR-keep-five-stable-releases.md).
 * The implementation:
   [0031-PLAN-adopt-go-llmprovider-sdk-v1-29-0-and-go-selfupdate-lib-v1-26-0.md](0031-PLAN-adopt-go-llmprovider-sdk-v1-29-0-and-go-selfupdate-lib-v1-26-0.md).
+* Pointer, 2026-11-18: go-selfupdate-lib and its two workflow pins moved to
+  `v1.26.3` in
+  [0032-MADR-adopt-go-1-27-4-and-go-selfupdate-lib-v1-26-3.md](0032-MADR-adopt-go-1-27-4-and-go-selfupdate-lib-v1-26-3.md).
+  This record is not rewritten.

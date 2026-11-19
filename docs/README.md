@@ -78,6 +78,8 @@ This tree holds three kinds of document:
 | 0030 | PLAN | [Implement go-selfupdate-lib v1.25.0](decisions/0030-PLAN-adopt-go-selfupdate-lib-v1-25-0.md) | complete |
 | 0031 | MADR | [Adopt provider SDK v1.29.0 and self-update library v1.26.0](decisions/0031-MADR-adopt-go-llmprovider-sdk-v1-29-0-and-go-selfupdate-lib-v1-26-0.md) | accepted 2026-11-10 |
 | 0031 | PLAN | [Implement provider SDK v1.29.0 and self-update library v1.26.0](decisions/0031-PLAN-adopt-go-llmprovider-sdk-v1-29-0-and-go-selfupdate-lib-v1-26-0.md) | complete |
+| 0032 | MADR | [Adopt Go 1.27.4 and self-update library v1.26.3](decisions/0032-MADR-adopt-go-1-27-4-and-go-selfupdate-lib-v1-26-3.md) | accepted 2026-11-18 |
+| 0032 | PLAN | [Implement Go 1.27.4 and self-update library v1.26.3](decisions/0032-PLAN-adopt-go-1-27-4-and-go-selfupdate-lib-v1-26-3.md) | in-progress |
 
 ## I want to…
 

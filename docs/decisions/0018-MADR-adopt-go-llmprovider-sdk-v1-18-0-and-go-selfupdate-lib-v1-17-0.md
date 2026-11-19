@@ -549,3 +549,6 @@ builds its tools with Go 1.27.3", which is left above as written.*
   [0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md](0015-MADR-adopt-go-llmprovider-sdk-v1-15-0.md).
 * The implementation:
   [0018-PLAN-adopt-go-llmprovider-sdk-v1-18-0-and-go-selfupdate-lib-v1-17-0.md](0018-PLAN-adopt-go-llmprovider-sdk-v1-18-0-and-go-selfupdate-lib-v1-17-0.md).
+* Pointer, 2026-11-18: the Go pin this record set moved to Go 1.27.4 in
+  [0032-MADR-adopt-go-1-27-4-and-go-selfupdate-lib-v1-26-3.md](0032-MADR-adopt-go-1-27-4-and-go-selfupdate-lib-v1-26-3.md).
+  This record is not rewritten.
